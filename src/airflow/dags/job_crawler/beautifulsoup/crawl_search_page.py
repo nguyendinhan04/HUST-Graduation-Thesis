@@ -7,13 +7,13 @@ from urllib.parse import urljoin, urlparse, parse_qsl
 from dotenv import load_dotenv
 import os
 from datetime import datetime
-
-from job_crawler.beautifulsoup.beautifulsoup_utils import *
-from job_crawler.beautifulsoup.JobDB.JobDBClient import JobDBClient
-from job_crawler.crawler_utils import keyword_normalize
+from bs4 import BeautifulSoup
+from ..crawler_utils import *
+from beautifulsoup_utils import *
+from JobDBClient.JobDBSpliteClient import JobDBClient
 
 load_dotenv()
-SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH")
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "data/sqlite/jobs.db")
 
 # ------------ Search page ------------
 def parse_search_page(soup: BeautifulSoup) -> List[Dict]:
@@ -131,26 +131,25 @@ def crawl_search_page_to_csv(query_url_template: str, start_page: int = 1, end_p
 
 
 def crawl_multiple_keywords():
-    # db = JobDBClient(SQLITE_DB_PATH)
-    # crawl_keywords = db.get_current_crawl_keywords(limit=2)
-    # print("the kw")
-    # print(crawl_keywords)
-    # error_keywords = []
-    # success_keywords = []
-    # for keyword_id,keyword, category in crawl_keywords:
-    #     print(f"[INFO] Crawling keyword: {keyword} - category: {category}")
-    #     normalized_keyword = keyword_normalize(keyword)
-    #     query_url_template = f"https://www.topcv.vn/tim-viec-lam-{normalized_keyword}?type_keyword=1&page={{page}}&sba=1"
-    #     current_time = datetime.now()
-    #     try:
-    #         crawl_search_page_to_csv(query_url_template, start_page=1, end_page=2, normalized_keyword=normalized_keyword, current_time=current_time)
-    #         success_keywords.append((keyword_id,current_time.strftime("%Y-%m-%d %H:%M:%S")))
-    #     except Exception as e:
-    #         print(f"[ERROR] Failed to crawl keyword {keyword}: {e}")
-    #         error_keywords.append((keyword_id,current_time.strftime("%Y-%m-%d %H:%M:%S")))
+    db = JobDBClient(SQLITE_DB_PATH)
+    crawl_keywords = db.get_current_crawl_keywords(limit=2)
+    print("the kw")
+    print(crawl_keywords)
+    error_keywords = []
+    success_keywords = []
+    for keyword_id,keyword, category in crawl_keywords:
+        print(f"[INFO] Crawling keyword: {keyword} - category: {category}")
+        normalized_keyword = keyword_normalize(keyword)
+        query_url_template = f"https://www.topcv.vn/tim-viec-lam-{normalized_keyword}?type_keyword=1&page={{page}}&sba=1"
+        current_time = datetime.now()
+        try:
+            crawl_search_page_to_csv(query_url_template, start_page=1, end_page=2, normalized_keyword=normalized_keyword, current_time=current_time)
+            success_keywords.append((keyword_id,current_time.strftime("%Y-%m-%d %H:%M:%S")))
+        except Exception as e:
+            print(f"[ERROR] Failed to crawl keyword {keyword}: {e}")
+            error_keywords.append((keyword_id,current_time.strftime("%Y-%m-%d %H:%M:%S")))
     
-    # db.update_crawl_status(success_keywords, error_keywords)
-    # db.close()
+    db.update_crawl_status(success_keywords, error_keywords)
+    db.close()
 
     print("Hello")
-    

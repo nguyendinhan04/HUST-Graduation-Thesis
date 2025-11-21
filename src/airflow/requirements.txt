@@ -3,5 +3,6 @@ scrapy-selenium==0.0.7
 selenium==4.37.0
 webdriver_manager==4.0.2
 pandas==2.3.3
-bs4
-minio
+bs4==0.0.2
+minio==7.2.18
+unidecode

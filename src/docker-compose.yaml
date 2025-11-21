@@ -77,7 +77,7 @@ x-airflow-common:
     # - ${AIRFLOW_PROJ_DIR:-.}/dbt:/opt/airflow/dbt
     # - ${AIRFLOW_PROJ_DIR:-.}/.dbt:/home/airflow/.dbt
     - ${AIRFLOW_PROJ_DIR:-.}/airflow/jars:/opt/airflow/jars
-    - ${AIRFLOW_PROJ_DIR:-.}/airflow/job_crawler:/opt/airflow/job_crawler
+    - ${AIRFLOW_PROJ_DIR:-.}/airflow/dags/job_crawler:/opt/airflow/dags/job_crawler
 
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
