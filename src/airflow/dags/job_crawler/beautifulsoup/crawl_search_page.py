@@ -9,8 +9,9 @@ import os
 from datetime import datetime
 from bs4 import BeautifulSoup
 from ..crawler_utils import *
-from beautifulsoup_utils import *
-from JobDBClient.JobDBSpliteClient import JobDBClient
+# from beautifulsoup_utils import *
+from .beautifulsoup_utils import *
+from .JobDBClient.JobDBSpliteClient import JobDBClient
 
 load_dotenv()
 SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "data/sqlite/jobs.db")
@@ -153,3 +154,7 @@ def crawl_multiple_keywords():
     db.close()
 
     print("Hello")
+
+
+def crawl_multiple_keywords_to_minio():
+

@@ -73,10 +73,10 @@ DOWNLOADER_MIDDLEWARES = {
 #    "scrapy.extensions.telnet.TelnetConsole": None,
 #}
 
-# Configure item pipelines
+# Configure item airflow
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 #ITEM_PIPELINES = {
-#    "scrapy_job_crawler.pipelines.ScrapyJobCrawlerPipeline": 300,
+#    "scrapy_job_crawler.airflow.ScrapyJobCrawlerPipeline": 300,
 #}
 
 # Enable and configure the AutoThrottle extension (disabled by default)

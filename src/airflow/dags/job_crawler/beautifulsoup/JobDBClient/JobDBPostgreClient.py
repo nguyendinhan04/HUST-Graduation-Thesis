@@ -16,6 +16,45 @@ class JobDBPostgreClient:
         )
         self.cursor = self.connection.cursor()
 
+    def setup_tables(self):
+        create_crawl_keywords_table = """
+        CREATE TABLE IF NOT EXISTS crawl_keywords (
+            id SERIAL PRIMARY KEY,
+            keyword VARCHAR(255) NOT NULL,
+            category VARCHAR(255),
+            last_crawl TIMESTAMP,
+            status VARCHAR(50)
+        );
+        """
+        create_jobs_table = """
+        CREATE TABLE IF NOT EXISTS jobs (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            company VARCHAR(255),
+            location VARCHAR(255),
+            description TEXT,
+            posted_date TIMESTAMP
+        );
+        """
+        self.cursor.execute(create_crawl_keywords_table)
+        self.cursor.execute(create_jobs_table)
+        self.connection.commit()
+
+    def execute_query(self,query: str, params: tuple = ()):
+        self.cursor.execute(query, params)
+        self.connection.commit()
+        return self.cursor.fetchall()
+    def get_current_crawl_keywords(self, limit: int = 10):
+        self.cursor.execute('''SELECT id, keyword, category FROM crawl_keywords WHERE last_crawl IS NULL LIMIT %s''', (limit,))
+        crawl_keywords = self.cursor.fetchall()
+        if len(crawl_keywords) < limit:
+            self.cursor.execute('''SELECT id, keyword, category FROM crawl_keywords ORDER BY last_crawl ASC LIMIT %s''', (limit - len(crawl_keywords),))
+            older_keywords = self.cursor.fetchall()
+            crawl_keywords.extend(older_keywords)
+        return crawl_keywords
+
+
+
     def insert_job(self, job_data):
         insert_query = """
         INSERT INTO jobs (title, company, location, description, posted_date)
