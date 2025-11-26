@@ -1,0 +1,2 @@
+upload cong_nghe_thong_tin.txt -> danh-muc-cong-viec bucket
+tao bucket data

@@ -12,6 +12,8 @@ from ..crawler_utils import *
 # from beautifulsoup_utils import *
 from .beautifulsoup_utils import *
 from .JobDBClient.JobDBSpliteClient import JobDBClient
+from .JobDBClient.JobDBPostgreClient import JobDBPostgreClient
+from MinioClient.MinioClient import MinioClient
 
 load_dotenv()
 SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "data/sqlite/jobs.db")
@@ -131,30 +133,112 @@ def crawl_search_page_to_csv(query_url_template: str, start_page: int = 1, end_p
     # conn.close()
 
 
-def crawl_multiple_keywords():
-    db = JobDBClient(SQLITE_DB_PATH)
-    crawl_keywords = db.get_current_crawl_keywords(limit=2)
+
+
+def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end_page: int = 1,ignore_end_page =  True ,delay_between_pages=(0.5 , 1), normalized_keyword: str = "default",current_time_str: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")):
+    rows: List[Dict] = []
+    seen_jobs = set()
+    current_time = datetime.strptime(current_time_str, "%Y-%m-%d %H:%M:%S")
+    s = build_session()
+    max_page = end_page
+    # for page in range(start_page, end_page + 1):
+    #     url = query_url_template.format(page=page)
+    #     print(f"[INFO] Crawling search page {page}: {url}")
+    #     soup = get_soup(s, url)
+    #     jobs = parse_search_page(soup)
+
+    #     if not jobs:
+    #         print(f"[INFO] Trang {page} không còn job — dừng sớm.")
+    #         break
+    #     max_page = get_max_page(soup=soup)
+
+    #     for j in jobs:
+    #         job_url = j["job_url"]
+    #         job_id = urlparse(job_url).path
+    #         if job_id in seen_jobs:
+    #             continue
+    #         seen_jobs.add(job_id)
+    #         rows.append(j)
+    #     # nghỉ giữa các trang (random)
+    #     smart_sleep(*delay_between_pages)
+
+    #     if page >= max_page:
+    #         print(f"[INFO] Đã đạt trang cuối cùng {max_page} — dừng sớm.")
+    #         break
+    page = start_page
+    while True:
+        url = query_url_template.format(page=page)
+        print(f"[INFO] Crawling search page {page}: {url}")
+        soup = get_soup(s, url)
+        jobs = parse_search_page(soup)
+
+        if not jobs:
+            print(f"[INFO] Trang {page} không còn job — dừng sớm.")
+            break
+        max_page = get_max_page(soup=soup)
+
+        for j in jobs:
+            job_url = j["job_url"]
+            job_id = urlparse(job_url).path
+            if job_id in seen_jobs:
+                continue
+            seen_jobs.add(job_id)
+            rows.append(j)
+        # nghỉ giữa các trang (random)
+        smart_sleep(*delay_between_pages)
+
+        if page > max_page:
+            print(f"[INFO] Đã đạt trang cuối cùng {max_page} — dừng sớm.")
+            break
+
+        page += 1
+        if not ignore_end_page and page > end_page:
+            break
+
+    
+
+    for r in rows:
+        r["url_hash"] = url_hash(r["job_url"]) if r["job_url"] else None
+
+    try:
+    # Lưu kết quả vào file có thể custom để lưu sang s3 hoặc database
+        minioClient = MinioClient()
+        output_data = ""
+        print("the rows: " + str(len(rows)))
+        for r in rows:
+            output_data += f"{r}\n"
+        object_name = f"topcv/raw_job_link/{normalized_keyword}-{start_page}_to_{page-1}-{current_time.strftime('%Y%m%d%H%M%S')}.txt"
+        minioClient.put_object(bucket_name="raw", object_name=object_name, input_data=output_data)
+    except Exception as e:
+        print(f"[ERROR] Failed to save results to file: {e}")
+        raise e
+
+def crawl_multiple_keywords(current_time_str: str):
+    db = JobDBPostgreClient()
+    crawl_keywords = db.get_current_crawl_keywords(limit=1)
     print("the kw")
     print(crawl_keywords)
     error_keywords = []
     success_keywords = []
-    for keyword_id,keyword, category in crawl_keywords:
-        print(f"[INFO] Crawling keyword: {keyword} - category: {category}")
-        normalized_keyword = keyword_normalize(keyword)
-        query_url_template = f"https://www.topcv.vn/tim-viec-lam-{normalized_keyword}?type_keyword=1&page={{page}}&sba=1"
-        current_time = datetime.now()
-        try:
-            crawl_search_page_to_csv(query_url_template, start_page=1, end_page=2, normalized_keyword=normalized_keyword, current_time=current_time)
-            success_keywords.append((keyword_id,current_time.strftime("%Y-%m-%d %H:%M:%S")))
-        except Exception as e:
-            print(f"[ERROR] Failed to crawl keyword {keyword}: {e}")
-            error_keywords.append((keyword_id,current_time.strftime("%Y-%m-%d %H:%M:%S")))
-    
-    db.update_crawl_status(success_keywords, error_keywords)
-    db.close()
+    try:
+        for keyword_id,keyword, category in crawl_keywords:
+            print(f"[INFO] Crawling keyword: {keyword} - category: {category}")
+            normalized_keyword = keyword_normalize(keyword)
+            query_url_template = f"https://www.topcv.vn/tim-viec-lam-{normalized_keyword}?type_keyword=1&page={{page}}&sba=1"
+            try:
+                crawl_search_page_to_minio(query_url_template, start_page=1, end_page=2, normalized_keyword=normalized_keyword, current_time_str=current_time_str)
+                success_keywords.append((keyword_id))
+            except Exception as e:
+                print(f"[ERROR] Failed to crawl keyword {keyword}: {e}")
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during crawling: {e}")
+        raise e
+    finally:
+        error_keywords = [kw[0] for kw in crawl_keywords if kw[0] not in success_keywords]
+        db.update_crawl_status(success_keywords, error_keywords, current_time_str)
+        db.close()
 
-    print("Hello")
 
 
-def crawl_multiple_keywords_to_minio():
+# def crawl_multiple_keywords_to_minio():
 

@@ -1,5 +1,6 @@
 import sqlite3
 from sqlite3 import Connection, Cursor
+from datetime import datetime
 
 class JobDBClient:
     def __init__(self, db_path: str):
@@ -20,14 +21,15 @@ class JobDBClient:
             crawl_keywords.extend(older_keywords)
         return crawl_keywords
 
-    def update_crawl_status(self, success_keywords: list, error_keywords: list):
-        for keyword_id, crawl_time in success_keywords:
-            self.cursor.execute('''UPDATE crawl_keywords SET last_crawl = ?, status = 'success' WHERE id = ?''', (crawl_time, keyword_id))
+    def update_crawl_status(self, success_keywords: list, error_keywords: list,current_time: datetime):
+        current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
+        for keyword_id in success_keywords:
+            self.cursor.execute('''UPDATE crawl_keywords SET last_crawl = ?, status = 'success' WHERE id = ?''', (current_time_str, keyword_id))
 
         # de xu ly sau: log error details, retry count, etc.
 
-        for keyword_id, crawl_time in error_keywords:
-            self.cursor.execute('''UPDATE crawl_keywords SET last_crawl = ?, status = 'error' WHERE id = ?''', (crawl_time, keyword_id))
+        for keyword_id in error_keywords:
+            self.cursor.execute('''UPDATE crawl_keywords SET last_crawl = ?, status = 'error' WHERE id = ?''', (current_time_str, keyword_id))
         self.connection.commit()
 
     def close(self):
