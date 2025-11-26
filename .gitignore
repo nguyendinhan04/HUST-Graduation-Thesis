@@ -1,3 +1,4 @@
 .env
 src/airflow/logs/
 __pycache__/
+.idea/
