@@ -86,8 +86,11 @@ def get_soup(session: requests.Session, url: str) -> BeautifulSoup:
     return BeautifulSoup("", "lxml")
 
 # ------------ Search page ------------
-def parse_search_page(session: requests.Session, url: str) -> List[Dict]:
-    soup = get_soup(session, url)
+def parse_search_page_from_soup(soup: BeautifulSoup) -> List[Dict]:
+    """Parse a BeautifulSoup object and return the list of job dicts.
+    This consolidates the parsing logic so callers that already have a soup
+    can reuse it without an extra HTTP request.
+    """
     jobs = []
     for job in soup.select("div.job-item-search-result"):
         a_title = job.select_one("h3.title a[href]")
@@ -114,6 +117,10 @@ def parse_search_page(session: requests.Session, url: str) -> List[Dict]:
             "exp_list": exp,
         })
     return jobs
+
+def parse_search_page(session: requests.Session, url: str) -> List[Dict]:
+    soup = get_soup(session, url)
+    return parse_search_page_from_soup(soup)
 
 # ------------ Job detail page ------------
 def pick_info_value(soup: BeautifulSoup, title: str) -> Optional[str]:
