@@ -207,7 +207,7 @@ def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end
         print("the rows: " + str(len(rows)))
         for r in rows:
             output_data += f"{r}\n"
-        object_name = f"topcv/raw_job_link/{normalized_keyword}-{start_page}_to_{page-1}-{current_time.strftime('%Y%m%d%H%M%S')}.txt"
+            object_name = f"topcv/raw_job_link/{normalized_keyword}-{start_page}_to_{page-1}-{current_time.strftime('%Y%m%d%H%M%S')}.txt"
         minioClient.put_object(bucket_name="raw", object_name=object_name, input_data=output_data)
     except Exception as e:
         print(f"[ERROR] Failed to save results to file: {e}")

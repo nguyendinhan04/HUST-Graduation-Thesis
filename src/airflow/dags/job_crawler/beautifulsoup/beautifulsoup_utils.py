@@ -118,9 +118,9 @@ def parse_search_page_from_soup(soup: BeautifulSoup) -> List[Dict]:
         })
     return jobs
 
-def parse_search_page(session: requests.Session, url: str) -> List[Dict]:
-    soup = get_soup(session, url)
-    return parse_search_page_from_soup(soup)
+# def parse_search_page(session: requests.Session, url: str) -> List[Dict]:
+#     soup = get_soup(session, url)
+#     return parse_search_page_from_soup(soup)
 
 # ------------ Job detail page ------------
 def pick_info_value(soup: BeautifulSoup, title: str) -> Optional[str]:
@@ -303,78 +303,78 @@ def scrape_company(session: requests.Session, company_url: Optional[str]) -> Dic
 def crawl_to_dataframe(query_url_template: str, start_page: int = 1, end_page: int = 1,
                        delay_between_pages=(0.5 , 1)) -> pd.DataFrame:
     rows: List[Dict] = []
-    seen_jobs = set()
-
-    s = build_session()
-
-    for page in range(start_page, end_page + 1):
-        url = query_url_template.format(page=page)
-        print(f"[INFO] Crawling search page {page}: {url}")
-        jobs = parse_search_page(s, url)
-
-        if not jobs:
-            print(f"[INFO] Trang {page} không còn job — dừng sớm.")
-            break
-
-        for j in jobs:
-            job_url = j["job_url"]
-            job_id = urlparse(job_url).path
-            if job_id in seen_jobs:
-                continue
-            seen_jobs.add(job_id)
-
-            # chi tiết job
-            try:
-                detail = scrape_job_detail(s, job_url)
-            except Exception as e:
-                print(f"[WARN] Lỗi job detail {job_url}: {e}")
-                detail = {k: None for k in [
-                    "detail_title", "detail_salary", "detail_location",
-                    "detail_experience", "deadline", "tags", "desc_mota",
-                    "desc_yeucau", "desc_quyenloi", "working_addresses",
-                    "working_times", "company_url_from_job"
-                ]}
-
-            company_url = detail.get("company_url_from_job") or j.get("company_url")
-
-            # chi tiết công ty
-            try:
-                comp = scrape_company(s, company_url)
-            except Exception as e:
-                print(f"[WARN] Lỗi company {company_url}: {e}")
-                comp = {k: None for k in [
-                    "company_name_full", "company_website", "company_size",
-                    "company_industry", "company_address", "company_description"
-                ]}
-
-            row = {**j, **detail, **comp}
-            rows.append(row)
-
-        # nghỉ giữa các trang (random)
-        smart_sleep(*delay_between_pages)
-
-    df = pd.DataFrame(rows)
-    # sắp xếp cột
-    cols = [
-        "title", "detail_title",
-        "job_url",
-        "company", "company_name_full",
-        "company_url", "company_url_from_job",
-        "salary_list", "detail_salary",
-        "address_list", "detail_location",
-        "exp_list", "detail_experience",
-        "deadline", "tags",
-        "working_addresses", "working_times",
-        "desc_mota", "desc_yeucau", "desc_quyenloi",
-        "company_website", "company_size", "company_industry",
-        "company_address", "company_description",
-    ]
-    cols = [c for c in cols if c in df.columns]
-    return df.loc[:, cols] if cols else df
+    # seen_jobs = set()
+    #
+    # s = build_session()
+    #
+    # for page in range(start_page, end_page + 1):
+    #     url = query_url_template.format(page=page)
+    #     print(f"[INFO] Crawling search page {page}: {url}")
+    #     jobs = parse_search_page(s, url)
+    #
+    #     if not jobs:
+    #         print(f"[INFO] Trang {page} không còn job — dừng sớm.")
+    #         break
+    #
+    #     for j in jobs:
+    #         job_url = j["job_url"]
+    #         job_id = urlparse(job_url).path
+    #         if job_id in seen_jobs:
+    #             continue
+    #         seen_jobs.add(job_id)
+    #
+    #         # chi tiết job
+    #         try:
+    #             detail = scrape_job_detail(s, job_url)
+    #         except Exception as e:
+    #             print(f"[WARN] Lỗi job detail {job_url}: {e}")
+    #             detail = {k: None for k in [
+    #                 "detail_title", "detail_salary", "detail_location",
+    #                 "detail_experience", "deadline", "tags", "desc_mota",
+    #                 "desc_yeucau", "desc_quyenloi", "working_addresses",
+    #                 "working_times", "company_url_from_job"
+    #             ]}
+    #
+    #         company_url = detail.get("company_url_from_job") or j.get("company_url")
+    #
+    #         # chi tiết công ty
+    #         try:
+    #             comp = scrape_company(s, company_url)
+    #         except Exception as e:
+    #             print(f"[WARN] Lỗi company {company_url}: {e}")
+    #             comp = {k: None for k in [
+    #                 "company_name_full", "company_website", "company_size",
+    #                 "company_industry", "company_address", "company_description"
+    #             ]}
+    #
+    #         row = {**j, **detail, **comp}
+    #         rows.append(row)
+    #
+    #     # nghỉ giữa các trang (random)
+    #     smart_sleep(*delay_between_pages)
+    #
+    # df = pd.DataFrame(rows)
+    # # sắp xếp cột
+    # cols = [
+    #     "title", "detail_title",
+    #     "job_url",
+    #     "company", "company_name_full",
+    #     "company_url", "company_url_from_job",
+    #     "salary_list", "detail_salary",
+    #     "address_list", "detail_location",
+    #     "exp_list", "detail_experience",
+    #     "deadline", "tags",
+    #     "working_addresses", "working_times",
+    #     "desc_mota", "desc_yeucau", "desc_quyenloi",
+    #     "company_website", "company_size", "company_industry",
+    #     "company_address", "company_description",
+    # ]
+    # cols = [c for c in cols if c in df.columns]
+    # return df.loc[:, cols] if cols else df
 
 if __name__ == "__main__":
     qtpl = "https://www.topcv.vn/tim-viec-lam-data-analyst?type_keyword=1&page={page}&sba=1"
-    df = crawl_to_dataframe(qtpl, start_page=1, end_page=1, delay_between_pages=(0.5, 1)) # thay end_page=5 nếu muốn nhiều trang hơn (5 trang)
-    print(df.head())
-    df.to_csv("data/topcv_data_analyst_jobs.csv", index=False, encoding="utf-8-sig")
-    print("Saved CSV: topcv_data_analyst_jobs.csv")
+    # df = crawl_to_dataframe(qtpl, start_page=1, end_page=1, delay_between_pages=(0.5, 1)) # thay end_page=5 nếu muốn nhiều trang hơn (5 trang)
+    # print(df.head())
+    # df.to_csv("data/topcv_data_analyst_jobs.csv", index=False, encoding="utf-8-sig")
+    # print("Saved CSV: topcv_data_analyst_jobs.csv")
