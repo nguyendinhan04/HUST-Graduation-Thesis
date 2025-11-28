@@ -1,6 +1,3 @@
-import csv
-import sqlite3
-from typing import List, Dict
 import redis
 import hashlib
 from urllib.parse import urljoin, urlparse, parse_qsl
@@ -9,11 +6,10 @@ import os
 from datetime import datetime
 from bs4 import BeautifulSoup
 from ..crawler_utils import *
-# from beautifulsoup_utils import *
 from .beautifulsoup_utils import *
-from .JobDBClient.JobDBSpliteClient import JobDBClient
 from .JobDBClient.JobDBPostgreClient import JobDBPostgreClient
 from MinioClient.MinioClient import MinioClient
+import json
 
 load_dotenv()
 SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "data/sqlite/jobs.db")
@@ -104,8 +100,8 @@ def crawl_search_page_to_csv(query_url_template: str, start_page: int = 1, end_p
             print(f"[INFO] Đã đạt trang cuối cùng {max_page} — dừng sớm.")
             break
 
-    for r in rows:
-        r["url_hash"] = url_hash(r["job_url"]) if r["job_url"] else None
+    # for r in rows:
+    #     r["url_hash"] = url_hash(r["job_url"]) if r["job_url"] else None
 
     try:
     # Lưu kết quả vào file có thể custom để lưu sang s3 hoặc database
@@ -206,9 +202,11 @@ def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end
         output_data = ""
         print("the rows: " + str(len(rows)))
         for r in rows:
-            output_data += f"{r}\n"
-            object_name = f"topcv/raw_job_link/{normalized_keyword}-{start_page}_to_{page-1}-{current_time.strftime('%Y%m%d%H%M%S')}.txt"
+            output_data += json.dumps(r) + "\n"
+
+        object_name = f"topcv/raw_job_link/{normalized_keyword}-{start_page}_to_{page-1}-{current_time.strftime('%Y%m%d%H%M%S')}.txt"
         minioClient.put_object(bucket_name="raw", object_name=object_name, input_data=output_data)
+        return object_name
     except Exception as e:
         print(f"[ERROR] Failed to save results to file: {e}")
         raise e
@@ -220,14 +218,18 @@ def crawl_multiple_keywords(current_time_str: str):
     print(crawl_keywords)
     error_keywords = []
     success_keywords = []
+    success_mini_path = []
     try:
         for keyword_id,keyword, category in crawl_keywords:
             print(f"[INFO] Crawling keyword: {keyword} - category: {category}")
             normalized_keyword = keyword_normalize(keyword)
             query_url_template = f"https://www.topcv.vn/tim-viec-lam-{normalized_keyword}?type_keyword=1&page={{page}}&sba=1"
             try:
-                crawl_search_page_to_minio(query_url_template, start_page=1, end_page=2, normalized_keyword=normalized_keyword, current_time_str=current_time_str)
-                success_keywords.append((keyword_id))
+                success_mini_path.append(
+                    crawl_search_page_to_minio(query_url_template, start_page=1, end_page=2,
+                                               normalized_keyword=normalized_keyword, current_time_str=current_time_str)
+                )
+                success_keywords.append(keyword_id)
             except Exception as e:
                 print(f"[ERROR] Failed to crawl keyword {keyword}: {e}")
     except Exception as e:
@@ -237,8 +239,5 @@ def crawl_multiple_keywords(current_time_str: str):
         error_keywords = [kw[0] for kw in crawl_keywords if kw[0] not in success_keywords]
         db.update_crawl_status(success_keywords, error_keywords, current_time_str)
         db.close()
-
-
-
-# def crawl_multiple_keywords_to_minio():
+        return success_mini_path
 
