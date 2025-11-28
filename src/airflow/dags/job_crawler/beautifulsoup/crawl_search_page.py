@@ -100,8 +100,8 @@ def crawl_search_page_to_csv(query_url_template: str, start_page: int = 1, end_p
             print(f"[INFO] Đã đạt trang cuối cùng {max_page} — dừng sớm.")
             break
 
-    for r in rows:
-        r["url_hash"] = url_hash(r["job_url"]) if r["job_url"] else None
+    # for r in rows:
+    #     r["url_hash"] = url_hash(r["job_url"]) if r["job_url"] else None
 
     try:
     # Lưu kết quả vào file có thể custom để lưu sang s3 hoặc database

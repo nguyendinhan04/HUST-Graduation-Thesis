@@ -32,11 +32,18 @@ class JobDBPostgreClient:
         create_jobs_table = f"""
         CREATE TABLE IF NOT EXISTS {os.getenv("PG_DATABASE", DEFAULTS["PG_DATABASE"])}.public.jobs (
             id SERIAL PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            company VARCHAR(255),
-            location VARCHAR(255),
-            description TEXT,
-            posted_date TIMESTAMP
+            name text NOT NULL,
+            job_url TEXT,
+            url_hash VARCHAR(64) unique NOT NULL
+        );
+        """
+
+        create_company_table = f"""
+        CREATE TABLE IF NOT EXISTS {os.getenv("PG_DATABASE", DEFAULTS["PG_DATABASE"])}.public.companies (
+            id SERIAL PRIMARY KEY,
+            name text NOT NULL,
+            company_url TEXT,
+            company_url_hash VARCHAR(64) unique NOT NULL
         );
         """
         
@@ -106,19 +113,33 @@ class JobDBPostgreClient:
         ))
         self.connection.commit()
     def check_job_link_exists(self, url_hash: str) -> bool:
-        self.cursor.execute('''SELECT COUNT(*) FROM job_links WHERE url_hash = %s''', (url_hash,))
+        self.cursor.execute('''SELECT COUNT(*) FROM jobs WHERE url_hash = %s''', (url_hash,))
         count = self.cursor.fetchone()[0]
         return count > 0
-    def insert_job_link(self, url_hash: str, job_url: str, source: str, crawl_time: str):
+    def insert_job_link(self, url_hash: str, job_url: str, name: str):
         insert_query = """
-        INSERT INTO job_links (url_hash, job_url, source, crawl_time)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO jobs (url_hash, job_url,name)
+        VALUES (%s, %s, %s)
         """
         self.cursor.execute(insert_query, (
             url_hash,
             job_url,
-            source,
-            crawl_time
+            name,
+        ))
+        self.connection.commit()
+    def check_company_exists(self, company_url_hash: str) -> bool:
+        self.cursor.execute('''SELECT COUNT(*) FROM companies WHERE company_url_hash = %s''', (company_url_hash,))
+        count = self.cursor.fetchone()[0]
+        return count > 0
+    def insert_company(self, name: str, company_url: str, company_url_hash: str):
+        insert_query = """
+        INSERT INTO companies (name, company_url, company_url_hash)
+        VALUES (%s, %s, %s)
+        """
+        self.cursor.execute(insert_query, (
+            name,
+            company_url,
+            company_url_hash
         ))
         self.connection.commit()
 
