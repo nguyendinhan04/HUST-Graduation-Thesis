@@ -46,6 +46,8 @@ def deduplicate_job_links(links: list[str] = []):
                         company_url=company_url,
                         company_url_hash=hash_company_url
                     )
+                else:
+                    print(f"Company already exists: {company_url}")
             if "url_hash" in record:
                 job_url = record["job_url"]
                 url_hash_value = url_hash(job_url) if job_url else None
@@ -56,3 +58,5 @@ def deduplicate_job_links(links: list[str] = []):
                         name=record.get("title")
 
                     )
+                else:
+                    print(f"Job link already exists: {job_url}")

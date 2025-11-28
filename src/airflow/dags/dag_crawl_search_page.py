@@ -41,7 +41,8 @@ with DAG(
 ) as dag:
     crawl_search_page = PythonOperator(
         task_id="task_crawl_search_page",
-        python_callable=task_test_xcom,
+        python_callable=task_crawl_search_page,
+        op_kwargs={'execution_datetime': '{{ execution_date }}'},
     )
     crawl_search_page
 
