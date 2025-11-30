@@ -1,0 +1,5 @@
+minio==7.2.18
+unidecode
+confluent-kafka
+redis==7.0.1
+six

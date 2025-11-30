@@ -5,6 +5,7 @@ import os
 from MinioClient.MinioClient import MinioClient
 from JobDBClient.JobDBPostgreClient import JobDBPostgreClient
 import json
+from KafkaProducer import KafkaProducer
 
 def normalize_job_url(url: str) -> str:
     if not url:
@@ -46,6 +47,15 @@ def deduplicate_job_links(links: list[str] = []):
                         company_url=company_url,
                         company_url_hash=hash_company_url
                     )
+                    kafka_producer = KafkaProducer()
+                    kafka_producer.send_message(
+                        topic="company_updates",
+                        message=json.dumps({
+                            "name": record.get("company"),
+                            "company_url": company_url,
+                            "company_url_hash": hash_company_url
+                        })
+                    )
                 else:
                     print(f"Company already exists: {company_url}")
             if "url_hash" in record:
@@ -56,7 +66,15 @@ def deduplicate_job_links(links: list[str] = []):
                         url_hash=url_hash_value,
                         job_url=record.get("job_url"),
                         name=record.get("title")
-
+                    )
+                    kafka_producer = KafkaProducer()
+                    kafka_producer.send_message(
+                        topic="job_updates",
+                        message=json.dumps({
+                            "url_hash": url_hash_value,
+                            "job_url": record.get("job_url"),
+                            "title": record.get("title")
+                        })
                     )
                 else:
                     print(f"Job link already exists: {job_url}")
