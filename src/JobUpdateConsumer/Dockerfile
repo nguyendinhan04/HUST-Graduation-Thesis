@@ -3,4 +3,5 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY consumer.py .
+ENV PYTHONPATH = /app
 CMD ["python", "consumer.py"]

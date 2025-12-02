@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+from
 
 BASE = "https://www.topcv.vn"
 HEADERS = {
@@ -205,14 +206,14 @@ def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
         "company_url_from_job": company_url_detail,
     }
 
-def crawl_job_detail():
-
+def crawl_job_detail_to_minio(job_url,hash_url,current_time: str):
+    s = build_session()
+    minioClient = MinioClient()
+    try:
+        detail = scrape_job_detail(s, job_url)
+        output =
 
 # def crawl_job_detail_
 
 if __name__ == "__main__":
     qtpl = "https://www.topcv.vn/tim-viec-lam-data-analyst?type_keyword=1&page={page}&sba=1"
-    # df = crawl_to_dataframe(qtpl, start_page=1, end_page=1, delay_between_pages=(0.5, 1)) # thay end_page=5 nếu muốn nhiều trang hơn (5 trang)
-    # print(df.head())
-    # df.to_csv("data/topcv_data_analyst_jobs.csv", index=False, encoding="utf-8-sig")
-    # print("Saved CSV: topcv_data_analyst_jobs.csv")

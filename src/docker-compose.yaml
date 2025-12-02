@@ -396,7 +396,7 @@ services:
   
 
   consumer:
-    build: ./JobUpdateConsumer
+    image :  nguyendinhan04/kafka-consumer:latest
     depends_on:
       - kafka
     networks:
