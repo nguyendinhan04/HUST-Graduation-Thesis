@@ -110,21 +110,21 @@ services:
     networks:
       - airflow
 
-  redis:
-    image: redis:latest
-    expose:
-      - 6379
-    ports:
-    - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 30s
-      retries: 50
-      start_period: 30s
-    restart: always
-    networks:
-      - airflow
+  # redis:
+  #   image: redis:latest
+  #   expose:
+  #     - 6379
+  #   ports:
+  #   - "6379:6379"
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 30s
+  #     retries: 50
+  #     start_period: 30s
+  #   restart: always
+  #   networks:
+  #     - airflow
 
   airflow-webserver:
     <<: *airflow-common
@@ -399,6 +399,9 @@ services:
     image :  nguyendinhan04/kafka-consumer:latest
     depends_on:
       - kafka
+      - minio
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/JobUpdateConsumer:/app
     networks:
       - airflow
   

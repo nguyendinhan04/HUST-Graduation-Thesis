@@ -17,8 +17,8 @@
 │   └── README.md           # mô tả dữ liệu nếu riêng biệt
 ├── notebooks/              # Jupyter notebooks phân tích, khám phá dữ liệu
 ├── src/                    # mã nguồn chính
-│   ├── crawler/            # module crawl dữ liệu
-│   ├── preprocessing/      # module xử lý dữ liệu
+│   ├── airflow/            # module airflow DAGs và operators
+│   ├── JobUpdateConsumer/  # module crawling dữ liệu việc làm
 │   ├── models/             # module huấn luyện, lưu mô hình
 │   └── api/                # module triển khai inference API
 ├── models/                 # mô hình đã huấn luyện lưu lại (.pkl, .pt,…)

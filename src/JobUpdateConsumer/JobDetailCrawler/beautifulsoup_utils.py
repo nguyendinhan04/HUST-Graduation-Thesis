@@ -7,10 +7,9 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
+# import pandas as pd
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
-from
 
 BASE = "https://www.topcv.vn"
 HEADERS = {
@@ -206,12 +205,20 @@ def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
         "company_url_from_job": company_url_detail,
     }
 
-def crawl_job_detail_to_minio(job_url,hash_url,current_time: str):
+def crawl_list_job(job_list,current_time: str) -> List[Dict]:
     s = build_session()
-    minioClient = MinioClient()
-    try:
-        detail = scrape_job_detail(s, job_url)
-        output =
+    for job in job_list:
+        job_url = job.get("job_url")
+        try:
+            detail = scrape_job_detail(s, job_url)
+            print(detail)
+            job.update(detail)
+            job["crawled_at"] = current_time
+        except Exception as e:
+            print(f"[ERROR] Lỗi khi crawl chi tiết job {job_url}: {e}")
+            continue
+    return job_list
+        
 
 # def crawl_job_detail_
 

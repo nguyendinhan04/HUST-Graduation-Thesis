@@ -1,7 +1,7 @@
 from confluent_kafka import Producer
 import socket
 
-class KafaProducer:
+class KafkaProducerClass:
     def __init__(self):
         self.conf = {
             'bootstrap.servers': 'kafka:29092',
@@ -16,7 +16,8 @@ class KafaProducer:
             if err is not None:
                 print('Message delivery failed: {}'.format(err))
             else:
-                print('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
+                # print('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
+                pass
 
         self.producer.poll(0)
         self.producer.produce(topic, message.encode('utf-8'), callback=delivery_report)

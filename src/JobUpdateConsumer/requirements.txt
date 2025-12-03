@@ -4,3 +4,6 @@ unidecode
 confluent-kafka
 redis==7.0.1
 six
+dotenv
+requests
+lxml

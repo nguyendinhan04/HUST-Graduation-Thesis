@@ -5,7 +5,15 @@ import os
 from MinioClient.MinioClient import MinioClient
 from JobDBClient.JobDBPostgreClient import JobDBPostgreClient
 import json
-from KafkaProducer import KafkaProducer
+# from KafkaProducer import KafkaProducer
+from KafkaProducer.KafkaProducer import KafkaProducerClass
+
+class job_url():
+    def __init__(self, short_url: str):
+        self.short_url = short_url
+        self.url = f"https://www.topcv.vn/viec-lam/{short_url}"
+    def get_full_url(self) -> str:
+        return self.url
 
 def normalize_job_url(url: str) -> str:
     if not url:
@@ -47,9 +55,9 @@ def deduplicate_job_links(links: list[str] = []):
                         company_url=company_url,
                         company_url_hash=hash_company_url
                     )
-                    kafka_producer = KafkaProducer()
+                    kafka_producer = KafkaProducerClass()
                     kafka_producer.send_message(
-                        topic="company_updates",
+                        topic="company-updates",
                         message=json.dumps({
                             "name": record.get("company"),
                             "company_url": company_url,
@@ -67,9 +75,9 @@ def deduplicate_job_links(links: list[str] = []):
                         job_url=record.get("job_url"),
                         name=record.get("title")
                     )
-                    kafka_producer = KafkaProducer()
+                    kafka_producer = KafkaProducerClass()
                     kafka_producer.send_message(
-                        topic="job_updates",
+                        topic="job-updates",
                         message=json.dumps({
                             "url_hash": url_hash_value,
                             "job_url": record.get("job_url"),

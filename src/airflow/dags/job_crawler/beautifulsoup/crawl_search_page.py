@@ -35,7 +35,7 @@ def parse_search_page(soup: BeautifulSoup) -> List[Dict]:
 
         jobs.append({
             "title": title,
-            "job_url": job_url,
+            "job_url": (job_url),
             "company": company,
             "company_url": company_url,
             "salary_list": salary,
@@ -174,7 +174,7 @@ def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end
         max_page = get_max_page(soup=soup)
 
         for j in jobs:
-            job_url = j["job_url"]
+            job_url = normalize_job_url(j["job_url"])
             job_id = urlparse(job_url).path
             if job_id in seen_jobs:
                 continue

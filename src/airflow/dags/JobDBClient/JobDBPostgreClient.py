@@ -46,9 +46,43 @@ class JobDBPostgreClient:
             company_url_hash VARCHAR(64) unique NOT NULL
         );
         """
+        # "detail_title": title,
+        # "detail_salary": salary,
+        # "detail_location": location,
+        # "detail_experience": experience,
+        # "deadline": deadline,
+        # "tags": "; ".join(tags) if tags else None,
+        # "desc_mota": desc_blocks.get("Mô tả công việc"),
+        # "desc_yeucau": desc_blocks.get("Yêu cầu ứng viên"),
+        # "desc_quyenloi": desc_blocks.get("Quyền lợi"),
+        # "working_addresses": "; ".join(addrs) if addrs else None,
+        # "working_times": "; ".join(times) if times else None,
+        # "company_url_from_job": company_url_detail,
+
+
+        # create_job_details_table = f"""
+        # CREATE TABLE IF NOT EXISTS {os.getenv("PG_DATABASE", DEFAULTS["PG_DATABASE"])}.public.job_details (
+        #     id SERIAL PRIMARY KEY,
+        #     job_id INT REFERENCES jobs(id),
+        #     detail_title TEXT,
+        #     detail_salary TEXT,
+        #     detail_location TEXT,
+        #     detail_experience TEXT,
+        #     deadline TEXT,
+        #     tags TEXT,
+        #     desc_mota TEXT,
+        #     desc_yeucau TEXT,
+        #     desc_quyenloi TEXT,
+        #     working_addresses TEXT,
+        #     working_times TEXT,
+        #     company_url_from_job TEXT
+        # );
+        # """
+
         
         self.cursor.execute(create_crawl_keywords_table)
         self.cursor.execute(create_jobs_table)
+        self.cursor.execute(create_company_table)
         self.connection.commit()
 
     def insert_crawl_keyword(self):
