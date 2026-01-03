@@ -39,9 +39,34 @@ class JobDBPostgreClient:
             posted_date TIMESTAMP
         );
         """
+
+        # (url_hash, job_url,title, datetime, detail_title, detail_salary, detail_location, detail_experience, deadline, tags, desc_mota,desc_yeucau,desc_quyenloi,working_addresses,working_times,company_url_from_job)
+
+        create_detail_job_table = f"""
+        CREATE TABLE IF NOT EXISTS {os.getenv("PG_DATABASE", DEFAULTS["PG_DATABASE"])}.public.detail_jobs (
+            id SERIAL PRIMARY KEY,
+            url_hash VARCHAR(64) UNIQUE NOT NULL,
+            job_url TEXT NOT NULL,
+            title TEXT,
+            datetime TIMESTAMP,
+            detail_title TEXT,
+            detail_salary TEXT,
+            detail_location TEXT,
+            detail_experience TEXT,
+            deadline TEXT,
+            tags TEXT,
+            desc_mota TEXT,
+            desc_yeucau TEXT,
+            desc_quyenloi TEXT,
+            working_addresses TEXT,
+            working_times TEXT,
+            company_url_from_job TEXT
+        );
+        """
         
         self.cursor.execute(create_crawl_keywords_table)
         self.cursor.execute(create_jobs_table)
+        self.cursor.execute(create_detail_job_table)
         self.connection.commit()
 
     def insert_crawl_keyword(self):
@@ -90,7 +115,25 @@ class JobDBPostgreClient:
         for keyword_id in error_keywords:
             self.cursor.execute('''UPDATE crawl_keywords SET last_crawl = %s, status = 'error' WHERE id = %s''', (current_time_str, keyword_id))
         self.connection.commit()
-
+    def check_job_link_exists(self, url_hash: str) -> bool:
+        self.cursor.execute('''SELECT COUNT(*) FROM jobs WHERE url_hash = %s''', (url_hash,))
+        count = self.cursor.fetchone()[0]
+        return count > 0
+    def insert_job_link(self, url_hash: str, job_url: str, name: str):
+        insert_query = """
+        INSERT INTO jobs (url_hash, job_url,name)
+        VALUES (%s, %s, %s)
+        """
+        self.cursor.execute(insert_query, (
+            url_hash,
+            job_url,
+            name,
+        ))
+        self.connection.commit()
+    def check_company_exists(self, company_url_hash: str) -> bool:
+        self.cursor.execute('''SELECT COUNT(*) FROM companies WHERE company_url_hash = %s''', (company_url_hash,))
+        count = self.cursor.fetchone()[0]
+        return count > 0
 
     def insert_job(self, job_data):
         insert_query = """

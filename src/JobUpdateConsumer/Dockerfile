@@ -5,4 +5,4 @@ RUN pip install -r requirements.txt
 COPY MinioClient/ MinioClient/
 COPY consumer.py .
 ENV PYTHONPATH=/app
-CMD ["python", "consumer.py"]
+# CMD ["python", "consumer.py"]

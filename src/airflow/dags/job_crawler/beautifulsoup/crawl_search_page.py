@@ -44,17 +44,7 @@ def parse_search_page(soup: BeautifulSoup) -> List[Dict]:
         })
     return jobs
 
-def normalize_job_url(url: str) -> str:
-    if not url:
-        return url
-    parsed_url = url.split('?')[0].split('/')[-2:]
-    norm_url = '/'.join(parsed_url)
-    return norm_url
 
-def url_hash(url: str) -> str:
-    norm_url = normalize_job_url(url)
-    hash_object = hashlib.sha256(norm_url.encode('utf-8'))
-    return hash_object.hexdigest()
 def get_max_page(soup:BeautifulSoup) -> int:
     # span id="job-listing-paginate-text"
     pagination = soup.select_one("span#job-listing-paginate-text")

@@ -276,7 +276,6 @@ def flaky_task(task_id: int, fail_probability: float = 0.5):
     
     print(f"✅ Task {task_id} succeeded")
     return {"task_id": task_id, "status": "success"}
-    pass
 
 
 def api_call_with_rate_limit(endpoint: str, retry_count: int = 0):

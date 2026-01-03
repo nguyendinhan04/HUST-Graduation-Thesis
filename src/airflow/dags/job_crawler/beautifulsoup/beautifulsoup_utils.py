@@ -4,7 +4,7 @@ import re
 import random
 from typing import Dict, List, Optional
 from urllib.parse import urljoin, urlparse
-
+import hashlib
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -84,6 +84,18 @@ def get_soup(session: requests.Session, url: str) -> BeautifulSoup:
     # lần cuối: raise
     r.raise_for_status()
     return BeautifulSoup("", "lxml")
+
+def normalize_job_url(url: str) -> str:
+    if not url:
+        return url
+    parsed_url = url.split('?')[0].split('/')[-2:]
+    norm_url = '/'.join(parsed_url)
+    return norm_url
+
+def url_hash(url: str) -> str:
+    norm_url = normalize_job_url(url)
+    hash_object = hashlib.sha256(norm_url.encode('utf-8'))
+    return hash_object.hexdigest()
 
 # ------------ Search page ------------
 def parse_search_page_from_soup(soup: BeautifulSoup) -> List[Dict]:

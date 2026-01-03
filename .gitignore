@@ -3,3 +3,4 @@ src/airflow/logs/
 __pycache__/
 .idea/
 src/airflow/logs/dag_processor_manager/dag_processor_manager.log
+data/

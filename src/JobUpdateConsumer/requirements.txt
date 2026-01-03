@@ -1,9 +1,11 @@
 bs4==0.0.2
 minio==7.2.18
 unidecode
-confluent-kafka
+# confluent-kafka
 redis==7.0.1
 six
 dotenv
 requests
 lxml
+psycopg2-binary
+rq

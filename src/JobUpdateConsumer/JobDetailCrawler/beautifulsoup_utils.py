@@ -4,6 +4,7 @@ import re
 import random
 from typing import Dict, List, Optional
 from urllib.parse import urljoin, urlparse
+import json
 
 import requests
 from bs4 import BeautifulSoup
@@ -12,6 +13,18 @@ from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
 BASE = "https://www.topcv.vn"
+
+user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                   "AppleWebKit/537.36 (KHTML, like Gecko) "
+                   "Chrome/123.0.0.0 Safari/537.36",
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/124.0',
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    ]
+
+
 HEADERS = {
     # giữ UA thật; có thể xoay vòng nếu cần
     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -22,10 +35,12 @@ HEADERS = {
     "Referer": "https://www.topcv.vn/",
     "Connection": "keep-alive",
 }
+modify_headers = HEADERS.copy()
+modify_headers["User-Agent"] = random.choice(user_agents)
 
 def build_session() -> requests.Session:
     s = requests.Session()
-    s.headers.update(HEADERS)
+    s.headers.update(modify_headers)
 
     # Retry cho lỗi tạm thời và 429
     retry = Retry(
@@ -175,6 +190,33 @@ def extract_company_link_from_job(soup: BeautifulSoup) -> Optional[str]:
     cand = soup.select_one("a.company[href]") or soup.select_one("a[href*='/cong-ty/']")
     return urljoin(BASE, cand["href"]) if cand and cand.has_attr("href") else None
 
+def extract_general_info(soup: BeautifulSoup) -> Dict:
+    """Extract general job info from the job detail page soup."""
+    info = {}
+    for li in soup.select(".box-general-group-info"):
+        label_el = li.select_one(".box-general-group-info-title")
+        value_el = li.select_one(".box-general-group-info-value")
+        label = text(label_el) if label_el else None
+        value = text(value_el) if value_el else None
+        if label and value:
+            info[label] = value
+    return info
+
+def extract_box_categories(soup: BeautifulSoup) -> List[Dict]:
+    res = []
+    for box in soup.select(".box-category"):
+        box_title = text(box.select_one(".box-title"))
+        categories = []
+        for a in box.select(".box-category-tag"):
+            cat_name = text(a)
+            categories.append(cat_name)
+        if box_title:
+            res.append({
+                "box_title": box_title,
+                "categories": categories
+            })
+    return res
+
 def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
     soup = get_soup(session, job_url)
     smart_sleep()  # nghỉ nhẹ giữa các trang
@@ -189,6 +231,8 @@ def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
     addrs = extract_working_addresses(soup)
     times = extract_working_times(soup)
     company_url_detail = extract_company_link_from_job(soup)
+    general_info = extract_general_info(soup)
+    box_categories = extract_box_categories(soup)
 
     return {
         "detail_title": title,
@@ -203,24 +247,37 @@ def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
         "working_addresses": "; ".join(addrs) if addrs else None,
         "working_times": "; ".join(times) if times else None,
         "company_url_from_job": company_url_detail,
+        "general_info": general_info,  # giữ nguyên dict, không encode json
+        "box_categories": box_categories,
     }
 
-def crawl_list_job(job_list,current_time: str) -> List[Dict]:
-    s = build_session()
-    for job in job_list:
+
+class JobDetailCrawler:
+    def __init__(self):
+        # self.session = build_session()
+        pass
+
+    def crawl_job_detail(self, job):
+        if not job:
+            print("[WARNING] job is None")
+            return None
+        self.session = build_session()
+        print("Recreate session for each job to reduce 429 errors.")
         job_url = job.get("job_url")
         try:
-            detail = scrape_job_detail(s, job_url)
-            print(detail)
+            detail = scrape_job_detail(self.session, "https://www.topcv.vn/" + job_url)
             job.update(detail)
-            job["crawled_at"] = current_time
         except Exception as e:
             print(f"[ERROR] Lỗi khi crawl chi tiết job {job_url}: {e}")
-            continue
-    return job_list
-        
-
-# def crawl_job_detail_
+        return job
+    
 
 if __name__ == "__main__":
-    qtpl = "https://www.topcv.vn/tim-viec-lam-data-analyst?type_keyword=1&page={page}&sba=1"
+    # test nhanh
+    crawler = JobDetailCrawler()
+    test_job = {
+        "job_url": "viec-lam/2d-ui-ux-game-artist-tu-2-nam-kinh-nghiem/1960512.html",
+        "url_hash": "testhash123"
+    }
+    result = crawler.crawl_job_detail(test_job)
+    print(result)
