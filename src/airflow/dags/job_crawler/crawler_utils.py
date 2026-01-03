@@ -1,5 +1,11 @@
 import re
 import unidecode
+from proxypool import (
+    ProxyPoolValidator,
+    ProxyPoolScraper,
+    RedisProxyPoolClient
+)
+from concurrent.futures import ThreadPoolExecutor
 
 
 def keyword_normalize(keyword: str) -> str:
@@ -12,6 +18,28 @@ def keyword_normalize(keyword: str) -> str:
     # thay ký tự đặc biệt bằng dấu gạch nối
     normalized = re.sub(r'[^a-z0-9\-]', '-', normalized)
     return normalized
+
+def proxy():
+    proxy_scraper = ProxyPoolScraper(self.proxy_webpage)
+    proxy_validator = ProxyPoolValidator(self.testing_url)
+    proxy_stream = proxy_scraper.get_proxy_stream(self.number_of_proxies)
+
+    with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        results = executor.map(
+            proxy_validator.validate_proxy, proxy_stream
+        )
+        valid_proxies = filter(lambda x: x.is_valid is True, results)
+        sorted_valid_proxies = sorted(
+            valid_proxies, key=lambda x: x.health, reverse=True
+        )
+
+    with RedisProxyPoolClient(self.redis_key, self.redis_config) as client:
+        client.override_existing_proxies(
+            [
+                json.dumps(record.proxy)
+                for record in sorted_valid_proxies[:5]
+            ]
+        )
 
 if __name__ == "__main__":
     test_keywords = [

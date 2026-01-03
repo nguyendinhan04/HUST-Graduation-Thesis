@@ -32,11 +32,10 @@ class JobDBPostgreClient:
         create_jobs_table = f"""
         CREATE TABLE IF NOT EXISTS {os.getenv("PG_DATABASE", DEFAULTS["PG_DATABASE"])}.public.jobs (
             id SERIAL PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            company VARCHAR(255),
-            location VARCHAR(255),
-            description TEXT,
-            posted_date TIMESTAMP
+            name VARCHAR(255) NOT NULL,
+            job_url TEXT NOT NULL,
+            url_hash VARCHAR(64) UNIQUE NOT NULL
+            last_crawl TIMESTAMP
         );
         """
 
@@ -60,7 +59,10 @@ class JobDBPostgreClient:
             desc_quyenloi TEXT,
             working_addresses TEXT,
             working_times TEXT,
-            company_url_from_job TEXT
+            company_url_from_job TEXT,
+            general_info TEXT,
+            box_categories TEXT
+
         );
         """
         
