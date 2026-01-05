@@ -9,6 +9,8 @@ from ..crawler_utils import *
 from .beautifulsoup_utils import *
 from .JobDBClient.JobDBPostgreClient import JobDBPostgreClient
 from MinioClient.MinioClient import MinioClient
+from job_crawler.proxypool.redis_proxypool_client import RedisProxyPoolClient
+from typing import List, Dict, Optional
 import json
 
 load_dotenv()
@@ -121,11 +123,18 @@ def crawl_search_page_to_csv(query_url_template: str, start_page: int = 1, end_p
 
 
 
-def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end_page: int = 1,ignore_end_page =  True ,delay_between_pages=(0.5 , 1), normalized_keyword: str = "default",current_time_str: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")):
+def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end_page: int = 1,ignore_end_page =  True ,delay_between_pages=(0.5 , 1), normalized_keyword: str = "default",current_time_str: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")) -> str:
     rows: List[Dict] = []
     seen_jobs = set()
     current_time = datetime.strptime(current_time_str, "%Y-%m-%d %H:%M:%S")
     s = build_session()
+    redis_proxy_client = RedisProxyPoolClient(key="proxy_pool", redis_config={
+        "host": "redis",
+        "port": 6379,
+        "password": None,
+        "db": 1
+    })
+    proxies = redis_proxy_client.get_proxy()
     max_page = end_page
     # for page in range(start_page, end_page + 1):
     #     url = query_url_template.format(page=page)
@@ -153,32 +162,37 @@ def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end
     #         break
     page = start_page
     while True:
-        url = query_url_template.format(page=page)
-        print(f"[INFO] Crawling search page {page}: {url}")
-        soup = get_soup(s, url)
-        jobs = parse_search_page(soup)
+        try:
+            url = query_url_template.format(page=page)
+            print(f"[INFO] Crawling search page {page}: {url}")
+            soup = get_soup(s, url, proxies=proxies)
+            jobs = parse_search_page(soup)
 
-        if not jobs:
-            print(f"[INFO] Trang {page} không còn job — dừng sớm.")
-            break
-        max_page = get_max_page(soup=soup)
+            if not jobs:
+                print(f"[INFO] Trang {page} không còn job — dừng sớm.")
+                break
+            max_page = get_max_page(soup=soup)
 
-        for j in jobs:
-            job_url = normalize_job_url(j["job_url"])
-            job_id = urlparse(job_url).path
-            if job_id in seen_jobs:
-                continue
-            seen_jobs.add(job_id)
-            rows.append(j)
-        # nghỉ giữa các trang (random)
-        smart_sleep(*delay_between_pages)
+            for j in jobs:
+                job_url = normalize_job_url(j["job_url"])
+                job_id = urlparse(job_url).path
+                if job_id in seen_jobs:
+                    continue
+                seen_jobs.add(job_id)
+                rows.append(j)
+            # nghỉ giữa các trang (random)
+            smart_sleep(*delay_between_pages)
 
-        if page > max_page:
-            print(f"[INFO] Đã đạt trang cuối cùng {max_page} — dừng sớm.")
-            break
+            if page > max_page:
+                print(f"[INFO] Đã đạt trang cuối cùng {max_page} — dừng sớm.")
+                break
 
-        page += 1
-        if not ignore_end_page and page > end_page:
+            page += 1
+            if not ignore_end_page and page > end_page:
+                break
+        except Exception as e:
+            print(f"[ERROR] Lỗi khi crawl trang {page}: {e}")
+            redis_proxy_client.lpop_proxy()
             break
 
     

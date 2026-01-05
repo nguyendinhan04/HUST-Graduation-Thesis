@@ -61,10 +61,10 @@ def smart_sleep(min_s=1.2, max_s=2.8):
     # nghỉ ngẫu nhiên để “giống người”
     time.sleep(random.uniform(min_s, max_s))
 
-def get_soup(session: requests.Session, url: str) -> BeautifulSoup:
+def get_soup(session: requests.Session, url: str, proxies=None) -> BeautifulSoup:
     # vòng lặp thủ công để xử lý 429 với jitter bổ sung
     for attempt in range(1, 6):
-        r = session.get(url, timeout=30)
+        r = session.get(url, timeout=30, proxies=proxies)
         if r.status_code == 429:
             retry_after = r.headers.get("Retry-After")
             if retry_after:

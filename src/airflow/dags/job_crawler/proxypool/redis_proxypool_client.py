@@ -1,9 +1,8 @@
 import json
 import redis
-from log import log
 
 
-@log
+
 class RedisProxyPoolClient:
     def __init__(self, key, redis_config):
         self.key = key
@@ -15,7 +14,7 @@ class RedisProxyPoolClient:
         return self
 
     def override_existing_proxies(self, proxies):
-        self.logger.info(f"Overriding existing proxies {proxies}")
+        # self.logger.info(f"Overriding existing proxies {proxies}")
         self.redis.delete(self.key)
         self.redis.lpush(self.key, *proxies)
 
@@ -31,7 +30,7 @@ class RedisProxyPoolClient:
             return existing_proxies[0]
 
     def lpop_proxy(self):
-        self.logger.info("Deleting proxy!")
+        # self.logger.info("Deleting proxy!")
         self.redis.lpop(self.key)
 
     def __exit__(self, type, value, traceback):

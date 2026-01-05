@@ -59,8 +59,8 @@ def extract_company_link_from_job(soup: BeautifulSoup) -> Optional[str]:
     cand = soup.select_one("a.company[href]") or soup.select_one("a[href*='/cong-ty/']")
     return urljoin(BASE, cand["href"]) if cand and cand.has_attr("href") else None
 
-def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
-    soup = get_soup(session, job_url)
+def scrape_job_detail(session: requests.Session, job_url: str,proxies = None) -> Dict:
+    soup = get_soup(session, job_url, proxies=proxies)
     smart_sleep()  # nghỉ nhẹ giữa các trang
 
     title = text(soup.select_one(".job-detail__info--title, h1"))

@@ -1,0 +1,18 @@
+{
+  "total_jobs": 10,
+  "vocabulary_size": 5000,
+  "tfidf_matrix_shape": [
+    10,
+    5000
+  ],
+  "job_categories": {
+    "Technical Leadership": 10
+  },
+  "locations": {
+    "Hà Nội": 3,
+    "Hồ Chí Minh": 3,
+    "Đà Nẵng & 3 nơi khác": 1,
+    "Hà Nội , Hồ Chí Minh": 1,
+    "Đà Nẵng": 1
+  }
+}

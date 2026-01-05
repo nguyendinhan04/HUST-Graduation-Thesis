@@ -205,7 +205,10 @@
                     <mxGeometry x="640.74" y="410" width="60" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="84" value="Feature store" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;shadow=1;" parent="1" vertex="1">
-                    <mxGeometry x="1150" y="425" width="125" height="160" as="geometry"/>
+                    <mxGeometry x="1100" y="430" width="125" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="85" style="edgeStyle=none;html=1;" edge="1" parent="1" source="63" target="84">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

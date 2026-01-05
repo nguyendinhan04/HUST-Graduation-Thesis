@@ -8,3 +8,4 @@ minio==7.2.18
 unidecode
 confluent-kafka
 rq
+redis
