@@ -1,4 +1,3 @@
-# producer_fixed.py
 from redis import Redis
 from rq import Queue, Retry
 from rq.job import Job
@@ -373,7 +372,7 @@ if __name__ == "__main__":
         records=[{"id": i} for i in range(50)],
         retry_schedule=[10, 30, 60, 300]
     )
-    
+
     # Example 5: Priority with retry
     print("\n5️⃣ High priority with 5 retries")
     job5 = producer.push_task_with_priority(

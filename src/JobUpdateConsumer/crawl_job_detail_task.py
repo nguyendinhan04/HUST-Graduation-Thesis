@@ -23,3 +23,7 @@ def crawl_job_detail_task(job_url: str, url_hash: str) -> dict:
     job_db_client.insert_job_detail(job_detail)
     job_db_client.close()
     smart_sleep()
+
+
+def test_task():
+    print("This is a test task run after get proxy.")

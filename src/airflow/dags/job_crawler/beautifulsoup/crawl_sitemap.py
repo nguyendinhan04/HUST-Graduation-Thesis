@@ -1,34 +1,32 @@
-from urllib.parse import urljoin, urlparse, parse_qsl
-from dotenv import load_dotenv
 import os
 from datetime import datetime
-from bs4 import BeautifulSoup
-from ..crawler_utils import *
 from .beautifulsoup_utils import *
 from .JobDBClient.JobDBPostgreClient import JobDBPostgreClient
 from MinioClient.MinioClient import MinioClient
-from beautifulsoup_utils import *
-from ...KafkaProducer.KafkaProducer import KafkaProducerClass
+from RedisClient.RedisClient import RedisQueueProducer
+from job_crawler.proxypool.redis_proxypool_client import RedisProxyPoolClient
 from typing import List
 import json
 
 SITEMAP_URL = r"https://www.topcv.vn/sitemap.xml"
 
 
-def crawl_sitemap(current_time_str: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")):
+def crawl_sitemap(last_crawl_sitemap: str = datetime.now()):
     minioClient = MinioClient()
     s = build_session()
     soup = get_soup(s, SITEMAP_URL)
-    urls = []
+    sitemaps_urls = []
     for url in soup.find_all("loc"):
         url_text = text(url)
         if "jobs_" in url_text:
-            urls.append(
+            sitemaps_urls.append(
                 url_text,
             )
-    return urls
+    for sitemap_url in sitemaps_urls:
 
-def crawl_sitemap_job_links(sitemap_url: str) -> List[str]:
+        crawl_sitemap_job_links(sitemap_url,last_crawl_sitemap)
+
+def crawl_sitemap_job_links(sitemap_url: str,last_crawl_sitemap: ):
     s = build_session()
     soup = get_soup(s, sitemap_url)
     job_db_client = JobDBPostgreClient()
@@ -36,18 +34,24 @@ def crawl_sitemap_job_links(sitemap_url: str) -> List[str]:
         
         url = url.find("loc").text
         lastmod_text = url.find("lastmod").text
-        # lastmod = datetime.fromisoformat(lastmod_text)
+        lastmod = datetime.fromisoformat(lastmod_text)
+        if lastmod <= last_crawl_sitemap:
+            continue
         hash_value = url_hash(url)
         
         if job_db_client.check_job_link_exists(hash_value):
-            kafka_producer = KafkaProducerClass()
-            kafka_producer.send_message(
-                topic="job-updates",
-                message=json.dumps({
-                    "url_hash": hash_value,
-                    "job_url": normalize_job_url(url),
-                })
+            redis_producer = RedisQueueProducer(
+                redis_host=os.getenv("REDIS_HOST", "redis"),
+                redis_port=int(os.getenv("REDIS_PORT", 6379)),
+                queue_name=os.getenv("REDIS_QUEUE", "job-queue"),
+                redis_password=os.getenv("REDIS_PASSWORD", None)
             )
 
-        
+            redis_producer.push_task(
+                func='crawl_job_detail_task.crawl_job_detail_task',
+                job_url = normalize_job_url(url),
+                url_hash = hash_value,
+                max_retries=3,
+                job_timeout=60
+            )
 

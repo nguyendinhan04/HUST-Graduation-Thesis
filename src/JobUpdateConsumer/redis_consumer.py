@@ -1,6 +1,8 @@
-# consumer.py
 from redis import Redis
 from rq import Worker, Queue
+import redis
+import time
+
 from typing import List, Optional,Dict
 import signal
 import sys
@@ -14,6 +16,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+class SmartWorker(Worker):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Khởi tạo kết nối tới DB 1 để check record
+        # Lấy thông tin host/port từ kết nối chính của RQ để đồng bộ
+        main_conn_kwargs = self.connection.connection_pool.connection_kwargs
+        self.db1_conn = redis.Redis(
+            host=main_conn_kwargs.get('host', 'localhost'),
+            port=main_conn_kwargs.get('port', 6379),
+            db=1,  # Kết nối tới DB 1
+            password=main_conn_kwargs.get('password')
+        )
+    def dequeue_job_and_maintain_ttl(self, timeout):
+        # Kiểm tra xem Record A có tồn tại trong DB 1 hay không
+        # Lệnh exists() trả về số lượng key tìm thấy (1 nếu có, 0 nếu không)
+        record_exists = self.db1_conn.exists('proxy_pool')
+
+        if not record_exists:
+            # Nếu KHÔNG có Record A, không lấy task
+            print("Record A not found in DB 1. Waiting...")
+            time.sleep(5)
+            return None
+
+        # Nếu CÓ Record A, tiếp tục lấy task từ Queue (thường ở DB 0)
+        return super().dequeue_job_and_maintain_ttl(timeout)
 
 class RedisQueueConsumer: 
     """Best practice Redis Queue Consumer/Worker"""

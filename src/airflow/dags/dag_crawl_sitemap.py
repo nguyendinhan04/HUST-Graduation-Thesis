@@ -4,7 +4,6 @@ from pendulum import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from job_crawler.beautifulsoup.crawl_sitemap import crawl_sitemap
-from dedup.deduplicate_job_link import deduplicate_job_links
 from airflow.models import Variable
 
 def task_craw_sitemap():

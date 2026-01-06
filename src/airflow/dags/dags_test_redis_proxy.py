@@ -6,6 +6,7 @@ from airflow.operators.python import PythonOperator
 from job_crawler.beautifulsoup.crawl_search_page import crawl_multiple_keywords
 from dedup.deduplicate_job_link import deduplicate_job_links
 from job_crawler.crawler_utils import proxy_load_redis
+
 # import job_crawler.beautifulsoup
 
 
@@ -30,12 +31,12 @@ headers_list = [
     },
     {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate", 
-        "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8", 
-        "Dnt": "1", 
+        "Accept-Encoding": "gzip, deflate",
+        "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
+        "Dnt": "1",
         "Referer": "https://www.google.com/",
-        "Upgrade-Insecure-Requests": "1", 
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36", 
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36",
         "X-Amzn-Trace-Id": "Root=1-5ee7bae0-82260c065baf5ad7f0b3a3e3"
     },
     {
@@ -46,23 +47,11 @@ headers_list = [
         "DNT": "1",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1"
-    }   
+    }
 ]
 
-def task_crawl_search_page(execution_datetime,ti):
-    # Format execution_datetime to 'YYYY-MM-DD HH:MM:SS'
-    from datetime import datetime
-    if execution_datetime:
-        try:
-            # Try parsing ISO format
-            dt = datetime.fromisoformat(str(execution_datetime).replace('Z', '+00:00'))
-            formatted_dt = dt.strftime('%Y-%m-%d %H:%M:%S')
-        except Exception:
-            formatted_dt = str(execution_datetime)
-        minio_path = crawl_multiple_keywords(current_time_str=formatted_dt)
-        ti.xcom_push(key='minio_path', value=minio_path)
-    else:
-        print("No execution_datetime provided.")
+
+
 
 def task_process_search_page(ti):
     minio_path = ti.xcom_pull(task_ids='task_crawl_search_page', key='minio_path')
@@ -89,72 +78,54 @@ def task_load_proxy(ti):
         redis_key,
         redis_config
     )
-
-
-def task_test_xcom(ti):
-    ti.xcom_push(key='minio_path', value=["topcv/raw_job_link/mobile-developer-1_to_3-20251126203442.txt"])
-
-def test_validate():
-    from bs4 import BeautifulSoup
-    import requests
-    from contextlib import closing
-    import random
-
-
-    s = requests.Session()
-    proxies = {
-        "http": "http://195.158.8.123:3128",
-        "http": "http://195.158.8.123:3128"
+def test_task_crawl_proxy():
+    from job_crawler.proxypool.redis_proxypool_client import RedisProxyPoolClient
+    redis_config = {
+        "host": "redis",
+        "port": 6379,
+        "password": None,
+        "db": 1
     }
-    is_valid = False
-    try:
-        with closing(s.get("https://www.google.com/webhp", proxies=proxies, timeout=30,headers=random.choice(headers_list))) as response:
-            print(response.status_code)
-            if response.status_code == 200:
-                is_valid = True
-                print("Proxy is valid.")
-        if is_valid:
-            job_url = "https://www.topcv.vn/viec-lam/chuyen-gia-kiem-thu-danh-gia-an-ninh-thong-tin/1953666.html"
-            with closing(s.get(job_url, proxies=proxies, timeout=30,headers=random.choice(headers_list))) as response:
-                print(response.text)
+    redis_client = RedisProxyPoolClient("proxy_pool", redis_config)
+    redis_client.override_existing_proxies({"test_proxy": "hehehe"})
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
+
+def test_task_load_proxy():
+    from RedisClient.RedisClient import RedisQueueProducer
+    from dedup.deduplicate_job_link import normalize_job_url
+    import os
+    redis_producer = RedisQueueProducer(
+        redis_host=os.getenv("REDIS_HOST", "redis"),
+        redis_port=int(os.getenv("REDIS_PORT", 6379)),
+        queue_name=os.getenv("REDIS_QUEUE", "job-queue"),
+        redis_password=os.getenv("REDIS_PASSWORD", None)
+    )
+    redis_producer.push_task(
+        func='crawl_job_detail_task.test_task',
+        max_retries=3,
+        job_timeout=60
+    )
+
 
 with DAG(
-        'crawl_search_page',
-        start_date=datetime(2025,11,21),
+        'test_proxy_redis_dag',
+        start_date=datetime(2025, 11, 21),
         # schedule_interval = '*/30 * * * *',
-        schedule_interval = None,
+        schedule_interval=None,
         catchup=False
 ) as dag:
-    # test_proxy = PythonOperator(
-    #     task_id="task_test_proxy",
-    #     python_callable=test_validate,
-    # )
-    # test_proxy
-
 
     load_proxy = PythonOperator(
         task_id="task_load_proxy",
-        python_callable=task_load_proxy,
+        python_callable=test_task_crawl_proxy,
     )
     load_proxy
 
     crawl_search_page = PythonOperator(
         task_id="task_crawl_search_page",
-        python_callable=task_crawl_search_page,
+        python_callable=test_task_load_proxy,
         op_kwargs={'execution_datetime': '{{ execution_date }}'},
     )
     crawl_search_page
- 
+
     load_proxy >> crawl_search_page
-    
-
-    # process_search_page = PythonOperator(
-    #     task_id="task_process_search_page",
-    #     python_callable=task_process_search_page,
-    # )
-    # process_search_page
-
-    # load_proxy >> crawl_search_page >> process_search_page
