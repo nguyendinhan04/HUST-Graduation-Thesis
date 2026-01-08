@@ -123,18 +123,29 @@ def crawl_search_page_to_csv(query_url_template: str, start_page: int = 1, end_p
 
 
 
-def crawl_search_page_to_minio(query_url_template: str, start_page: int = 1, end_page: int = 1,ignore_end_page =  True ,delay_between_pages=(0.5 , 1), normalized_keyword: str = "default",current_time_str: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")) -> str:
+def crawl_search_page_to_minio(
+        query_url_template: str,
+        start_page: int = 1,
+        end_page: int = 1,
+        ignore_end_page =  True ,
+        delay_between_pages=(0.5 , 1),
+        normalized_keyword: str = "default",
+        current_time_str: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        use_proxies: bool = False
+) -> str:
     rows: List[Dict] = []
     seen_jobs = set()
     current_time = datetime.strptime(current_time_str, "%Y-%m-%d %H:%M:%S")
     s = build_session()
-    redis_proxy_client = RedisProxyPoolClient(key="proxy_pool", redis_config={
-        "host": "redis",
-        "port": 6379,
-        "password": None,
-        "db": 1
-    })
-    proxies = redis_proxy_client.get_proxy()
+    proxies = None
+    if use_proxies:
+        redis_proxy_client = RedisProxyPoolClient(key="proxy_pool", redis_config={
+            "host": "redis",
+            "port": 6379,
+            "password": None,
+            "db": 1
+        })
+        proxies = redis_proxy_client.get_proxy()
     max_page = end_page
     # for page in range(start_page, end_page + 1):
     #     url = query_url_template.format(page=page)

@@ -128,18 +128,6 @@ with DAG(
         schedule_interval = None,
         catchup=False
 ) as dag:
-    # test_proxy = PythonOperator(
-    #     task_id="task_test_proxy",
-    #     python_callable=test_validate,
-    # )
-    # test_proxy
-
-
-    load_proxy = PythonOperator(
-        task_id="task_load_proxy",
-        python_callable=task_load_proxy,
-    )
-    load_proxy
 
     crawl_search_page = PythonOperator(
         task_id="task_crawl_search_page",
@@ -147,14 +135,12 @@ with DAG(
         op_kwargs={'execution_datetime': '{{ execution_date }}'},
     )
     crawl_search_page
- 
-    load_proxy >> crawl_search_page
-    
 
-    # process_search_page = PythonOperator(
-    #     task_id="task_process_search_page",
-    #     python_callable=task_process_search_page,
-    # )
-    # process_search_page
 
-    # load_proxy >> crawl_search_page >> process_search_page
+    process_search_page = PythonOperator(
+        task_id="task_process_search_page",
+        python_callable=task_process_search_page,
+    )
+    process_search_page
+
+    crawl_search_page >> process_search_page

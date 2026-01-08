@@ -73,7 +73,6 @@ class JobDBPostgreClient:
         insert_query = """
         INSERT INTO detail_jobs (url_hash, job_url, datetime, detail_title, detail_salary, detail_location, detail_experience, deadline, tags, desc_mota,desc_yeucau,desc_quyenloi,working_addresses,working_times,company_url_from_job, general_info, box_categories)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (url_hash) DO NOTHING
         """
         self.cursor.execute(insert_query, (
             job_detail.get("url_hash"),

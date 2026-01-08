@@ -55,10 +55,10 @@ def deduplicate_job_links(links: list[str] = []):
         file_content = minioClient.get_text_file(bucket_name="raw" , object_name=link)
         for line in file_content.splitlines():
             record = json.loads(line.strip())
-            if "company_url" in record:
-                company_url = record["company_url"]
-                hash_company_url = company_url_hash(company_url) if company_url else None
-                if not dbClient.check_company_exists(hash_company_url):
+            # if "company_url" in record:
+            #     company_url = record["company_url"]
+            #     hash_company_url = company_url_hash(company_url) if company_url else None
+            #     if not dbClient.check_company_exists(hash_company_url):
                     # dbClient.insert_company(
                     #     name=record.get("company"),
                     #     company_url=company_url,
@@ -73,9 +73,9 @@ def deduplicate_job_links(links: list[str] = []):
                     #         "company_url_hash": hash_company_url
                     #     })
                     # )
-                    pass
-                else:
-                    print(f"Company already exists: {company_url}")
+                    # pass
+                # else:
+                #     print(f"Company already exists: {company_url}")
             if "url_hash" in record:
                 job_url = record["job_url"]
                 url_hash_value = url_hash(job_url) if job_url else None

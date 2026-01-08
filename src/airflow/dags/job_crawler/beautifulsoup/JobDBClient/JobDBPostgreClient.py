@@ -34,8 +34,8 @@ class JobDBPostgreClient:
             id SERIAL PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             job_url TEXT NOT NULL,
-            url_hash VARCHAR(64) UNIQUE NOT NULL
-            last_crawl TIMESTAMP
+            url_hash VARCHAR(64) UNIQUE NOT NULL,
+            last_crawl TIMESTAMP,
         );
         """
 
@@ -44,7 +44,7 @@ class JobDBPostgreClient:
         create_detail_job_table = f"""
         CREATE TABLE IF NOT EXISTS {os.getenv("PG_DATABASE", DEFAULTS["PG_DATABASE"])}.public.detail_jobs (
             id SERIAL PRIMARY KEY,
-            url_hash VARCHAR(64) UNIQUE NOT NULL,
+            url_hash VARCHAR(64) NOT NULL,
             job_url TEXT NOT NULL,
             title TEXT,
             datetime TIMESTAMP,

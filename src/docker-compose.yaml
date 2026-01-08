@@ -348,19 +348,19 @@ services:
 
 #service minio
 
-  # minio: 
-  #   image: quay.io/minio/minio
-  #   environment:
-  #     - MINIO_ROOT_USER=ROOTUSER
-  #     - MINIO_ROOT_PASSWORD=1234567890
-  #   volumes:
-  #     - minio-data:/minio
-  #   ports:
-  #     - "9001:9001"
-  #     - "9000:9000"
-  #   networks:
-  #     - airflow
-  #   command: server /data --console-address ":9001"
+  minio:
+     image: quay.io/minio/minio
+     environment:
+       - MINIO_ROOT_USER=ROOTUSER
+       - MINIO_ROOT_PASSWORD=1234567890
+     volumes:
+       - minio-data:/minio
+     ports:
+       - "9001:9001"
+       - "9000:9000"
+     networks:
+       - airflow
+     command: server /data --console-address ":9001"
   
 
   # zookeeper:
