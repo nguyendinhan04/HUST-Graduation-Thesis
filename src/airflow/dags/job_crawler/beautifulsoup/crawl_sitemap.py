@@ -51,6 +51,7 @@ def crawl_sitemap_job_links(sitemap_url: str,last_crawl_sitemap: datetime):
                 func='crawl_job_detail_task.crawl_job_detail_task',
                 job_url = normalize_job_url(job_url),
                 url_hash = hash_value,
+                retry_time=0,
                 max_retries=3,
                 job_timeout=60
             )

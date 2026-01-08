@@ -86,10 +86,8 @@ def test_task_crawl_proxy():
         "password": None,
         "db": 1
     }
-    import json
     redis_client = RedisProxyPoolClient("proxy_pool", redis_config)
-    proxies = [{'http': 'http://43.167.191.134:6006', 'https': 'http://43.167.191.134:6006'}]
-    redis_client.override_existing_proxies([json.dumps(proxy) for proxy in proxies])
+    redis_client.override_existing_proxies({"test_proxy": "hehehe"})
     # redis_client.delete_all_proxies()
     import time
     time.sleep(5)
@@ -107,57 +105,31 @@ def test_task_load_proxy():
     )
     redis_producer.push_task(
         func='crawl_job_detail_task.test_task',
+        retry_time=0,
         max_retries=3,
         job_timeout=60
     )
 
-def test_validate():
-    from bs4 import BeautifulSoup
-    import requests
-    from contextlib import closing
-    import random
-
-
-    s = requests.Session()
-    proxies = {
-        "http": "http://101.47.16.15:7890",
-        "http": "http://101.47.16.15:7890"
-    }
-    is_valid = False
-    try:
-        with closing(s.get("https://www.google.com/webhp", proxies=proxies, timeout=30,headers=random.choice(headers_list))) as response:
-            print(response.status_code)
-            if response.status_code == 200:
-                is_valid = True
-                print("Proxy is valid.")
-        if is_valid:
-            job_url = "https://www.topcv.vn/viec-lam/chuyen-gia-kiem-thu-danh-gia-an-ninh-thong-tin/1953666.html"
-            with closing(s.get(job_url, proxies=proxies, timeout=30,headers=random.choice(headers_list))) as response:
-                print(response.text)
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
 
 with DAG(
-        'test_proxy_redis_dag',
+        'test_proxy_redis_dag2',
         start_date=datetime(2025, 11, 21),
         # schedule_interval = '*/30 * * * *',
         schedule_interval=None,
         catchup=False
 ) as dag:
 
-    task_test_load_proxy = PythonOperator(
-        task_id="task_test_load_proxy",
-        python_callable=test_validate,
-    )
-    task_test_load_proxy
-
-    # task_test_push_queue = PythonOperator(
-    #     task_id="task_test_push_queue",
-    #     python_callable=test_task_load_proxy,
-    #     op_kwargs={'execution_datetime': '{{ execution_date }}'},
+    # task_test_load_proxy = PythonOperator(
+    #     task_id="task_test_load_proxy",
+    #     python_callable=test_task_crawl_proxy,
     # )
-    # task_test_push_queue
+    # task_test_load_proxy
+
+    task_test_push_queue = PythonOperator(
+        task_id="task_test_push_queue",
+        python_callable=test_task_load_proxy,
+        op_kwargs={'execution_datetime': '{{ execution_date }}'},
+    )
+    task_test_push_queue
 
     # task_test_load_proxy >> task_test_push_queue

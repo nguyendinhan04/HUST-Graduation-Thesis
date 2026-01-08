@@ -304,46 +304,46 @@ services:
 
 
  # service spark
-  spark-master:
-     image: public.ecr.aws/bitnami/spark:3.5.4
-     container_name: spark-master
-     environment:
-       - SPARK_MODE=master
-       - SPARK_RPC_AUTHENTICATION_ENABLED=no
-       - SPARK_RPC_ENCRYPTION_ENABLED=no
-       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-       - SPARK_SSL_ENABLED=no
-       - SPARK_MASTER_WEBUI_PORT=8083
-     ports:
-       - "7077:7077"   # Spark master port
-       - "8083:8083"   # Web UI master
-     networks:
-       - airflow
-     volumes:
-       - spark-data:/spark
-       - ${AIRFLOW_PROJ_DIR:-.}/jars:/opt/airflow/jars
+  # spark-master:
+  #    image: public.ecr.aws/bitnami/spark:3.5.4
+  #    container_name: spark-master
+  #    environment:
+  #      - SPARK_MODE=master
+  #      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+  #      - SPARK_RPC_ENCRYPTION_ENABLED=no
+  #      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+  #      - SPARK_SSL_ENABLED=no
+  #      - SPARK_MASTER_WEBUI_PORT=8083
+  #    ports:
+  #      - "7077:7077"   # Spark master port
+  #      - "8083:8083"   # Web UI master
+  #    networks:
+  #      - airflow
+  #    volumes:
+  #      - spark-data:/spark
+  #      - ${AIRFLOW_PROJ_DIR:-.}/jars:/opt/airflow/jars
 
-  spark-worker:
-     image: public.ecr.aws/bitnami/spark:3.5.4
-     container_name: spark-worker
-     environment:
-       - SPARK_MODE=worker
-       - SPARK_MASTER_URL=spark://spark-master:7077
-       - SPARK_WORKER_MEMORY=2G
-       - SPARK_WORKER_CORES=2
-       - SPARK_RPC_AUTHENTICATION_ENABLED=no
-       - SPARK_RPC_ENCRYPTION_ENABLED=no
-       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-       - SPARK_SSL_ENABLED=no
-     depends_on:
-       - spark-master
-     ports:
-       - "8081:8081"   # Web UI worker
-     networks:
-       - airflow
-     volumes:
-       - spark-data:/spark
-       - ${AIRFLOW_PROJ_DIR:-.}/jars:/opt/airflow/jars
+  # spark-worker:
+  #    image: public.ecr.aws/bitnami/spark:3.5.4
+  #    container_name: spark-worker
+  #    environment:
+  #      - SPARK_MODE=worker
+  #      - SPARK_MASTER_URL=spark://spark-master:7077
+  #      - SPARK_WORKER_MEMORY=2G
+  #      - SPARK_WORKER_CORES=2
+  #      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+  #      - SPARK_RPC_ENCRYPTION_ENABLED=no
+  #      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+  #      - SPARK_SSL_ENABLED=no
+  #    depends_on:
+  #      - spark-master
+  #    ports:
+  #      - "8081:8081"   # Web UI worker
+  #    networks:
+  #      - airflow
+  #    volumes:
+  #      - spark-data:/spark
+  #      - ${AIRFLOW_PROJ_DIR:-.}/jars:/opt/airflow/jars
 
 #  spark-standalone:
 #    image: public.ecr.aws/bitnami/spark:3.5.4

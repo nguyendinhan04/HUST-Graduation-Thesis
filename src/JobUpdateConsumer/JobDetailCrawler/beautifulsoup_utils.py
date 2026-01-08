@@ -76,10 +76,10 @@ def smart_sleep(min_s=1.2, max_s=2.8):
     # nghỉ ngẫu nhiên để “giống người”
     time.sleep(random.uniform(min_s, max_s))
 
-def get_soup(session: requests.Session, url: str) -> BeautifulSoup:
+def get_soup(session: requests.Session, url: str, proxy: Optional[str] = None) -> BeautifulSoup:
     # vòng lặp thủ công để xử lý 429 với jitter bổ sung
     for attempt in range(1, 6):
-        r = session.get(url, timeout=30)
+        r = session.get(url, timeout=30, proxies={"http": proxy, "https": proxy} if proxy else None)
         if r.status_code == 429:
             retry_after = r.headers.get("Retry-After")
             if retry_after:
@@ -217,8 +217,8 @@ def extract_box_categories(soup: BeautifulSoup) -> List[Dict]:
             })
     return res
 
-def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
-    soup = get_soup(session, job_url)
+def scrape_job_detail(session: requests.Session, job_url: str,proxy=None) -> Dict:
+    soup = get_soup(session, job_url,proxy=proxy)
     smart_sleep()  # nghỉ nhẹ giữa các trang
 
     title = text(soup.select_one(".job-detail__info--title, h1"))
@@ -255,8 +255,13 @@ def scrape_job_detail(session: requests.Session, job_url: str) -> Dict:
 class JobDetailCrawler:
     def __init__(self):
         # self.session = build_session()
+        self.proxy = None
         pass
 
+    def set_proxy(self, proxy: str):
+        if proxy:
+            print(f"Proxy set to: {proxy}")
+            self.proxy = proxy
     def crawl_job_detail(self, job):
         if not job:
             print("[WARNING] job is None")
@@ -265,7 +270,7 @@ class JobDetailCrawler:
         print("Recreate session for each job to reduce 429 errors.")
         job_url = job.get("job_url")
         try:
-            detail = scrape_job_detail(self.session, "https://www.topcv.vn/" + job_url)
+            detail = scrape_job_detail(self.session, "https://www.topcv.vn/" + job_url, proxy=self.proxy)
             job.update(detail)
         except Exception as e:
             print(f"[ERROR] Lỗi khi crawl chi tiết job {job_url}: {e}")

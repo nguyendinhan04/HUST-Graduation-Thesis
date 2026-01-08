@@ -100,6 +100,7 @@ def deduplicate_job_links(links: list[str] = []):
                         func='crawl_job_detail_task.crawl_job_detail_task',  # Replace with actual function to process job link
                         job_url=normalize_job_url(record.get("job_url")),
                         url_hash=url_hash_value,
+                        retry_time=0,
                         max_retries=3,
                         job_timeout=60
                     )

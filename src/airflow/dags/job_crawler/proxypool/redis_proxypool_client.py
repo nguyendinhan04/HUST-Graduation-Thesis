@@ -17,6 +17,9 @@ class RedisProxyPoolClient:
         # self.logger.info(f"Overriding existing proxies {proxies}")
         self.redis.delete(self.key)
         self.redis.lpush(self.key, *proxies)
+    
+    def delete_all_proxies(self):
+        self.redis.delete(self.key)
 
     def list_existing_proxies(self):
         response = self.redis.lrange(self.key, 0, -1)
