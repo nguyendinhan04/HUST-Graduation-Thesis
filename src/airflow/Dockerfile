@@ -25,4 +25,4 @@ RUN mkdir -p /opt/airflow/logs && \
     chmod -R 775 /opt/airflow/logs
 
 
-    
+

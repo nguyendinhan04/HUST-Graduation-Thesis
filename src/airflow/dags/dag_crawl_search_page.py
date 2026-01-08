@@ -124,8 +124,7 @@ def test_validate():
 with DAG(
         'crawl_search_page',
         start_date=datetime(2025,11,21),
-        # schedule_interval = '*/30 * * * *',
-        schedule_interval = None,
+        schedule_interval = '*/30 * * * *',
         catchup=False
 ) as dag:
 
