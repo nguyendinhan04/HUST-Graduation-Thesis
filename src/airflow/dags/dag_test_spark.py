@@ -6,8 +6,8 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from job_crawler.beautifulsoup.JobDBClient.JobDBPostgreClient import JobDBPostgreClient
 
-
-
+# jars = "/opt/airflow/jars/hadoop-aws-3.3.4.jar,/opt/airflow/jars/aws-java-sdk-bundle-1.12.262.jar,/opt/airflow/jars/postgresql-42.2.18.jar,/opt/airflow/jars/delta-spark_2.12-3.3.2.jar,/opt/airflow/jars/delta-storage-3.3.2.jar,/opt/airflow/jars/delta-core_2.12-2.4.0.jar"
+jars = "/opt/airflow/jars/hadoop-aws-3.3.4.jar,/opt/airflow/jars/aws-java-sdk-bundle-1.12.262.jar,/opt/airflow/jars/postgresql-42.2.18.jar,/opt/airflow/jars/delta-spark_2.12-3.3.2.jar,/opt/airflow/jars/delta-storage-3.3.2.jar"
 
 with DAG(
         'test_spark',
@@ -22,7 +22,7 @@ with DAG(
         conn_id='spark_default',
         application_args=[],
         verbose=True,
-        jars='/opt/airflow/jars/postgresql-42.2.18.jar',
+        jars=jars,
         conf={
             'spark.executor.memory': '2g',
             'spark.executor.cores': '1',
