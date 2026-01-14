@@ -52,6 +52,7 @@ def deduplicate_job_links(links: list[str] = []):
     )
 
     for link in links:
+        normalize_keyword = link.split('/')[2].split('_')[0]
         file_content = minioClient.get_text_file(bucket_name="raw" , object_name=link)
         for line in file_content.splitlines():
             record = json.loads(line.strip())
@@ -100,6 +101,7 @@ def deduplicate_job_links(links: list[str] = []):
                         func='crawl_job_detail_task.crawl_job_detail_task',  # Replace with actual function to process job link
                         job_url=normalize_job_url(record.get("job_url")),
                         url_hash=url_hash_value,
+                        keyword = normalize_keyword,
                         retry_time=0,
                         max_retries=3,
                         job_timeout=60

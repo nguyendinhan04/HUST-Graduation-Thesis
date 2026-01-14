@@ -219,7 +219,7 @@ def crawl_search_page_to_minio(
         for r in rows:
             output_data += json.dumps(r) + "\n"
 
-        object_name = f"topcv/raw_job_link/{normalized_keyword}-{start_page}_to_{page-1}-{current_time.strftime('%Y%m%d%H%M%S')}.txt"
+        object_name = f"topcv/raw_job_link/{normalized_keyword}_{start_page}-to-{page-1}_{current_time.strftime('%Y%m%d%H%M%S')}.txt"
         minioClient.put_object(bucket_name="raw", object_name=object_name, input_data=output_data)
         return object_name
     except Exception as e:
