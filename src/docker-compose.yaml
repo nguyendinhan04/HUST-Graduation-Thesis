@@ -90,7 +90,7 @@ x-airflow-common:
 
 services:
   postgres:
-    image: postgres:13
+    image: pgvector/pgvector:pg13
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -110,21 +110,21 @@ services:
     networks:
       - airflow
 
-  # redis:
-  #   image: redis:latest
-  #   expose:
-  #     - 6379
-  #   ports:
-  #   - "6379:6379"
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 10s
-  #     timeout: 30s
-  #     retries: 50
-  #     start_period: 30s
-  #   restart: always
-  #   networks:
-  #     - airflow
+  redis:
+    image: redis:latest
+    expose:
+      - 6379
+    ports:
+    - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+    networks:
+      - airflow
 
   airflow-webserver:
     <<: *airflow-common

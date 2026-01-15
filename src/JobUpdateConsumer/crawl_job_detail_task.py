@@ -8,7 +8,7 @@ from proxypool.redis_proxypool_client import RedisProxyPoolClient
 import os
 from RedisClient.RedisClient import RedisQueueProducer
 
-def crawl_job_detail_task(job_url: str, url_hash: str,retry_time: int) -> dict:
+def crawl_job_detail_task(job_url: str, url_hash: str, keyword: str ,retry_time: int) -> dict:
     """Crawl detailed job information given job URL and hash."""
     job_crawler = JobDetailCrawler()
     job_db_client = JobDBPostgreClient()
@@ -43,6 +43,7 @@ def crawl_job_detail_task(job_url: str, url_hash: str,retry_time: int) -> dict:
                     func='crawl_job_detail_task.crawl_job_detail_task',  # Replace with actual function
                     job_url=job_url,
                     url_hash=url_hash,
+                    keyword=keyword,
                     retry_time=retry_time,
                     max_retries=3,
                     job_timeout=60
@@ -59,7 +60,8 @@ def crawl_job_detail_task(job_url: str, url_hash: str,retry_time: int) -> dict:
         job_db_client.update_job_last_crawl(
                         job_detail.get("url_hash"), 
                         job_detail.get("job_url"), 
-                        job_detail.get("detail_title"), 
+                        job_detail.get("detail_title"),
+                        keyword, 
                         current_time
                     )
         job_detail.update({"datetime": current_time})
@@ -71,7 +73,7 @@ def crawl_job_detail_task(job_url: str, url_hash: str,retry_time: int) -> dict:
         if retry_time < 3:
             retry_time += 1
             print(f"Retrying... Attempt {retry_time} for URL: {job_url}")
-            return crawl_job_detail_task(job_url, url_hash, retry_time)
+            return crawl_job_detail_task(job_url, url_hash, keyword, retry_time)
         else:
             print(f"Max retries reached for URL: {job_url}. Skipping.")
 

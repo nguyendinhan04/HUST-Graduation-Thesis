@@ -53,10 +53,10 @@ class JobDBPostgreClient:
         ))
         self.connection.commit()
 
-    def update_job_last_crawl(self, url_hash: str, job_url: str, name: str, datetime: datetime):
+    def update_job_last_crawl(self, url_hash: str, job_url: str, name: str, keyword: str,datetime: datetime):
         upsert_query = """
-        INSERT INTO jobs (url_hash, job_url,name, last_crawl)
-        values (%s, %s, %s, %s)
+        INSERT INTO jobs (url_hash, job_url, name, last_crawl, categories)
+        VALUES (%s, %s, %s, %s, %s)
         ON CONFLICT (url_hash) DO UPDATE SET last_crawl = %s
         """
         self.cursor.execute(upsert_query, (
@@ -64,7 +64,8 @@ class JobDBPostgreClient:
             job_url,
             name,
             datetime,
-            datetime
+            keyword,
+            datetime,
         ))
 
         self.connection.commit()
