@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="lUC-EQwpKmNMk6WqZtBr" name="Page-1">
-        <mxGraphModel dx="2311" dy="2074" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="1772" dy="1879" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -117,7 +117,7 @@
                         <mxPoint x="11" y="22" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="93" style="edgeStyle=none;html=1;" edge="1" parent="1" source="55" target="57">
+                <mxCell id="93" style="edgeStyle=none;html=1;" parent="1" source="55" target="57" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="55" value="Crawler: job&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;" parent="1" vertex="1">
@@ -195,7 +195,7 @@
                 <mxCell id="79" style="edgeStyle=none;html=1;entryX=0.003;entryY=0.168;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="77" target="65" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="92" style="edgeStyle=none;html=1;" edge="1" parent="1" source="77" target="76">
+                <mxCell id="92" style="edgeStyle=none;html=1;" parent="1" source="77" target="76" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="77" value="Crawler: job&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;" parent="1" vertex="1">
@@ -205,30 +205,33 @@
                     <mxGeometry x="640.74" y="410" width="60" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="84" value="Feature store" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;shadow=1;" parent="1" vertex="1">
-                    <mxGeometry x="1100" y="430" width="125" height="160" as="geometry"/>
+                    <mxGeometry x="1310" y="430" width="125" height="160" as="geometry"/>
                 </mxCell>
                 <mxCell id="85" style="edgeStyle=none;html=1;" parent="1" source="63" target="84" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="95" value="" style="group" vertex="1" connectable="0" parent="1">
-                    <mxGeometry x="100" y="60" width="242.5" height="150" as="geometry"/>
+                <mxCell id="95" value="" style="group" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="128.24" y="60" width="242.5" height="150" as="geometry"/>
                 </mxCell>
-                <mxCell id="94" value="Redis proxy pool" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="95">
+                <mxCell id="94" value="Redis proxy pool" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="95" vertex="1">
                     <mxGeometry x="22.5" y="10" width="220" height="140" as="geometry"/>
                 </mxCell>
                 <mxCell id="87" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://www.jetbrains.com/guide/assets/thumbnail-0d651b12.png;" parent="95" vertex="1">
                     <mxGeometry width="107.18" height="74" as="geometry"/>
                 </mxCell>
-                <mxCell id="98" value="" style="group" vertex="1" connectable="0" parent="1">
+                <mxCell id="98" value="" style="group" parent="1" vertex="1" connectable="0">
                     <mxGeometry x="830" y="60" width="242.5" height="150" as="geometry"/>
                 </mxCell>
-                <mxCell id="99" value="Redis proxy pool" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="98">
+                <mxCell id="99" value="Redis proxy pool" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="98" vertex="1">
                     <mxGeometry x="22.5" y="10" width="220" height="140" as="geometry"/>
                 </mxCell>
-                <mxCell id="100" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://www.jetbrains.com/guide/assets/thumbnail-0d651b12.png;" vertex="1" parent="98">
+                <mxCell id="100" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://www.jetbrains.com/guide/assets/thumbnail-0d651b12.png;" parent="98" vertex="1">
                     <mxGeometry width="107.18" height="74" as="geometry"/>
                 </mxCell>
-                <mxCell id="101" style="edgeStyle=none;html=1;" edge="1" parent="1" source="99" target="63">
+                <mxCell id="101" style="edgeStyle=none;html=1;" parent="1" source="99" target="63" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="102" style="edgeStyle=none;html=1;" parent="1" source="94" target="55" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
             </root>
