@@ -98,6 +98,33 @@ def main():
     pipeline = Pipeline(stages=[tokenizer, cv, idf, svd])
 
     model = pipeline.fit(job_df)
+    
+    # --- NEW CODE: Export Model Data for Backend/Client use ---
+    import json
+    # Lấy các stage từ PipelineModel đã train
+    # Stage 1: CountVectorizerModel -> Lấy Vocabulary
+    cv_model = model.stages[1]
+    vocab = cv_model.vocabulary
+
+    # Stage 2: IDFModel -> Lấy vector IDF
+    idf_model = model.stages[2]
+    idf_vector = idf_model.idf.toArray().tolist()
+
+    # Stage 3: PCAModel -> Lấy ma trận PC
+    pca_model = model.stages[3]
+    pca_matrix = pca_model.pc.toArray().tolist() # Ma trận (vocab_size x k)
+
+    metadata = {
+        "vocabulary": vocab,
+        "idf": idf_vector,
+        "pca_matrix": pca_matrix
+    }
+
+    # Lưu ra file JSON (đường dẫn này cần mount ra ngoài để backend đọc được)
+    with open("/opt/airflow/dags/spark_model_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(metadata, f)
+    # -----------------------------------------------------------
+
     job_vec_df = model.transform(job_df)
     
     # Select only needed columns and persist to save memory
@@ -111,15 +138,15 @@ def main():
     )
 
 
-    df_out.write \
-        .format("jdbc") \
-        .option("url", "jdbc:postgresql://postgres:5432/job_db") \
-        .option("dbtable", "job_tfidf_embedding") \
-        .option("user", "airflow") \
-        .option("password", "airflow") \
-        .option("driver", "org.postgresql.Driver") \
-        .mode("append") \
-        .save()
+    # df_out.write \
+    #     .format("jdbc") \
+    #     .option("url", "jdbc:postgresql://postgres:5432/job_db") \
+    #     .option("dbtable", "job_tfidf_embedding") \
+    #     .option("user", "airflow") \
+    #     .option("password", "airflow") \
+    #     .option("driver", "org.postgresql.Driver") \
+    #     .mode("append") \
+    #     .save()
 
 
 
