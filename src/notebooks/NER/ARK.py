@@ -71,10 +71,10 @@ async def worker(
             # print(f"Worker {worker_id} is processing request: {request["model_request"]}")
             model_request = request["model_request"]
             # completion = await client.batch_chat.completions.create(**model_request)
-            completion = await client.batch_chat.completions.create(
+            completion = await client.chat.completions.create(
 
                 # model=model_request["model"],
-                model= "seed-1.6-flash-250615",
+                model= "seed-2-0-lite-260228",
                 messages=model_request["messages"]
             )
             
@@ -99,8 +99,9 @@ async def main():
     Multiple coroutines can execute concurrently in a single thread, improving the performance of the program.
     """
     dotenv.load_dotenv("./.env")
+    import time
 
-    OUTPUT_FILE = "../data/ner_labeled_results.jsonl"
+    OUTPUT_FILE = f"../data/ner_labeled_results_{time.time()}.jsonl"
     BATCH_WRITE_SIZE = 20
 
     with open(OUTPUT_FILE, mode='w', encoding='utf-8') as f:
@@ -110,11 +111,18 @@ async def main():
 
     job_df = pd.read_csv("../data/detail_jobs_202603291653.csv")
     job_df.info()
-    job_df_first100 = job_df.head(20)
+    # job_df_first100 = job_df.head(300)
+    # job_jb_df = job_df_first100[["id","desc_mota", "desc_yeucau"]]
 
-    job_jb_df = job_df_first100[["id","desc_mota", "desc_yeucau"]]
+
+    # get next 300 rows from job_df
+    job_jb_df = job_df[300:600][["id","desc_mota", "desc_yeucau"]]
+
+    # get next 300 rows from job_df
+    # job_jb_df = job_df[600:900][["id","desc_mota", "desc_yeucau"]]
 
 
+    # job_jb_df = job_df[["id","desc_mota", "desc_yeucau"]]
     #tat
     write_request_queue = asyncio.Queue()
     writer_task = asyncio.create_task(file_writer(write_request_queue, OUTPUT_FILE, BATCH_WRITE_SIZE))
@@ -147,6 +155,7 @@ async def main():
                                 "Rule:"
                                 " 1.keep raw text, do not translate:"
                                 "2.Format output: Skill, Skill, Skill"
+                                "3. If there is no skill in the text, output: None"
                                 f"Text:'{row['desc_mota']} {row['desc_yeucau']}'"
                         },
                     ]
