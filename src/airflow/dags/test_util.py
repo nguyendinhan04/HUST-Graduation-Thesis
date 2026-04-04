@@ -218,43 +218,41 @@ def extract_box_categories(soup: BeautifulSoup) -> List[Dict]:
     return res
 
 def scrape_job_detail(session: requests.Session, job_url: str,proxy=None) -> Dict:
-    soup = get_soup(session, job_url,proxy=proxy)
+    print(f"Scraping job detail from {job_url} with proxy {proxy}")
+    soup = get_soup(session = session, url = job_url,proxy=proxy)
     smart_sleep()  # nghỉ nhẹ giữa các trang
-    try:
-        title = text(soup.select_one(".job-detail__info--title, h1"))
-        salary = pick_info_value(soup, "Mức lương")
-        location = pick_info_value(soup, "Địa điểm")
-        experience = pick_info_value(soup, "Kinh nghiệm")
-        deadline = extract_deadline(soup)
-        tags = extract_tags(soup)
-        desc_blocks = extract_desc_blocks(soup)
-        addrs = extract_working_addresses(soup)
-        times = extract_working_times(soup)
-        company_url_detail = extract_company_link_from_job(soup)
-        general_info = extract_general_info(soup)
-        box_categories = extract_box_categories(soup)
 
-        return {
-            "detail_title": title,
-            "detail_salary": salary,
-            "detail_location": location,
-            "detail_experience": experience,
-            "deadline": deadline,
-            "tags": "; ".join(tags) if tags else None,
-            "desc_mota": desc_blocks.get("Mô tả công việc"),
-            "desc_yeucau": desc_blocks.get("Yêu cầu ứng viên"),
-            "desc_quyenloi": desc_blocks.get("Quyền lợi"),
-            "working_addresses": "; ".join(addrs) if addrs else None,
-            "working_times": "; ".join(times) if times else None,
-            "company_url_from_job": company_url_detail,
-            "general_info": general_info,  # giữ nguyên dict, không encode json
-            "box_categories": box_categories,
-        }
-    except Exception as e:
-        print(f"[ERROR] Lỗi khi phân tích chi tiết job {job_url}: {e}")
-        with open("/app/logs.txt", "a") as f:
-            f.write(f"[ERROR] Lỗi khi phân tích chi tiết job {job_url}: {e}\n")
-        return {}
+    print("Before")
+    title = text(soup.select_one(".job-detail__info--title, h1"))
+    salary = pick_info_value(soup, "Mức lương")
+    location = pick_info_value(soup, "Địa điểm")
+    experience = pick_info_value(soup, "Kinh nghiệm")
+    deadline = extract_deadline(soup)
+    tags = extract_tags(soup)
+    desc_blocks = extract_desc_blocks(soup)
+    addrs = extract_working_addresses(soup)
+    times = extract_working_times(soup)
+    company_url_detail = extract_company_link_from_job(soup)
+    general_info = extract_general_info(soup)
+    box_categories = extract_box_categories(soup)
+    print("After")
+
+    return {
+        "detail_title": title,
+        "detail_salary": salary,
+        "detail_location": location,
+        "detail_experience": experience,
+        "deadline": deadline,
+        "tags": "; ".join(tags) if tags else None,
+        "desc_mota": desc_blocks.get("Mô tả công việc"),
+        "desc_yeucau": desc_blocks.get("Yêu cầu ứng viên"),
+        "desc_quyenloi": desc_blocks.get("Quyền lợi"),
+        "working_addresses": "; ".join(addrs) if addrs else None,
+        "working_times": "; ".join(times) if times else None,
+        "company_url_from_job": company_url_detail,
+        "general_info": general_info,  # giữ nguyên dict, không encode json
+        "box_categories": box_categories,
+    }
 
 
 class JobDetailCrawler:
@@ -275,8 +273,9 @@ class JobDetailCrawler:
         print("Recreate session for each job to reduce 429 errors.")
         job_url = job.get("job_url")
         try:
-            detail = scrape_job_detail(self.session, "https://www.topcv.vn/" + job_url, proxy=self.proxy)
+            detail = scrape_job_detail(self.session, str("https://www.topcv.vn/" + job_url), proxy=self.proxy)
             job.update(detail)
+            pass
         except Exception as e:
             print(f"[ERROR] Lỗi khi crawl chi tiết job {job_url}: {e}")
         return job

@@ -20,6 +20,14 @@ def crawl_job_detail_task(job_url: str, url_hash: str,retry_time: int) -> dict:
         "password": None,
         "db": 1
     }
+    redis_producer = RedisQueueProducer(
+                redis_host=os.getenv("REDIS_HOST", "redis"),
+                redis_port=int(os.getenv("REDIS_PORT", 6379)),
+                queue_name=os.getenv("REDIS_QUEUE", "job-queue"),
+                redis_password=os.getenv("REDIS_PASSWORD", None)
+                )
+    
+
     proxy = None
     redis_proxy_pool_client = RedisProxyPoolClient(redis_key,redis_config)
     with redis_proxy_pool_client as proxy_pool:
@@ -29,15 +37,9 @@ def crawl_job_detail_task(job_url: str, url_hash: str,retry_time: int) -> dict:
             job_crawler.set_proxy(proxy)
             print(f"Using proxy: {proxy} for crawling job detail.")
         else:
-            if retry_time < 3:
+            if retry_time < 1:
                 retry_time += 1
                 print(f"No proxies available. Retrying... Attempt {retry_time} for URL: {job_url}")
-                redis_producer = RedisQueueProducer(
-                redis_host=os.getenv("REDIS_HOST", "redis"),
-                redis_port=int(os.getenv("REDIS_PORT", 6379)),
-                queue_name=os.getenv("REDIS_QUEUE", "job-queue"),
-                redis_password=os.getenv("REDIS_PASSWORD", None)
-                )
 
                 redis_producer.push_task(
                     func='crawl_job_detail_task.crawl_job_detail_task',  # Replace with actual function
@@ -55,23 +57,35 @@ def crawl_job_detail_task(job_url: str, url_hash: str,retry_time: int) -> dict:
 
     try:
         job_detail = job_crawler.crawl_job_detail({"job_url": job_url, "url_hash": url_hash})
+        # check if "detail_title" key  exist in job_detail
+        if ("detail_title" not in job_detail or not job_detail["detail_title"]) and "brand" not in job_url:
+            raise ValueError("Failed to crawl job detail or detail_title is missing.")
         current_time = datetime.now()
+        job_detail.update({"datetime": current_time})
+        job_db_client.insert_job_detail(job_detail)
         job_db_client.update_job_last_crawl(
                         job_detail.get("url_hash"), 
                         job_detail.get("job_url"), 
                         job_detail.get("detail_title"), 
                         current_time
                     )
-        job_detail.update({"datetime": current_time})
-        job_db_client.insert_job_detail(job_detail)
         job_db_client.close()
         smart_sleep()
     except Exception as e:
         print(f"Error crawling job detail for URL: {job_url}, Error: {e}")
-        if retry_time < 3:
+        if retry_time < 1:
             retry_time += 1
             print(f"Retrying... Attempt {retry_time} for URL: {job_url}")
-            return crawl_job_detail_task(job_url, url_hash, retry_time)
+            # return crawl_job_detail_task(job_url, url_hash, retry_time)
+            redis_proxy_pool_client.lpop_proxy()
+            redis_producer.push_task(
+                    func='crawl_job_detail_task.crawl_job_detail_task',  # Replace with actual function
+                    job_url=job_url,
+                    url_hash=url_hash,
+                    retry_time=retry_time,
+                    max_retries=3,
+                    job_timeout=60
+                )
         else:
             print(f"Max retries reached for URL: {job_url}. Skipping.")
 

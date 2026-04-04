@@ -89,8 +89,8 @@ def test_task_crawl_proxy():
     import json
     redis_client = RedisProxyPoolClient("proxy_pool", redis_config)
     proxies = [{'http': 'http://43.167.191.134:6006', 'https': 'http://43.167.191.134:6006'}]
-    redis_client.override_existing_proxies([json.dumps(proxy) for proxy in proxies])
-    # redis_client.delete_all_proxies()
+    # redis_client.override_existing_proxies([json.dumps(proxy) for proxy in proxies])
+    redis_client.delete_all_proxies()
     import time
     time.sleep(5)
 
@@ -121,7 +121,7 @@ def test_validate():
     s = requests.Session()
     proxies = {
         "http": "http://101.47.16.15:7890",
-        "http": "http://101.47.16.15:7890"
+        "https": "http://101.47.16.15:7890"
     }
     is_valid = False
     try:
@@ -131,9 +131,17 @@ def test_validate():
                 is_valid = True
                 print("Proxy is valid.")
         if is_valid:
-            job_url = "https://www.topcv.vn/viec-lam/chuyen-gia-kiem-thu-danh-gia-an-ninh-thong-tin/1953666.html"
-            with closing(s.get(job_url, proxies=proxies, timeout=30,headers=random.choice(headers_list))) as response:
-                print(response.text)
+            job_url = "viec-lam/chuyen-gia-kiem-thu-danh-gia-an-ninh-thong-tin/1953666.html"
+            job_url_ob = {
+                "job_url": job_url,
+                "url_hash": "dummy_hash"
+            }
+            from test_util import JobDetailCrawler,build_session
+            s = build_session()
+            detail_crawler = JobDetailCrawler()
+            detail_crawler.set_proxy(proxies)
+            detail = detail_crawler.crawl_job_detail(job_url_ob)
+            print(str(detail))
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -149,7 +157,7 @@ with DAG(
 
     task_test_load_proxy = PythonOperator(
         task_id="task_test_load_proxy",
-        python_callable=test_validate,
+        python_callable=test_task_crawl_proxy,
     )
     task_test_load_proxy
 

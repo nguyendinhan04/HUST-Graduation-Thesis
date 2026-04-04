@@ -125,6 +125,7 @@ with DAG(
         'crawl_search_page',
         start_date=datetime(2025,11,21),
         schedule_interval = '*/30 * * * *',
+        # schedule_interval = None,
         catchup=False
 ) as dag:
 
