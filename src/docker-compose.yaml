@@ -464,7 +464,7 @@ services:
     
 volumes:
   postgres-db-volume:
-  spark-data:
+  # spark-data:
   minio-data:
   # clickhouse-data:
   # grafana-storage:

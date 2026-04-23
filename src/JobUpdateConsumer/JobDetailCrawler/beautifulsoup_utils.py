@@ -187,8 +187,16 @@ def extract_working_times(soup: BeautifulSoup):
     return out
 
 def extract_company_link_from_job(soup: BeautifulSoup) -> Optional[str]:
-    cand = soup.select_one("a.company[href]") or soup.select_one("a[href*='/cong-ty/']")
-    return urljoin(BASE, cand["href"]) if cand and cand.has_attr("href") else None
+    # cand = soup.select_one("a.company[href]") or soup.select_one("a[href*='/cong-ty/']")
+    # return urljoin(BASE, cand["href"]) if cand and cand.has_attr("href") else None
+    
+
+    # //div[@class="company-name-label"]
+    link_element = soup.select_one("div.company-name-label a[href]")
+    if link_element and link_element.has_attr("href"):
+        return link_element["href"]
+    return None
+    
 
 def extract_general_info(soup: BeautifulSoup) -> Dict:
     """Extract general job info from the job detail page soup."""
@@ -281,7 +289,7 @@ if __name__ == "__main__":
     # test nhanh
     crawler = JobDetailCrawler()
     test_job = {
-        "job_url": "viec-lam/2d-ui-ux-game-artist-tu-2-nam-kinh-nghiem/1960512.html",
+        "job_url": "viec-lam/chuyen-vien-quan-ly-du-lieu-data-engineer-up-to-35m/2120399.html",
         "url_hash": "testhash123"
     }
     result = crawler.crawl_job_detail(test_job)

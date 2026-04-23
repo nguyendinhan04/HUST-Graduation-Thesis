@@ -176,6 +176,7 @@ def crawl_search_page_to_minio(
         try:
             url = query_url_template.format(page=page)
             print(f"[INFO] Crawling search page {page}: {url}")
+            print(f"[INFO] Using proxies: {proxies}" if use_proxies else "[INFO] Not using proxies")
             soup = get_soup(s, url, proxies=proxies)
             jobs = parse_search_page(soup)
 
@@ -203,7 +204,8 @@ def crawl_search_page_to_minio(
                 break
         except Exception as e:
             print(f"[ERROR] Lỗi khi crawl trang {page}: {e}")
-            redis_proxy_client.lpop_proxy()
+            if use_proxies and proxies:
+                redis_proxy_client.lpop_proxy()
             break
 
     
