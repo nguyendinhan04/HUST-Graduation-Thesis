@@ -24,3 +24,6 @@ async def demo_recommendation(payload: RecommendRequest, request: Request):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+
