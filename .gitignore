@@ -1,6 +1,8 @@
 .env
 src/airflow/logs/
 __pycache__/
+.venv/
 .idea/
 src/airflow/logs/dag_processor_manager/dag_processor_manager.log
 data/
+src/notebooks/models/*
