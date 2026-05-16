@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
 
 # Copy worker requirements first to leverage Docker layer cache
-COPY ./src/job_matcher_app/skill_worker/requirements.skill_worker.txt /app/requirements.skill_worker.txt
+COPY ./job_matcher_app/skill_worker/requirements.skill_worker.txt /app/requirements.skill_worker.txt
 
 # Install worker requirements
 RUN pip install --no-cache-dir -r /app/requirements.skill_worker.txt
