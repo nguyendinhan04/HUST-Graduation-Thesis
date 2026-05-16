@@ -12,7 +12,7 @@ COPY ./src/job_matcher_app/skill_worker/requirements.skill_worker.txt /app/requi
 RUN pip install --no-cache-dir -r /app/requirements.skill_worker.txt
 
 # Copy root src/ folder vào /app/src/
-COPY ../skill_worker /app/src/
+COPY ./skill_worker /app/src/
 
 # [Tuỳ chọn - Tối ưu] Tải sẵn model HF vào cache của Docker Image trong lúc build 
 # giúp image không cần tải lại model mỗi khi deploy/start container
