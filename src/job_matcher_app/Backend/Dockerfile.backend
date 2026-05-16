@@ -1,0 +1,20 @@
+FROM python:3.10-slim
+
+WORKDIR /app/src/job_matcher_app/Backend
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/src/job_matcher_app/Backend
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY job_matcher_app/Backend/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+COPY job_matcher_app/Backend /app/src/job_matcher_app/Backend
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

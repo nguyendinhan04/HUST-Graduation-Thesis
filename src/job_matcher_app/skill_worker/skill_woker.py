@@ -5,20 +5,9 @@ import re
 from typing import List
 
 import numpy as np
+from redis import Redis
+from rq import Queue, Worker
 from sentence_transformers import SentenceTransformer
-
-# Setup PYTHONPATH to import JobUpdateConsumer module
-current_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = current_dir
-while src_dir and not os.path.isdir(os.path.join(src_dir, "JobUpdateConsumer")):
-    parent_dir = os.path.dirname(src_dir)
-    if parent_dir == src_dir:
-        break
-    src_dir = parent_dir
-if src_dir not in sys.path:
-    sys.path.append(src_dir)
-
-from JobUpdateConsumer.redis_consumer import RedisQueueConsumer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -197,22 +186,27 @@ def process_user_profile_multimodal_task(profile: dict) -> dict:
 if __name__ == "__main__":
     queue_name = os.getenv("QUEUE_NAME", "skill-embedding-queue")
     logger.info(f"Khởi động Skill Worker. Đang lắng nghe trên queue '{queue_name}'...")
-    
-    # Lấy configs Redis từ Environment Variables (Rất quan trọng cho Docker)
+
     redis_host = os.getenv("REDIS_HOST", "redis")
     redis_port = int(os.getenv("REDIS_PORT", 6379))
     redis_password = os.getenv("REDIS_PASSWORD", None)
     redis_db = int(os.getenv("REDIS_DB", 0))
     worker_name = os.getenv("WORKER_NAME", "skill_embedding_worker")
-    
-    consumer = RedisQueueConsumer(
-        redis_host=redis_host,
-        redis_port=redis_port,
-        redis_db=redis_db,
-        redis_password=redis_password,
-        queue_names=[queue_name],
-        worker_name=worker_name
+
+    redis_conn = Redis(
+        host=redis_host,
+        port=redis_port,
+        db=redis_db,
+        password=redis_password,
+        decode_responses=False,
+        socket_keepalive=True,
+        health_check_interval=30,
     )
-    
-    # Khởi chạy Worker ở chế độ block
-    consumer.start_worker(burst=False)
+    worker = Worker(
+        [Queue(queue_name, connection=redis_conn)],
+        connection=redis_conn,
+        name=worker_name,
+        log_job_description=True,
+        job_monitoring_interval=5,
+    )
+    worker.work(burst=False, with_scheduler=True)

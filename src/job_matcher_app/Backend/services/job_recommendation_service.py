@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import re
 import os
 import asyncio
-
 import numpy as np
 from redis import Redis
 from rq import Queue
@@ -10,8 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from config import get_settings
-from core.ml_loader import SkillEmbeddingModel, TFIDFModel
-from core.recommender import get_top100_similar_vectors
 from models import (
     Education,
     EducationSkill,
@@ -24,10 +23,7 @@ from models import (
 
 
 class JobRecommendationService:
-    def __init__(self, bert_model=None, skill_embedding_model=None, tfidf_model=None):
-        self.tfidf_model = tfidf_model
-        self.skill_embedding_model = skill_embedding_model
-        
+    def __init__(self):
         # Redis & RQ setup để push task embedding sang Worker
         self.redis_host = os.getenv("REDIS_HOST", "localhost")
         self.redis_port = int(os.getenv("REDIS_PORT", 6379))
@@ -50,40 +46,15 @@ class JobRecommendationService:
         vector = np.asarray(vector).reshape(-1)
         return "[" + ",".join(str(float(value)) for value in vector) + "]"
 
-    # def get_model(self, model_name: str):
-    #     if model_name == "tfidf":
-    #         return self.tfidf_model
-    #     if model_name == "bert":
-    #         raise RuntimeError("bert model is served by skill_worker.py")
-    #     if model_name == "skill":
-    #         return self.skill_embedding_model
-    #     raise ValueError(f"Unsupported model: {model_name}")
-
-    # def demo_recommendation(self, query: str, model_name: str = "tfidf"):
-    #     model = self.get_model(model_name)
-    #     if model is None:
-    #         raise RuntimeError(f"{model_name} model is not ready")
-
-    #     vector = model.get_query_vector(query)
-    #     return {
-    #         "model": model_name,
-    #         "query": query,
-    #         "vector_shape": list(vector.shape),
-    #         "status": "ok",
-    #     }
-
-    # async def demo_recommendation_async(self, query: str, model_name: str = "tfidf"):
-    #     if model_name == "bert":
-    #         embeddings = await self.embed_bert_texts([query])
-    #         vector = np.asarray(embeddings)
-    #         return {
-    #             "model": model_name,
-    #             "query": query,
-    #             "vector_shape": list(vector.shape),
-    #             "status": "ok",
-    #         }
-
-    #     return self.demo_recommendation(query, model_name)
+    async def demo_recommendation_async(self, query: str):
+        embeddings = await self.embed_bert_texts([query])
+        vector = np.asarray(embeddings)
+        return {
+            "model": "bert",
+            "query": query,
+            "vector_shape": list(vector.shape),
+            "status": "ok",
+        }
 
     async def _wait_for_job(self, job, failure_message: str):
         while not job.is_finished:
@@ -128,7 +99,6 @@ class JobRecommendationService:
         self,
         db: AsyncSession,
         skill_names: list[str],
-        model_skill_embedding: SkillEmbeddingModel = None,
     ) -> int:
         if not skill_names:
             return 0
@@ -539,9 +509,6 @@ class JobRecommendationService:
                 "Skill embeddings are not ready yet for: " + pending_names
             )
 
-        if self.skill_embedding_model is None:
-            raise RuntimeError("skill embedding model is not ready")
-        
         skill_similiarity_results = await self.search_best_jobs_in_db_by_skill_embeddings(
             db=db,
             user_skills=[s["skill_name"] for s in user_profile["skills"]],

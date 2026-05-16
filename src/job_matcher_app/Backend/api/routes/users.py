@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +33,6 @@ def _payload_data(payload: BaseModel) -> dict:
 @router.patch("/{user_id}/profile")
 async def update_user_profile(
     payload: UserProfileUpdateRequest,
-    request: Request,
     user_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
@@ -41,10 +40,7 @@ async def update_user_profile(
     skills_provided = "skills" in _fields_set(payload)
     skills = data.pop("skills", None)
 
-    embedding_service = JobRecommendationService(
-        skill_embedding_model=getattr(request.app.state, "skill_embedding_model", None),
-        tfidf_model=getattr(request.app.state, "tfidf_model", None),
-    )
+    embedding_service = JobRecommendationService()
 
     try:
         return await UserService.update_user_profile_async(

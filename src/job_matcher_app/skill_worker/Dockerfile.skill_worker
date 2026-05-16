@@ -1,25 +1,40 @@
+# FROM python:3.10-slim
+
+# WORKDIR /app
+
+# ENV PYTHONDONTWRITEBYTECODE=1
+# ENV PYTHONUNBUFFERED=1
+# ENV PYTHONPATH=/app/src
+
+# COPY job_matcher_app/skill_worker/requirements.skill_worker.txt /app/requirements.skill_worker.txt
+
+# RUN apt-get update \
+#     && apt-get install -y --no-install-recommends gcc g++ \
+#     && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
+#     && pip install --no-cache-dir -r /app/requirements.skill_worker.txt \
+#     && apt-get purge -y --auto-remove gcc g++ \
+#     && rm -rf /var/lib/apt/lists/*
+
+# COPY job_matcher_app/skill_worker.py /app/src/job_matcher_app/skill_worker.py
+
+# CMD ["python", "-m", "job_matcher_app.skill_worker"]
+
+
+
+
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Cài đặt các gói hệ thống cần thiết (đặc biệt thư viện biên dịch pip)
-RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
-
-# Copy worker requirements first to leverage Docker layer cache
-COPY ./job_matcher_app/skill_worker/requirements.skill_worker.txt /app/requirements.skill_worker.txt
-
-# Install worker requirements
-RUN pip install --no-cache-dir -r /app/requirements.skill_worker.txt
-
-# Copy root src/ folder vào /app/src/
-COPY ./job_matcher_app/skill_worker /app/src/
-
-# [Tuỳ chọn - Tối ưu] Tải sẵn model HF vào cache của Docker Image trong lúc build 
-# giúp image không cần tải lại model mỗi khi deploy/start container
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('alvperez/skill-sim-model'); SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
-
-# Khai báo PYTHONPATH để code có thể import được JobUpdateConsumer từ src/
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
-# Lệnh chạy mặc định
-CMD ["python", "src/job_matcher_app/skill_worker.py"]
+COPY job_matcher_app/skill_worker/requirements.skill_worker.txt /app/requirements.skill_worker.txt
+
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
+    && pip install --no-cache-dir -r /app/requirements.skill_worker.txt
+
+COPY job_matcher_app/skill_worker.py /app/src/job_matcher_app/skill_worker.py
+
+CMD ["python", "-m", "job_matcher_app.skill_worker"]

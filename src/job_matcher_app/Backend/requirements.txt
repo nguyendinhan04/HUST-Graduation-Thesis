@@ -1,2 +1,10 @@
-boto3
+fastapi
+uvicorn[standard]
+sqlalchemy
 asyncpg
+psycopg2-binary
+pydantic-settings
+numpy
+redis
+rq
+boto3
