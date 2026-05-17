@@ -1,0 +1,18 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/src
+
+RUN pip install --no-cache-dir \
+    boto3 \
+    numpy \
+    redis \
+    rq \
+    scikit-learn
+
+COPY job_matcher_app/skill_worker/skill_worker_tfidf.py /app/src/job_matcher_app/skill_worker_tfidf.py
+
+CMD ["python", "-m", "job_matcher_app.skill_worker_tfidf"]

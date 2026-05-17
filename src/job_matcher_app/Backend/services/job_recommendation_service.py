@@ -37,6 +37,10 @@ class JobRecommendationService:
             password=self.redis_password
         )
         self.skill_queue = Queue("skill-embedding-queue", connection=self.redis_conn)
+        self.tfidf_queue = Queue(
+            os.getenv("TFIDF_QUEUE_NAME", "profile-tfidf-queue"),
+            connection=self.redis_conn,
+        )
 
     @staticmethod
     def _to_pgvector_literal(vector) -> str:
@@ -411,6 +415,49 @@ class JobRecommendationService:
             "User Profile Vector Job in RQ worker failed",
         )
 
+    async def process_user_profile_tfidf(self, profile: dict) -> list[float]:
+        """
+        Trả về vector TF-IDF + SVD cho user profile do worker TF-IDF tính toán.
+        """
+        job = self.tfidf_queue.enqueue(
+            "job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_task",
+            profile,
+            job_timeout="10m",
+        )
+        return await self._wait_for_job(
+            job,
+            "User Profile TF-IDF Vector Job in RQ worker failed",
+        )
+
+    async def upsert_user_profile_tfidf_embedding(
+        self,
+        db: AsyncSession,
+        employee_id: int,
+        profile_vector: list[float],
+    ) -> None:
+        tfidf_vec = self._to_pgvector_literal(profile_vector)
+
+        await db.execute(
+            text(
+                """
+                INSERT INTO user_profile_embedding (
+                    employee_id,
+                    vector_tfidf
+                )
+                VALUES (
+                    :employee_id,
+                    CAST(:vector_tfidf AS vector)
+                )
+                ON CONFLICT (employee_id) DO UPDATE
+                SET vector_tfidf = EXCLUDED.vector_tfidf
+                """
+            ),
+            {
+                "employee_id": employee_id,
+                "vector_tfidf": tfidf_vec,
+            },
+        )
+
     async def upsert_user_profile_embedding(
         self,
         db: AsyncSession,
@@ -423,6 +470,9 @@ class JobRecommendationService:
         education_vec = self._to_pgvector_literal(
             profile_vectors["education_vec_384"]
         )
+        tfidf_vec = self._to_pgvector_literal(
+            profile_vectors["tfidf_vec"]
+        )
 
         await db.execute(
             text(
@@ -430,22 +480,26 @@ class JobRecommendationService:
                 INSERT INTO user_profile_embedding (
                     employee_id,
                     experience_vec,
-                    education_vec
+                    education_vec,
+                    vector_tfidf
                 )
                 VALUES (
                     :employee_id,
                     CAST(:experience_vec AS vector),
-                    CAST(:education_vec AS vector)
+                    CAST(:education_vec AS vector),
+                    CAST(:vector_tfidf AS vector)
                 )
                 ON CONFLICT (employee_id) DO UPDATE
                 SET experience_vec = EXCLUDED.experience_vec,
-                    education_vec = EXCLUDED.education_vec
+                    education_vec = EXCLUDED.education_vec,
+                    vector_tfidf = EXCLUDED.vector_tfidf
                 """
             ),
             {
                 "employee_id": employee_id,
                 "experience_vec": experience_vec,
                 "education_vec": education_vec,
+                "vector_tfidf": tfidf_vec,
             },
         )
 

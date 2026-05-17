@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db import get_async_db
@@ -7,6 +7,18 @@ from services import JobRecommendationService, UserService
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+class CreateEmployeeUserRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+    headline: str | None = None
+    summary: str | None = None
+    years_of_experience: int | None = Field(default=None, ge=0)
+    current_location: str | None = None
 
 
 class UserProfileUpdateRequest(BaseModel):
@@ -28,6 +40,26 @@ def _payload_data(payload: BaseModel) -> dict:
     if hasattr(payload, "model_dump"):
         return payload.model_dump()
     return payload.dict()
+
+
+@router.post("/employees", status_code=201)
+async def create_employee_user(
+    payload: CreateEmployeeUserRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    data = _payload_data(payload)
+
+    try:
+        return await UserService.create_employee_user_async(
+            db=db,
+            **data,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 409 if "already exists" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.patch("/{user_id}/profile")

@@ -26,3 +26,7 @@ async def demo_recommendation(payload: RecommendRequest):
 
 
 
+@router.get("/recommend")
+async def get_recommendations():
+    service = JobRecommendationService()
+    return await service.recommend_jobs_2_phase()

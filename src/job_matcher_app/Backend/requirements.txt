@@ -8,3 +8,4 @@ numpy
 redis
 rq
 boto3
+passlib[bcrypt]

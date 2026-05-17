@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any
 
+from passlib.context import CryptContext
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -8,6 +9,9 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
 from models import User, Employee, EmployeeSkill, Skill
+
+
+password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserService:
@@ -110,6 +114,87 @@ class UserService:
             "embedded_skill_count": embedded_skill_count,
             "profile_embedding_updated": profile_embedding_updated,
         }
+
+    @staticmethod
+    def _serialize_employee_user(user: User, employee: Employee) -> dict:
+        return {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "phone": user.phone,
+            "role": user.role,
+            "avatar_url": user.avatar_url,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "employee_profile": {
+                "employee_id": employee.id,
+                "headline": employee.headline,
+                "summary": employee.summary,
+                "years_of_experience": employee.years_of_experience,
+                "current_location": employee.current_location,
+                "created_at": employee.created_at.isoformat() if employee.created_at else None,
+            },
+        }
+
+    @staticmethod
+    async def create_employee_user_async(
+        db: AsyncSession,
+        email: str,
+        password: str,
+        full_name: str = None,
+        phone: str = None,
+        avatar_url: str = None,
+        headline: str = None,
+        summary: str = None,
+        years_of_experience: int = None,
+        current_location: str = None,
+    ) -> dict:
+        """Create a user with employee role and an employee profile."""
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            raise ValueError("email must not be empty")
+        if not password:
+            raise ValueError("password must not be empty")
+
+        existing_user = await db.execute(
+            select(User.id).where(func.lower(User.email) == normalized_email)
+        )
+        if existing_user.scalar_one_or_none() is not None:
+            raise ValueError(f"User with email {normalized_email} already exists")
+
+        user = User(
+            email=normalized_email,
+            password_hash=password_context.hash(password),
+            full_name=full_name,
+            phone=phone,
+            role="employee",
+            avatar_url=avatar_url,
+        )
+
+        try:
+            db.add(user)
+            await db.flush()
+
+            employee = Employee(
+                user_id=user.id,
+                headline=headline,
+                summary=summary,
+                years_of_experience=years_of_experience,
+                current_location=current_location,
+            )
+            db.add(employee)
+            await db.flush()
+
+            await db.commit()
+            await db.refresh(user)
+            await db.refresh(employee)
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to create employee user: {exc}") from exc
+        except Exception:
+            await db.rollback()
+            raise
+
+        return UserService._serialize_employee_user(user, employee)
 
     @staticmethod
     async def update_user_profile_async(
@@ -240,13 +325,17 @@ class UserService:
 
             if profile_embedding_should_update:
                 profile = await embedding_service.get_user_profile(db, user_id)
-                profile_vectors = await embedding_service.process_user_profile_multimodal(
+                profile_vector_tfidf = await embedding_service.process_user_profile_tfidf(
                     profile
                 )
+                profile_vector = await embedding_service.process_user_profile_multimodal(
+                    profile
+                )
+                profile_vector["tfidf_vec"] = profile_vector_tfidf
                 await embedding_service.upsert_user_profile_embedding(
                     db,
                     employee.id,
-                    profile_vectors,
+                    profile_vector,
                 )
                 profile_embedding_updated = True
 

@@ -2,3 +2,5 @@ sentence-transformers
 numpy
 redis
 rq
+boto3
+scikit-learn
