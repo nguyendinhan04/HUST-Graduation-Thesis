@@ -12,8 +12,8 @@ from models import User, Employee, EmployeeSkill, Skill
 
 
 password_context = CryptContext(
-    schemes=["bcrypt_sha256", "bcrypt"],
-    deprecated=["bcrypt"],
+    schemes=["pbkdf2_sha256", "bcrypt_sha256", "bcrypt"],
+    deprecated=["bcrypt_sha256", "bcrypt"],
 )
 
 
