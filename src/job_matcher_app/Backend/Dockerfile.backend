@@ -13,8 +13,6 @@ RUN apt-get update \
 COPY job_matcher_app/Backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY job_matcher_app/Backend /app/src/job_matcher_app/Backend
-
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

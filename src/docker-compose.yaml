@@ -150,6 +150,8 @@ services:
       MINIO_SECURE: "false"
     ports:
       - "8000:8000"
+    volumes:
+      - ./job_matcher_app/Backend:/app/src/job_matcher_app/Backend
     depends_on:
       redis:
         condition: service_healthy
