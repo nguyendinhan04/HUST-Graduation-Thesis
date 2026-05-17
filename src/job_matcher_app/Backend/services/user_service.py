@@ -11,8 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from models import User, Employee, EmployeeSkill, Skill
 
 
-password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-BCRYPT_MAX_PASSWORD_BYTES = 72
+password_context = CryptContext(
+    schemes=["bcrypt_sha256", "bcrypt"],
+    deprecated=["bcrypt"],
+)
 
 
 class UserService:
@@ -155,10 +157,6 @@ class UserService:
             raise ValueError("email must not be empty")
         if not password:
             raise ValueError("password must not be empty")
-        if len(password.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
-            raise ValueError(
-                f"password must not exceed {BCRYPT_MAX_PASSWORD_BYTES} bytes"
-            )
 
         existing_user = await db.execute(
             select(User.id).where(func.lower(User.email) == normalized_email)

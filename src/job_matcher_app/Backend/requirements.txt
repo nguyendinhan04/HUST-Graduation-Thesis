@@ -9,3 +9,4 @@ redis
 rq
 boto3
 passlib[bcrypt]
+bcrypt==4.0.1
