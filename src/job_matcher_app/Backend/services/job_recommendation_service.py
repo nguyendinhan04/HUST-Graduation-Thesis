@@ -99,6 +99,28 @@ class JobRecommendationService:
             "BERT Document Embedding Job in RQ worker failed",
         )
 
+    async def embed_bert_experience(self, experience: dict) -> list[float]:
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.embed_bert_experience_task",
+            experience,
+            job_timeout="10m",
+        )
+        return await self._wait_for_job(
+            job,
+            "BERT Experience Embedding Job in RQ worker failed",
+        )
+
+    async def embed_bert_education(self, education: dict) -> list[float]:
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.embed_bert_education_task",
+            education,
+            job_timeout="10m",
+        )
+        return await self._wait_for_job(
+            job,
+            "BERT Education Embedding Job in RQ worker failed",
+        )
+
     async def embed_skills(
         self,
         db: AsyncSession,
@@ -458,50 +480,50 @@ class JobRecommendationService:
             },
         )
 
-    async def upsert_user_profile_embedding(
-        self,
-        db: AsyncSession,
-        employee_id: int,
-        profile_vectors: dict,
-    ) -> None:
-        experience_vec = self._to_pgvector_literal(
-            profile_vectors["experience_vec_384"]
-        )
-        education_vec = self._to_pgvector_literal(
-            profile_vectors["education_vec_384"]
-        )
-        tfidf_vec = self._to_pgvector_literal(
-            profile_vectors["tfidf_vec"]
-        )
+    # async def upsert_user_profile_embedding(
+    #     self,
+    #     db: AsyncSession,
+    #     employee_id: int,
+    #     profile_vectors: dict,
+    # ) -> None:
+    #     experience_vec = self._to_pgvector_literal(
+    #         profile_vectors["experience_vec_384"]
+    #     )
+    #     education_vec = self._to_pgvector_literal(
+    #         profile_vectors["education_vec_384"]
+    #     )
+    #     tfidf_vec = self._to_pgvector_literal(
+    #         profile_vectors["tfidf_vec"]
+    #     )
 
-        await db.execute(
-            text(
-                """
-                INSERT INTO user_profile_embedding (
-                    employee_id,
-                    experience_vec,
-                    education_vec,
-                    vector_tfidf
-                )
-                VALUES (
-                    :employee_id,
-                    CAST(:experience_vec AS vector),
-                    CAST(:education_vec AS vector),
-                    CAST(:vector_tfidf AS vector)
-                )
-                ON CONFLICT (employee_id) DO UPDATE
-                SET experience_vec = EXCLUDED.experience_vec,
-                    education_vec = EXCLUDED.education_vec,
-                    vector_tfidf = EXCLUDED.vector_tfidf
-                """
-            ),
-            {
-                "employee_id": employee_id,
-                "experience_vec": experience_vec,
-                "education_vec": education_vec,
-                "vector_tfidf": tfidf_vec,
-            },
-        )
+    #     await db.execute(
+    #         text(
+    #             """
+    #             INSERT INTO user_profile_embedding (
+    #                 employee_id,
+    #                 experience_vec,
+    #                 education_vec,
+    #                 vector_tfidf
+    #             )
+    #             VALUES (
+    #                 :employee_id,
+    #                 CAST(:experience_vec AS vector),
+    #                 CAST(:education_vec AS vector),
+    #                 CAST(:vector_tfidf AS vector)
+    #             )
+    #             ON CONFLICT (employee_id) DO UPDATE
+    #             SET experience_vec = EXCLUDED.experience_vec,
+    #                 education_vec = EXCLUDED.education_vec,
+    #                 vector_tfidf = EXCLUDED.vector_tfidf
+    #             """
+    #         ),
+    #         {
+    #             "employee_id": employee_id,
+    #             "experience_vec": experience_vec,
+    #             "education_vec": education_vec,
+    #             "vector_tfidf": tfidf_vec,
+    #         },
+    #     )
 
     async def search_best_jobs_in_db_by_bert(self, db: AsyncSession, profile: dict, model=None, threshold: float = get_settings().DEFAULT_THRESHOLD, limit: int = 100):
         profile_vectors = await self.process_user_profile_multimodal(profile)

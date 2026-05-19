@@ -139,6 +139,38 @@ def embed_bert_documents_task(
     return document_embeddings
 
 
+def embed_bert_experience_task(experience: dict) -> List[float]:
+    """
+    Task chạy ngầm trên Worker RQ.
+    Nhận một experience, trả về MiniLM embedding cho experience đó.
+    """
+    logger.info("Đang tính toán BERT/MiniLM embedding cho một experience")
+    experience_text = clean_text(
+        f"{experience.get('Title', '')} "
+        f"{experience.get('Description', '')} "
+        f"{experience.get('skill', '')}"
+    )
+    embedding = embed_bert_document(experience_text)
+    logger.info("Đã tính toán BERT/MiniLM experience embedding thành công.")
+    return embedding.tolist()
+
+
+def embed_bert_education_task(education: dict) -> List[float]:
+    """
+    Task chạy ngầm trên Worker RQ.
+    Nhận một education, trả về MiniLM embedding cho education đó.
+    """
+    logger.info("Đang tính toán BERT/MiniLM embedding cho một education")
+    education_text = clean_text(
+        f"{education.get('Field of study', '')} "
+        f"{education.get('Skill', '')} "
+        f"{education.get('Description', '')}"
+    )
+    embedding = embed_bert_document(education_text)
+    logger.info("Đã tính toán BERT/MiniLM education embedding thành công.")
+    return embedding.tolist()
+
+
 def process_user_profile_multimodal_task(profile: dict) -> dict:
     """
     Task chạy ngầm trên Worker RQ.
