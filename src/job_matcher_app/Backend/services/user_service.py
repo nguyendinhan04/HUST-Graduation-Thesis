@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from typing import Any
 
@@ -807,6 +808,132 @@ class UserService:
             raise
 
         return UserService._serialize_education(education, education_skills)
+
+    @staticmethod
+    async def create_user_education_with_timing_async(
+        db: AsyncSession,
+        user_id: int,
+        embedding_service: Any,
+        school: str = None,
+        degree: str = None,
+        field_of_study: str = None,
+        description: str = None,
+        start_date=None,
+        end_date=None,
+        skills: list[str] | None = None,
+    ) -> dict:
+        """Create an education record and return timing for each processing step."""
+        started_at = time.perf_counter()
+        timings: dict[str, float] = {}
+
+        def mark(step_name: str, step_started_at: float) -> None:
+            timings[step_name] = round((time.perf_counter() - step_started_at) * 1000, 3)
+
+        step_started_at = time.perf_counter()
+        if embedding_service is None:
+            raise RuntimeError("embedding service is not ready")
+        mark("validate_embedding_service", step_started_at)
+
+        step_started_at = time.perf_counter()
+        user = await db.get(User, user_id)
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
+        mark("fetch_user", step_started_at)
+
+        step_started_at = time.perf_counter()
+        employee_result = await db.execute(
+            select(Employee).where(Employee.user_id == user_id)
+        )
+        employee = employee_result.scalars().first()
+        if not employee:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
+        mark("fetch_employee_profile", step_started_at)
+
+        step_started_at = time.perf_counter()
+        if start_date and end_date and end_date < start_date:
+            raise ValueError("end_date must be greater than or equal to start_date")
+        normalized_skill_names = UserService._normalize_skill_names(skills or [])
+        education_skills: list[Skill] = []
+        mark("validate_dates_and_normalize_skills", step_started_at)
+
+        try:
+            step_started_at = time.perf_counter()
+            education = Education(
+                employee_id=employee.id,
+                school=school,
+                degree=degree,
+                field_of_study=field_of_study,
+                description=description,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            db.add(education)
+            await db.flush()
+            mark("create_education_and_flush", step_started_at)
+
+            step_started_at = time.perf_counter()
+            if normalized_skill_names:
+                education_skills, _ = await UserService._get_or_create_skills(
+                    db,
+                    normalized_skill_names,
+                )
+                for skill in education_skills:
+                    db.add(
+                        EducationSkill(
+                            education_id=education.id,
+                            skill_id=skill.id,
+                        )
+                    )
+            mark("create_or_link_skills", step_started_at)
+
+            step_started_at = time.perf_counter()
+            education_payload = UserService._build_education_embedding_payload(
+                education,
+                education_skills,
+            )
+            mark("build_embedding_payload", step_started_at)
+
+            step_started_at = time.perf_counter()
+            education_vector = await embedding_service.embed_bert_education(
+                education_payload
+            )
+            mark("embed_bert_education", step_started_at)
+
+            step_started_at = time.perf_counter()
+            await UserService._upsert_education_embedding_and_recompute_profile_vector(
+                db=db,
+                employee_id=employee.id,
+                education_id=education.id,
+                education_vector=education_vector,
+                embedding_service=embedding_service,
+            )
+            mark("upsert_embedding_and_recompute_profile", step_started_at)
+
+            step_started_at = time.perf_counter()
+            user.updated_at = datetime.utcnow()
+            await db.commit()
+            await db.refresh(education)
+            mark("commit_and_refresh", step_started_at)
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to create education: {exc}") from exc
+        except Exception:
+            await db.rollback()
+            raise
+
+        step_started_at = time.perf_counter()
+        education_data = UserService._serialize_education(education, education_skills)
+        mark("serialize_response", step_started_at)
+
+        total_ms = round((time.perf_counter() - started_at) * 1000, 3)
+        return {
+            "data": education_data,
+            "timing": {
+                "unit": "ms",
+                "steps": timings,
+                "total": total_ms,
+            },
+        }
 
     @staticmethod
     async def update_user_education_async(

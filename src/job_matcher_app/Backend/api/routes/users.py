@@ -139,6 +139,30 @@ async def create_user_education(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@router.post("/{user_id}/educations/timing", status_code=201)
+async def create_user_education_with_timing(
+    payload: CreateUserEducationRequest,
+    user_id: int = Path(..., ge=1),
+    db: AsyncSession = Depends(get_async_db),
+):
+    data = _payload_data(payload)
+    embedding_service = JobRecommendationService()
+
+    try:
+        return await UserService.create_user_education_with_timing_async(
+            db=db,
+            user_id=user_id,
+            embedding_service=embedding_service,
+            **data,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @router.patch("/{user_id}/educations/{education_id}")
 async def update_user_education(
     payload: UpdateUserEducationRequest,
