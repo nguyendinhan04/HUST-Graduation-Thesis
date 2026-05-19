@@ -480,6 +480,39 @@ class JobRecommendationService:
             },
         )
 
+    async def update_user_profile_tfidf_vector(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        profile: dict,
+    ) -> dict:
+        result = await db.execute(
+            select(Employee.id).where(Employee.user_id == user_id)
+        )
+        employee_id = result.scalar_one_or_none()
+        if employee_id is None:
+            raise ValueError(f"Employee with user_id {user_id} not found")
+
+        profile_vector = await self.process_user_profile_tfidf(profile)
+        vector_size = int(np.asarray(profile_vector).reshape(-1).size)
+        if vector_size == 0:
+            raise ValueError("TF-IDF worker returned an empty vector")
+
+        await self.upsert_user_profile_tfidf_embedding(
+            db=db,
+            employee_id=employee_id,
+            profile_vector=profile_vector,
+        )
+        await db.commit()
+
+        return {
+            "user_id": user_id,
+            "employee_id": employee_id,
+            "vector_tfidf_updated": True,
+            "vector_size": vector_size,
+            "status": "ok",
+        }
+
     # async def upsert_user_profile_embedding(
     #     self,
     #     db: AsyncSession,

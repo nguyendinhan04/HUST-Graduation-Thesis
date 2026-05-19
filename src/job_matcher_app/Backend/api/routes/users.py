@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
@@ -76,6 +77,12 @@ class UpdateUserExperienceRequest(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     skills: list[str] = Field(default_factory=list)
+
+
+class UserProfileTfidfVectorRequest(BaseModel):
+    Educations: list[dict[str, Any]] = Field(default_factory=list)
+    Experiences: list[dict[str, Any]] = Field(default_factory=list)
+    Skills: list[str] | str = Field(default_factory=list)
 
 
 def _fields_set(payload: BaseModel) -> set[str]:
@@ -276,6 +283,31 @@ async def update_user_profile(
             skills=skills,
             skills_provided=skills_provided,
             **data,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.patch("/{user_id}/tfidf-vector")
+async def update_user_profile_tfidf_vector(
+    payload: UserProfileTfidfVectorRequest,
+    user_id: int = Path(..., ge=1),
+    db: AsyncSession = Depends(get_async_db),
+):
+    data = _payload_data(payload)
+    embedding_service = JobRecommendationService()
+
+    try:
+        return await embedding_service.update_user_profile_tfidf_vector(
+            db=db,
+            user_id=user_id,
+            profile=data,
         )
     except ValueError as exc:
         message = str(exc)
