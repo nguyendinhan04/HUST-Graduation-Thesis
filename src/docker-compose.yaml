@@ -164,7 +164,7 @@ services:
     build:
       context: .
       dockerfile: job_matcher_app/skill_worker/Dockerfile.skill_worker
-    image: skill-woker:latest 
+    image: skill-worker:latest
     container_name: job-matcher-skill-worker
     restart: unless-stopped
     environment:
