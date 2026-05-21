@@ -8,12 +8,27 @@ from typing import Any
 import boto3
 from redis import Redis
 from rq import Queue, Worker
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _get_database_url() -> str:
+    user = os.getenv("PG_USER", "airflow")
+    password = os.getenv("PG_PASSWORD", "airflow")
+    host = os.getenv("PG_HOST", "postgres")
+    port = os.getenv("PG_PORT", "5432")
+    database = os.getenv("PG_DATABASE", "job_db_2")
+    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+
+
+engine = create_engine(_get_database_url(), pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -191,6 +206,64 @@ def vectorize_tfidf_text(text: str) -> list[float]:
     return query_vector.tolist()
 
 
+def to_pgvector_literal(vector: Any) -> str:
+    if hasattr(vector, "tolist"):
+        vector = vector.tolist()
+
+    flattened = []
+    for value in vector:
+        flattened.append(str(float(value)))
+    return "[" + ",".join(flattened) + "]"
+
+
+def get_redis_connection() -> Redis:
+    return Redis(
+        host=os.getenv("REDIS_HOST", "redis"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        db=int(os.getenv("REDIS_DB", 0)),
+        password=os.getenv("REDIS_PASSWORD", None),
+        decode_responses=False,
+        socket_keepalive=True,
+        health_check_interval=30,
+    )
+
+
+def upsert_user_profile_tfidf_embedding(
+    employee_id: int,
+    profile_vector: list[float],
+) -> None:
+    vector_tfidf = to_pgvector_literal(profile_vector)
+
+    db = SessionLocal()
+    try:
+        db.execute(
+            text(
+                """
+                INSERT INTO user_profile_embedding (
+                    employee_id,
+                    vector_tfidf
+                )
+                VALUES (
+                    :employee_id,
+                    CAST(:vector_tfidf AS vector)
+                )
+                ON CONFLICT (employee_id) DO UPDATE
+                SET vector_tfidf = EXCLUDED.vector_tfidf
+                """
+            ),
+            {
+                "employee_id": employee_id,
+                "vector_tfidf": vector_tfidf,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 def process_user_profile_tfidf_task(profile: dict[str, Any]) -> list[float]:
     """
     Task chạy ngầm trên Worker RQ.
@@ -199,6 +272,40 @@ def process_user_profile_tfidf_task(profile: dict[str, Any]) -> list[float]:
     query_text = build_profile_query_text(profile)
     logger.info("Đang tính TF-IDF vector cho user profile, query length=%s", len(query_text))
     return vectorize_tfidf_text(query_text)
+
+
+def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str, Any]:
+    user_id = int(payload["user_id"])
+    employee_id = int(payload["employee_id"])
+    profile = payload["profile"]
+    lock_key = f"user:{user_id}:tfidf_embedding_lock"
+
+    redis_conn = get_redis_connection()
+    lock = redis_conn.lock(
+        lock_key,
+        timeout=int(os.getenv("TFIDF_EMBEDDING_LOCK_TIMEOUT", 600)),
+        blocking_timeout=int(os.getenv("TFIDF_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
+    )
+
+    logger.info("Đang xử lý TF-IDF update task user_id=%s", user_id)
+    with lock:
+        profile_vector = process_user_profile_tfidf_task(profile)
+        vector_size = len(profile_vector)
+        if vector_size == 0:
+            raise ValueError(f"TF-IDF worker returned an empty vector for user_id={user_id}")
+
+        upsert_user_profile_tfidf_embedding(
+            employee_id=employee_id,
+            profile_vector=profile_vector,
+        )
+
+    logger.info("Đã cập nhật TF-IDF vector user_id=%s, vector_size=%s", user_id, vector_size)
+    return {
+        "user_id": user_id,
+        "employee_id": employee_id,
+        "vector_tfidf_updated": True,
+        "vector_size": vector_size,
+    }
 
 
 def embed_tfidf_texts_task(texts: list[str]) -> list[list[float]]:

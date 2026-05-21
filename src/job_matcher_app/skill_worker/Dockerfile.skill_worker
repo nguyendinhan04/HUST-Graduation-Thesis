@@ -33,8 +33,7 @@ ENV PYTHONPATH=/app/src
 COPY job_matcher_app/skill_worker/requirements.skill_worker.txt /app/requirements.skill_worker.txt
 
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
-    && pip install --no-cache-dir -r /app/requirements.skill_worker.txt
-
-COPY job_matcher_app/skill_worker.py /app/src/job_matcher_app/skill_worker.py
+    && pip install --no-cache-dir -r /app/requirements.skill_worker.txt \
+    && mkdir -p /app/src/job_matcher_app
 
 CMD ["python", "-m", "job_matcher_app.skill_worker"]

@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 from typing import Any
@@ -26,6 +27,8 @@ password_context = CryptContext(
     schemes=["pbkdf2_sha256", "bcrypt_sha256", "bcrypt"],
     deprecated=["bcrypt_sha256", "bcrypt"],
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -785,16 +788,6 @@ class UserService:
                 education,
                 education_skills,
             )
-            education_vector = await embedding_service.embed_bert_education(
-                education_payload
-            )
-            await UserService._upsert_education_embedding_and_recompute_profile_vector(
-                db=db,
-                employee_id=employee.id,
-                education_id=education.id,
-                education_vector=education_vector,
-                embedding_service=embedding_service,
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -806,6 +799,21 @@ class UserService:
         except Exception:
             await db.rollback()
             raise
+
+        try:
+            embedding_service.enqueue_education_embedding_update(
+                user_id=user_id,
+                employee_id=employee.id,
+                education_id=education.id,
+                education=education_payload,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue education embedding update for user_id=%s, "
+                "education_id=%s",
+                user_id,
+                education.id,
+            )
 
         return UserService._serialize_education(education, education_skills)
 
@@ -894,22 +902,6 @@ class UserService:
             mark("build_embedding_payload", step_started_at)
 
             step_started_at = time.perf_counter()
-            education_vector = await embedding_service.embed_bert_education(
-                education_payload
-            )
-            mark("embed_bert_education", step_started_at)
-
-            step_started_at = time.perf_counter()
-            await UserService._upsert_education_embedding_and_recompute_profile_vector(
-                db=db,
-                employee_id=employee.id,
-                education_id=education.id,
-                education_vector=education_vector,
-                embedding_service=embedding_service,
-            )
-            mark("upsert_embedding_and_recompute_profile", step_started_at)
-
-            step_started_at = time.perf_counter()
             user.updated_at = datetime.utcnow()
             await db.commit()
             await db.refresh(education)
@@ -920,6 +912,23 @@ class UserService:
         except Exception:
             await db.rollback()
             raise
+
+        step_started_at = time.perf_counter()
+        try:
+            embedding_service.enqueue_education_embedding_update(
+                user_id=user_id,
+                employee_id=employee.id,
+                education_id=education.id,
+                education=education_payload,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue education embedding update for user_id=%s, "
+                "education_id=%s",
+                user_id,
+                education.id,
+            )
+        mark("enqueue_education_embedding_task", step_started_at)
 
         step_started_at = time.perf_counter()
         education_data = UserService._serialize_education(education, education_skills)
@@ -1036,16 +1045,6 @@ class UserService:
                 education,
                 response_skills,
             )
-            education_vector = await embedding_service.embed_bert_education(
-                education_payload
-            )
-            await UserService._upsert_education_embedding_and_recompute_profile_vector(
-                db=db,
-                employee_id=education.employee_id,
-                education_id=education.id,
-                education_vector=education_vector,
-                embedding_service=embedding_service,
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1058,6 +1057,21 @@ class UserService:
             await db.rollback()
             raise
 
+        try:
+            embedding_service.enqueue_education_embedding_update(
+                user_id=user_id,
+                employee_id=education.employee_id,
+                education_id=education.id,
+                education=education_payload,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue education embedding update for user_id=%s, "
+                "education_id=%s",
+                user_id,
+                education.id,
+            )
+
         return UserService._serialize_education(education, response_skills)
 
     @staticmethod
@@ -1065,8 +1079,12 @@ class UserService:
         db: AsyncSession,
         user_id: int,
         education_id: int,
+        embedding_service: Any,
     ) -> dict:
         """Delete an education record that belongs to an employee user."""
+        if embedding_service is None:
+            raise RuntimeError("embedding service is not ready")
+
         user = await db.get(User, user_id)
         if not user:
             raise ValueError(f"User with id {user_id} not found")
@@ -1088,17 +1106,6 @@ class UserService:
         employee_id = education.employee_id
 
         try:
-            await UserService._ensure_and_lock_profile_embedding_row(db, employee_id)
-
-            await db.execute(
-                text(
-                    """
-                    DELETE FROM employee_education_embedding
-                    WHERE education_id = :education_id
-                    """
-                ),
-                {"education_id": education_id},
-            )
             await db.execute(
                 delete(EducationSkill).where(
                     EducationSkill.education_id == education_id
@@ -1106,11 +1113,6 @@ class UserService:
             )
             await db.delete(education)
             await db.flush()
-
-            await UserService._lock_and_recompute_profile_education_vector(
-                db,
-                employee_id,
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1121,6 +1123,20 @@ class UserService:
         except Exception:
             await db.rollback()
             raise
+
+        try:
+            embedding_service.enqueue_education_embedding_delete(
+                user_id=user_id,
+                employee_id=employee_id,
+                education_id=education_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue education embedding delete for user_id=%s, "
+                "education_id=%s",
+                user_id,
+                education_id,
+            )
 
         return {
             "education_id": education_id,
@@ -1195,16 +1211,6 @@ class UserService:
                 experience,
                 experience_skills,
             )
-            experience_vector = await embedding_service.embed_bert_experience(
-                experience_payload
-            )
-            await UserService._upsert_experience_embedding_and_recompute_profile_vector(
-                db=db,
-                employee_id=employee.id,
-                experience_id=experience.id,
-                experience_vector=experience_vector,
-                embedding_service=embedding_service,
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1216,6 +1222,21 @@ class UserService:
         except Exception:
             await db.rollback()
             raise
+
+        try:
+            embedding_service.enqueue_experience_embedding_update(
+                user_id=user_id,
+                employee_id=employee.id,
+                experience_id=experience.id,
+                experience=experience_payload,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue experience embedding update for user_id=%s, "
+                "experience_id=%s",
+                user_id,
+                experience.id,
+            )
 
         return UserService._serialize_experience(experience, experience_skills)
 
@@ -1324,16 +1345,6 @@ class UserService:
                 experience,
                 response_skills,
             )
-            experience_vector = await embedding_service.embed_bert_experience(
-                experience_payload
-            )
-            await UserService._upsert_experience_embedding_and_recompute_profile_vector(
-                db=db,
-                employee_id=experience.employee_id,
-                experience_id=experience.id,
-                experience_vector=experience_vector,
-                embedding_service=embedding_service,
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1346,6 +1357,21 @@ class UserService:
             await db.rollback()
             raise
 
+        try:
+            embedding_service.enqueue_experience_embedding_update(
+                user_id=user_id,
+                employee_id=experience.employee_id,
+                experience_id=experience.id,
+                experience=experience_payload,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue experience embedding update for user_id=%s, "
+                "experience_id=%s",
+                user_id,
+                experience.id,
+            )
+
         return UserService._serialize_experience(experience, response_skills)
 
     @staticmethod
@@ -1353,8 +1379,12 @@ class UserService:
         db: AsyncSession,
         user_id: int,
         experience_id: int,
+        embedding_service: Any,
     ) -> dict:
         """Delete a work experience that belongs to an employee user."""
+        if embedding_service is None:
+            raise RuntimeError("embedding service is not ready")
+
         user = await db.get(User, user_id)
         if not user:
             raise ValueError(f"User with id {user_id} not found")
@@ -1376,17 +1406,6 @@ class UserService:
         employee_id = experience.employee_id
 
         try:
-            await UserService._ensure_and_lock_profile_embedding_row(db, employee_id)
-
-            await db.execute(
-                text(
-                    """
-                    DELETE FROM employee_experience_embedding
-                    WHERE experience_id = :experience_id
-                    """
-                ),
-                {"experience_id": experience_id},
-            )
             await db.execute(
                 delete(ExperienceSkill).where(
                     ExperienceSkill.experience_id == experience_id
@@ -1394,11 +1413,6 @@ class UserService:
             )
             await db.delete(experience)
             await db.flush()
-
-            await UserService._lock_and_recompute_profile_experience_vector(
-                db,
-                employee_id,
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1409,6 +1423,20 @@ class UserService:
         except Exception:
             await db.rollback()
             raise
+
+        try:
+            embedding_service.enqueue_experience_embedding_delete(
+                user_id=user_id,
+                employee_id=employee_id,
+                experience_id=experience_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to enqueue experience embedding delete for user_id=%s, "
+                "experience_id=%s",
+                user_id,
+                experience_id,
+            )
 
         return {
             "experience_id": experience_id,

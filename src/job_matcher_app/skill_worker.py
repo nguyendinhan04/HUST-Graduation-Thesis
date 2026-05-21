@@ -8,6 +8,8 @@ import numpy as np
 from redis import Redis
 from rq import Queue, Worker
 from sentence_transformers import SentenceTransformer
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,6 +18,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PROFILE_VECTOR_SIZE = 384
+
+
+def _get_database_url() -> str:
+    user = os.getenv("PG_USER", "airflow")
+    password = os.getenv("PG_PASSWORD", "airflow")
+    host = os.getenv("PG_HOST", "postgres")
+    port = os.getenv("PG_PORT", "5432")
+    database = os.getenv("PG_DATABASE", "job_db_2")
+    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+
+
+engine = create_engine(_get_database_url(), pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 logger.info("Đang tải mô hình Hugging Face 'alvperez/skill-sim-model'...")
 try:
@@ -72,6 +87,34 @@ def embed_bert_texts_task(texts: List[str]) -> List[List[float]]:
 
 def clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "")).strip()
+
+
+def to_pgvector_literal(vector) -> str:
+    if hasattr(vector, "tolist"):
+        vector = vector.tolist()
+
+    vector = np.asarray(vector).reshape(-1)
+    return "[" + ",".join(str(float(value)) for value in vector) + "]"
+
+
+def parse_pgvector_text(vector_text: str) -> List[float]:
+    return [
+        float(value)
+        for value in vector_text.strip("[]").split(",")
+        if value.strip()
+    ]
+
+
+def get_redis_connection() -> Redis:
+    return Redis(
+        host=os.getenv("REDIS_HOST", "redis"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        db=int(os.getenv("REDIS_DB", 0)),
+        password=os.getenv("REDIS_PASSWORD", None),
+        decode_responses=False,
+        socket_keepalive=True,
+        health_check_interval=30,
+    )
 
 
 def calculate_recency_weight(end_time_str, current_year=2026):
@@ -169,6 +212,448 @@ def embed_bert_education_task(education: dict) -> List[float]:
     embedding = embed_bert_document(education_text)
     logger.info("Đã tính toán BERT/MiniLM education embedding thành công.")
     return embedding.tolist()
+
+
+def ensure_and_lock_profile_embedding_row(db, employee_id: int) -> None:
+    db.execute(
+        text(
+            """
+            INSERT INTO user_profile_embedding (employee_id)
+            VALUES (:employee_id)
+            ON CONFLICT (employee_id) DO NOTHING
+            """
+        ),
+        {"employee_id": employee_id},
+    )
+    db.execute(
+        text(
+            """
+            SELECT employee_id
+            FROM user_profile_embedding
+            WHERE employee_id = :employee_id
+            FOR UPDATE
+            """
+        ),
+        {"employee_id": employee_id},
+    )
+
+
+def recompute_profile_education_vector(db, employee_id: int) -> None:
+    result = db.execute(
+        text(
+            """
+            SELECT
+                education_id,
+                education_vec::text AS education_vec
+            FROM employee_education_embedding
+            WHERE employee_id = :employee_id
+              AND education_vec IS NOT NULL
+            """
+        ),
+        {"employee_id": employee_id},
+    )
+    rows = result.fetchall()
+
+    if not rows:
+        db.execute(
+            text(
+                """
+                UPDATE user_profile_embedding
+                SET education_vec = NULL
+                WHERE employee_id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+        return
+
+    education_vectors = []
+    for row in rows:
+        vector = np.asarray(parse_pgvector_text(row.education_vec), dtype=float)
+        if vector.size != PROFILE_VECTOR_SIZE:
+            raise ValueError(
+                f"Education vector for education_id {row.education_id} "
+                f"has size {vector.size}, expected {PROFILE_VECTOR_SIZE}"
+            )
+        education_vectors.append(vector)
+
+    aggregate_vec = np.mean(education_vectors, axis=0)
+    norm = np.linalg.norm(aggregate_vec)
+    if norm > 0:
+        aggregate_vec = aggregate_vec / norm
+
+    db.execute(
+        text(
+            """
+            UPDATE user_profile_embedding
+            SET education_vec = CAST(:education_vec AS vector)
+            WHERE employee_id = :employee_id
+            """
+        ),
+        {
+            "employee_id": employee_id,
+            "education_vec": to_pgvector_literal(aggregate_vec),
+        },
+    )
+
+
+def upsert_education_embedding_and_recompute_profile(
+    employee_id: int,
+    education_id: int,
+    education_vector: List[float],
+) -> None:
+    education_vector_literal = to_pgvector_literal(education_vector)
+
+    db = SessionLocal()
+    try:
+        ensure_and_lock_profile_embedding_row(db, employee_id)
+        db.execute(
+            text(
+                """
+                INSERT INTO employee_education_embedding (
+                    employee_id,
+                    education_id,
+                    education_vec
+                )
+                VALUES (
+                    :employee_id,
+                    :education_id,
+                    CAST(:education_vec AS vector)
+                )
+                ON CONFLICT (education_id) DO UPDATE
+                SET employee_id = EXCLUDED.employee_id,
+                    education_vec = EXCLUDED.education_vec
+                """
+            ),
+            {
+                "employee_id": employee_id,
+                "education_id": education_id,
+                "education_vec": education_vector_literal,
+            },
+        )
+
+        recompute_profile_education_vector(db, employee_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def delete_education_embedding_and_recompute_profile(
+    employee_id: int,
+    education_id: int,
+) -> None:
+    db = SessionLocal()
+    try:
+        ensure_and_lock_profile_embedding_row(db, employee_id)
+        db.execute(
+            text(
+                """
+                DELETE FROM employee_education_embedding
+                WHERE education_id = :education_id
+                """
+            ),
+            {"education_id": education_id},
+        )
+
+        recompute_profile_education_vector(db, employee_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def process_user_education_embedding_task(payload: dict) -> dict:
+    user_id = int(payload["user_id"])
+    employee_id = int(payload["employee_id"])
+    education_id = int(payload["education_id"])
+    education = payload["education"]
+    lock_key = f"user:{user_id}:education_embedding_lock"
+
+    redis_conn = get_redis_connection()
+    lock = redis_conn.lock(
+        lock_key,
+        timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_TIMEOUT", 600)),
+        blocking_timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
+    )
+
+    logger.info(
+        "Đang xử lý education embedding task user_id=%s, education_id=%s",
+        user_id,
+        education_id,
+    )
+    with lock:
+        education_vector = embed_bert_education_task(education)
+        upsert_education_embedding_and_recompute_profile(
+            employee_id=employee_id,
+            education_id=education_id,
+            education_vector=education_vector,
+        )
+
+    logger.info(
+        "Đã lưu education embedding task user_id=%s, education_id=%s",
+        user_id,
+        education_id,
+    )
+    return {
+        "user_id": user_id,
+        "employee_id": employee_id,
+        "education_id": education_id,
+        "education_embedding_updated": True,
+    }
+
+
+def process_user_education_delete_task(payload: dict) -> dict:
+    user_id = int(payload["user_id"])
+    employee_id = int(payload["employee_id"])
+    education_id = int(payload["education_id"])
+    lock_key = f"user:{user_id}:education_embedding_lock"
+
+    redis_conn = get_redis_connection()
+    lock = redis_conn.lock(
+        lock_key,
+        timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_TIMEOUT", 600)),
+        blocking_timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
+    )
+
+    logger.info(
+        "Đang xử lý education embedding delete task user_id=%s, education_id=%s",
+        user_id,
+        education_id,
+    )
+    with lock:
+        delete_education_embedding_and_recompute_profile(
+            employee_id=employee_id,
+            education_id=education_id,
+        )
+
+    logger.info(
+        "Đã xóa education embedding task user_id=%s, education_id=%s",
+        user_id,
+        education_id,
+    )
+    return {
+        "user_id": user_id,
+        "employee_id": employee_id,
+        "education_id": education_id,
+        "education_embedding_deleted": True,
+    }
+
+
+def recompute_profile_experience_vector(db, employee_id: int) -> None:
+    result = db.execute(
+        text(
+            """
+            SELECT
+                e.id AS experience_id,
+                e.end_date,
+                ebe.experience_vec::text AS experience_vec
+            FROM employee_experience_embedding ebe
+            JOIN experiences e ON e.id = ebe.experience_id
+            WHERE ebe.employee_id = :employee_id
+              AND ebe.experience_vec IS NOT NULL
+            """
+        ),
+        {"employee_id": employee_id},
+    )
+    rows = result.fetchall()
+
+    if not rows:
+        db.execute(
+            text(
+                """
+                UPDATE user_profile_embedding
+                SET experience_vec = NULL
+                WHERE employee_id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+        return
+
+    aggregate_vec = np.zeros(PROFILE_VECTOR_SIZE)
+    total_weight = 0.0
+    for row in rows:
+        vector = np.asarray(parse_pgvector_text(row.experience_vec), dtype=float)
+        if vector.size != PROFILE_VECTOR_SIZE:
+            raise ValueError(
+                f"Experience vector for experience_id {row.experience_id} "
+                f"has size {vector.size}, expected {PROFILE_VECTOR_SIZE}"
+            )
+
+        weight = calculate_recency_weight(row.end_date)
+        aggregate_vec += vector * weight
+        total_weight += weight
+
+    aggregate_vec = aggregate_vec / total_weight
+    norm = np.linalg.norm(aggregate_vec)
+    if norm > 0:
+        aggregate_vec = aggregate_vec / norm
+
+    db.execute(
+        text(
+            """
+            UPDATE user_profile_embedding
+            SET experience_vec = CAST(:experience_vec AS vector)
+            WHERE employee_id = :employee_id
+            """
+        ),
+        {
+            "employee_id": employee_id,
+            "experience_vec": to_pgvector_literal(aggregate_vec),
+        },
+    )
+
+
+def upsert_experience_embedding_and_recompute_profile(
+    employee_id: int,
+    experience_id: int,
+    experience_vector: List[float],
+) -> None:
+    experience_vector_literal = to_pgvector_literal(experience_vector)
+
+    db = SessionLocal()
+    try:
+        ensure_and_lock_profile_embedding_row(db, employee_id)
+        db.execute(
+            text(
+                """
+                INSERT INTO employee_experience_embedding (
+                    employee_id,
+                    experience_id,
+                    experience_vec
+                )
+                VALUES (
+                    :employee_id,
+                    :experience_id,
+                    CAST(:experience_vec AS vector)
+                )
+                ON CONFLICT (experience_id) DO UPDATE
+                SET employee_id = EXCLUDED.employee_id,
+                    experience_vec = EXCLUDED.experience_vec
+                """
+            ),
+            {
+                "employee_id": employee_id,
+                "experience_id": experience_id,
+                "experience_vec": experience_vector_literal,
+            },
+        )
+
+        recompute_profile_experience_vector(db, employee_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def delete_experience_embedding_and_recompute_profile(
+    employee_id: int,
+    experience_id: int,
+) -> None:
+    db = SessionLocal()
+    try:
+        ensure_and_lock_profile_embedding_row(db, employee_id)
+        db.execute(
+            text(
+                """
+                DELETE FROM employee_experience_embedding
+                WHERE experience_id = :experience_id
+                """
+            ),
+            {"experience_id": experience_id},
+        )
+
+        recompute_profile_experience_vector(db, employee_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def process_user_experience_embedding_task(payload: dict) -> dict:
+    user_id = int(payload["user_id"])
+    employee_id = int(payload["employee_id"])
+    experience_id = int(payload["experience_id"])
+    experience = payload["experience"]
+    lock_key = f"user:{user_id}:experience_embedding_lock"
+
+    redis_conn = get_redis_connection()
+    lock = redis_conn.lock(
+        lock_key,
+        timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_TIMEOUT", 600)),
+        blocking_timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
+    )
+
+    logger.info(
+        "Đang xử lý experience embedding task user_id=%s, experience_id=%s",
+        user_id,
+        experience_id,
+    )
+    with lock:
+        experience_vector = embed_bert_experience_task(experience)
+        upsert_experience_embedding_and_recompute_profile(
+            employee_id=employee_id,
+            experience_id=experience_id,
+            experience_vector=experience_vector,
+        )
+
+    logger.info(
+        "Đã lưu experience embedding task user_id=%s, experience_id=%s",
+        user_id,
+        experience_id,
+    )
+    return {
+        "user_id": user_id,
+        "employee_id": employee_id,
+        "experience_id": experience_id,
+        "experience_embedding_updated": True,
+    }
+
+
+def process_user_experience_delete_task(payload: dict) -> dict:
+    user_id = int(payload["user_id"])
+    employee_id = int(payload["employee_id"])
+    experience_id = int(payload["experience_id"])
+    lock_key = f"user:{user_id}:experience_embedding_lock"
+
+    redis_conn = get_redis_connection()
+    lock = redis_conn.lock(
+        lock_key,
+        timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_TIMEOUT", 600)),
+        blocking_timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
+    )
+
+    logger.info(
+        "Đang xử lý experience embedding delete task user_id=%s, experience_id=%s",
+        user_id,
+        experience_id,
+    )
+    with lock:
+        delete_experience_embedding_and_recompute_profile(
+            employee_id=employee_id,
+            experience_id=experience_id,
+        )
+
+    logger.info(
+        "Đã xóa experience embedding task user_id=%s, experience_id=%s",
+        user_id,
+        experience_id,
+    )
+    return {
+        "user_id": user_id,
+        "employee_id": employee_id,
+        "experience_id": experience_id,
+        "experience_embedding_deleted": True,
+    }
 
 
 def process_user_profile_multimodal_task(profile: dict) -> dict:

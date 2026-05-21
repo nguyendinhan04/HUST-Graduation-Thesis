@@ -199,11 +199,14 @@ async def delete_user_education(
     education_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    embedding_service = JobRecommendationService()
+
     try:
         return await UserService.delete_user_education_async(
             db=db,
             user_id=user_id,
             education_id=education_id,
+            embedding_service=embedding_service,
         )
     except ValueError as exc:
         message = str(exc)
@@ -273,11 +276,14 @@ async def delete_user_experience(
     experience_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    embedding_service = JobRecommendationService()
+
     try:
         return await UserService.delete_user_experience_async(
             db=db,
             user_id=user_id,
             experience_id=experience_id,
+            embedding_service=embedding_service,
         )
     except ValueError as exc:
         message = str(exc)

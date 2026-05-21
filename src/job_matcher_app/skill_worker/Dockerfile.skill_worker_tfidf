@@ -11,8 +11,9 @@ RUN pip install --no-cache-dir \
     numpy \
     redis \
     rq \
-    scikit-learn
-
-COPY job_matcher_app/skill_worker/skill_worker_tfidf.py /app/src/job_matcher_app/skill_worker_tfidf.py
+    scikit-learn \
+    sqlalchemy \
+    psycopg2-binary \
+    && mkdir -p /app/src/job_matcher_app
 
 CMD ["python", "-m", "job_matcher_app.skill_worker_tfidf"]

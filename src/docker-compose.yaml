@@ -173,8 +173,17 @@ services:
       REDIS_DB: 0
       QUEUE_NAME: skill-embedding-queue
       WORKER_NAME: skill_embedding_worker
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: job_db_2
+      PG_USER: airflow
+      PG_PASSWORD: airflow
+    volumes:
+      - ./job_matcher_app/skill_worker.py:/app/src/job_matcher_app/skill_worker.py
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       - airflow
@@ -198,8 +207,17 @@ services:
       MINIO_BUCKET: models
       MINIO_SECURE: "false"
       TFIDF_MODEL_PREFIX: models/tfidf/
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: job_db_2
+      PG_USER: airflow
+      PG_PASSWORD: airflow
+    volumes:
+      - ./job_matcher_app/skill_worker/skill_worker_tfidf.py:/app/src/job_matcher_app/skill_worker_tfidf.py
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
       minio:
         condition: service_started

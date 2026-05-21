@@ -110,6 +110,44 @@ class JobRecommendationService:
             "BERT Experience Embedding Job in RQ worker failed",
         )
 
+    def enqueue_experience_embedding_update(
+        self,
+        *,
+        user_id: int,
+        employee_id: int,
+        experience_id: int,
+        experience: dict,
+    ) -> str:
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.process_user_experience_embedding_task",
+            {
+                "user_id": user_id,
+                "employee_id": employee_id,
+                "experience_id": experience_id,
+                "experience": experience,
+            },
+            job_timeout="10m",
+        )
+        return job.id
+
+    def enqueue_experience_embedding_delete(
+        self,
+        *,
+        user_id: int,
+        employee_id: int,
+        experience_id: int,
+    ) -> str:
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.process_user_experience_delete_task",
+            {
+                "user_id": user_id,
+                "employee_id": employee_id,
+                "experience_id": experience_id,
+            },
+            job_timeout="10m",
+        )
+        return job.id
+
     async def embed_bert_education(self, education: dict) -> list[float]:
         job = self.skill_queue.enqueue(
             "job_matcher_app.skill_worker.embed_bert_education_task",
@@ -120,6 +158,44 @@ class JobRecommendationService:
             job,
             "BERT Education Embedding Job in RQ worker failed",
         )
+
+    def enqueue_education_embedding_update(
+        self,
+        *,
+        user_id: int,
+        employee_id: int,
+        education_id: int,
+        education: dict,
+    ) -> str:
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.process_user_education_embedding_task",
+            {
+                "user_id": user_id,
+                "employee_id": employee_id,
+                "education_id": education_id,
+                "education": education,
+            },
+            job_timeout="10m",
+        )
+        return job.id
+
+    def enqueue_education_embedding_delete(
+        self,
+        *,
+        user_id: int,
+        employee_id: int,
+        education_id: int,
+    ) -> str:
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.process_user_education_delete_task",
+            {
+                "user_id": user_id,
+                "employee_id": employee_id,
+                "education_id": education_id,
+            },
+            job_timeout="10m",
+        )
+        return job.id
 
     async def embed_skills(
         self,
@@ -451,6 +527,24 @@ class JobRecommendationService:
             "User Profile TF-IDF Vector Job in RQ worker failed",
         )
 
+    def enqueue_user_profile_tfidf_update(
+        self,
+        *,
+        user_id: int,
+        employee_id: int,
+        profile: dict,
+    ) -> str:
+        job = self.tfidf_queue.enqueue(
+            "job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_update_task",
+            {
+                "user_id": user_id,
+                "employee_id": employee_id,
+                "profile": profile,
+            },
+            job_timeout="10m",
+        )
+        return job.id
+
     async def upsert_user_profile_tfidf_embedding(
         self,
         db: AsyncSession,
@@ -493,24 +587,17 @@ class JobRecommendationService:
         if employee_id is None:
             raise ValueError(f"Employee with user_id {user_id} not found")
 
-        profile_vector = await self.process_user_profile_tfidf(profile)
-        vector_size = int(np.asarray(profile_vector).reshape(-1).size)
-        if vector_size == 0:
-            raise ValueError("TF-IDF worker returned an empty vector")
-
-        await self.upsert_user_profile_tfidf_embedding(
-            db=db,
+        self.enqueue_user_profile_tfidf_update(
+            user_id=user_id,
             employee_id=employee_id,
-            profile_vector=profile_vector,
+            profile=profile,
         )
-        await db.commit()
 
         return {
             "user_id": user_id,
             "employee_id": employee_id,
-            "vector_tfidf_updated": True,
-            "vector_size": vector_size,
-            "status": "ok",
+            "vector_tfidf_enqueued": True,
+            "status": "queued",
         }
 
     # async def upsert_user_profile_embedding(
