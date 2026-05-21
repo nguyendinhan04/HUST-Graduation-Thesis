@@ -170,16 +170,17 @@ async def _fetch_skill_embeddings(
     skill_names: list[str],
 ) -> dict[str, list[float]]:
     """
-    Lấy pre-computed embeddings từ bảng skills.
+    Lấy pre-computed embeddings từ bảng skill_embeddings.
     Skills nào không có trong bảng → thiếu key trong dict trả về.
     """
     if not skill_names:
         return {}
     rows = (await db.execute(
         text("""
-            SELECT skill_name, embedding::text
-            FROM skills
-            WHERE skill_name = ANY(:names)
+            SELECT s.name AS skill_name, se.embedding::text
+            FROM skills s
+            JOIN skill_embeddings se ON se.skill_id = s.id
+            WHERE s.name = ANY(:names)
         """),
         {"names": skill_names},
     )).fetchall()

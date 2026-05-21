@@ -208,9 +208,10 @@ class JobRecommendationService:
         result = await db.execute(
             text(
                 """
-                SELECT id, name, embedding_status
-                FROM skills
-                WHERE name = ANY(:names)
+                SELECT s.id, s.name, s.embedding_status, se.embedding::text AS embedding
+                FROM skills s
+                LEFT JOIN skill_embeddings se ON se.skill_id = s.id
+                WHERE s.name = ANY(:names)
                 """
             ),
             {"names": skill_names},
@@ -223,7 +224,10 @@ class JobRecommendationService:
                 "Missing skills in database: " + ", ".join(sorted(missing))
             )
 
-        pending_rows = [row for row in rows if row.embedding_status != "done"]
+        pending_rows = [
+            row for row in rows
+            if row.embedding_status != "done" or row.embedding is None
+        ]
         if not pending_rows:
             return 0
 
@@ -248,20 +252,39 @@ class JobRecommendationService:
                 {
                     "skill_id": row.id,
                     "embedding": embedding_literal,
-                    "status": "done",
                 }
             )
 
         await db.execute(
             text(
                 """
-                UPDATE skills
-                SET embedding = CAST(:embedding AS vector),
-                    embedding_status = :status
-                WHERE id = :skill_id
+                DELETE FROM skill_embeddings
+                WHERE skill_id = ANY(:skill_ids)
+                """
+            ),
+            {"skill_ids": [row.id for row in pending_rows]},
+        )
+        await db.execute(
+            text(
+                """
+                INSERT INTO skill_embeddings (skill_id, embedding)
+                VALUES (:skill_id, CAST(:embedding AS vector))
                 """
             ),
             update_rows,
+        )
+        await db.execute(
+            text(
+                """
+                UPDATE skills
+                SET embedding_status = :status
+                WHERE id = ANY(:skill_ids)
+                """
+            ),
+            {
+                "status": "done",
+                "skill_ids": [row.id for row in pending_rows],
+            },
         )
         await db.commit()
         return len(update_rows)
@@ -277,9 +300,10 @@ class JobRecommendationService:
         result = await db.execute(
             text(
                 """
-                SELECT name, embedding_status, embedding::text AS embedding
-                FROM skills
-                WHERE name = ANY(:names)
+                SELECT s.name, s.embedding_status, se.embedding::text AS embedding
+                FROM skills s
+                LEFT JOIN skill_embeddings se ON se.skill_id = s.id
+                WHERE s.name = ANY(:names)
                 """
             ),
             {"names": skill_names},
@@ -791,37 +815,44 @@ class JobRecommendationService:
 
             
 
-    async def recommend_jobs_2_phase(
-        self, db: AsyncSession, user_id: int, top_k: int = 100
-    ):
-        """
-        Recommend top-k jobs for a user based on their skills and profile.
-        """
-        user_profile = await self.get_user_profile(db, user_id)
+    # async def recommend_jobs_2_phase(
+    #     self, db: AsyncSession, user_id: int, top_k: int = 100
+    # ):
+    #     """
+    #     Recommend top-k jobs for a user based on their skills and profile.
+    #     """
+    #     user_profile = await self.get_user_profile(db, user_id)
         
-        if not user_profile["skills"]:
-            raise ValueError(f"User {user_id} has no skills in profile")
+    #     if not user_profile["skills"]:
+    #         raise ValueError(f"User {user_id} has no skills in profile")
 
-        skill_ids = [s["skill_id"] for s in user_profile["skills"] if s.get("skill_id")]
-        result = await db.execute(
-            select(Skill.id, Skill.name)
-            .where(Skill.id.in_(skill_ids))
-            .where(Skill.embedding_status != "done")
-        )
-        pending_rows = result.all()
-        if pending_rows:
-            pending_names = ", ".join(sorted({row.name for row in pending_rows}))
-            raise ValueError(
-                "Skill embeddings are not ready yet for: " + pending_names
-            )
+    #     skill_ids = [s["skill_id"] for s in user_profile["skills"] if s.get("skill_id")]
+    #     result = await db.execute(
+    #         text(
+    #             """
+    #             SELECT s.id, s.name
+    #             FROM skills s
+    #             LEFT JOIN skill_embeddings se ON se.skill_id = s.id
+    #             WHERE s.id = ANY(:skill_ids)
+    #               AND (s.embedding_status != 'done' OR se.embedding IS NULL)
+    #             """
+    #         ),
+    #         {"skill_ids": skill_ids},
+    #     )
+    #     pending_rows = result.all()
+    #     if pending_rows:
+    #         pending_names = ", ".join(sorted({row.name for row in pending_rows}))
+    #         raise ValueError(
+    #             "Skill embeddings are not ready yet for: " + pending_names
+    #         )
 
-        skill_similiarity_results = await self.search_best_jobs_in_db_by_skill_embeddings(
-            db=db,
-            user_skills=[s["skill_name"] for s in user_profile["skills"]],
-            limit=top_k,
-        )
+    #     skill_similiarity_results = await self.search_best_jobs_in_db_by_skill_embeddings(
+    #         db=db,
+    #         user_skills=[s["skill_name"] for s in user_profile["skills"]],
+    #         limit=top_k,
+    #     )
 
-        return skill_similiarity_results
+    #     return skill_similiarity_results
 
 
 
