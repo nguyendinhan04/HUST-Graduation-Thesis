@@ -1635,7 +1635,7 @@ class UserService:
                 EducationSkill.skill_id == skill.id,
             )
         )
-        if education_skill_result.scalar_one_or_none() is not None:
+        if education_skill_result.scalars().first() is not None:
             raise ValueError(
                 f"Skill {skill.name} already belongs to an education record"
             )
@@ -1648,7 +1648,7 @@ class UserService:
                 ExperienceSkill.skill_id == skill.id,
             )
         )
-        if experience_skill_result.scalar_one_or_none() is not None:
+        if experience_skill_result.scalars().first() is not None:
             raise ValueError(
                 f"Skill {skill.name} already belongs to an experience record"
             )

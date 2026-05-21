@@ -256,7 +256,7 @@ class JobRecommendationService:
             text(
                 """
                 UPDATE skills
-                SET embedding = :embedding::vector,
+                SET embedding = CAST(:embedding AS vector),
                     embedding_status = :status
                 WHERE id = :skill_id
                 """
