@@ -6,7 +6,7 @@ from typing import List
 
 import numpy as np
 from redis import Redis
-from rq import Queue, Worker
+from rq import Queue, SimpleWorker
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -719,7 +719,7 @@ if __name__ == "__main__":
         socket_keepalive=True,
         health_check_interval=30,
     )
-    worker = Worker(
+    worker = SimpleWorker(
         [Queue(queue_name, connection=redis_conn)],
         connection=redis_conn,
         name=worker_name,
