@@ -478,6 +478,103 @@ class JobRecommendationService:
     def clean_text(text: str) -> str:
         return re.sub(r"\s+", " ", str(text or "")).strip()
 
+    @staticmethod
+    def _normalize_to_list(value):
+        if not value:
+            return []
+        return value if isinstance(value, list) else [value]
+
+    @staticmethod
+    def _append_tfidf_fields(parts: list[str], item: dict, keys: list[str]) -> None:
+        for key in keys:
+            value = item.get(key)
+            if not value:
+                continue
+            if isinstance(value, list):
+                parts.append(" ".join(map(str, value)))
+            else:
+                parts.append(str(value))
+
+    @staticmethod
+    def _build_profile_tfidf_query_text(profile: dict) -> str:
+        parts: list[str] = []
+
+        educations = JobRecommendationService._normalize_to_list(
+            profile.get("Educations")
+            or profile.get("educations")
+            or profile.get("Education")
+            or profile.get("education")
+        )
+        for education in educations:
+            if isinstance(education, dict):
+                JobRecommendationService._append_tfidf_fields(
+                    parts,
+                    education,
+                    [
+                        "Field of study",
+                        "Field of Study",
+                        "field_of_study",
+                        "Major",
+                        "major",
+                        "Degree",
+                        "degree",
+                        "Description",
+                        "description",
+                        "Skill",
+                        "skill",
+                        "Skills",
+                        "skills",
+                    ],
+                )
+            elif education:
+                parts.append(str(education))
+
+        experiences = JobRecommendationService._normalize_to_list(
+            profile.get("Experiences")
+            or profile.get("experiences")
+            or profile.get("Experience")
+            or profile.get("experience")
+        )
+        for experience in experiences:
+            if isinstance(experience, dict):
+                JobRecommendationService._append_tfidf_fields(
+                    parts,
+                    experience,
+                    [
+                        "Position",
+                        "position",
+                        "Company name",
+                        "company_name",
+                        "Description",
+                        "description",
+                        "Title",
+                        "title",
+                        "Skill",
+                        "skill",
+                        "Skills",
+                        "skills",
+                    ],
+                )
+            elif experience:
+                parts.append(str(experience))
+
+        profile_skills = profile.get("Skills") or profile.get("skills")
+        if profile_skills:
+            if isinstance(profile_skills, list):
+                parts.append(" ".join(map(str, profile_skills)))
+            else:
+                parts.append(str(profile_skills))
+
+        return " ".join(parts)
+
+    @staticmethod
+    def _has_profile_tfidf_text(profile: dict) -> bool:
+        query_text = JobRecommendationService._build_profile_tfidf_query_text(profile)
+        query_text = str(query_text or "").lower()
+        query_text = re.sub(r"<[^>]+>", " ", query_text)
+        query_text = re.sub(r"[^\w\s]", " ", query_text)
+        return bool(" ".join(query_text.split()))
+
     def calculate_recency_weight(self,end_time_str, current_year=2026):
         """
         Hàm tính trọng số decay theo thời gian. Mới nhất -> weight cao hơn.
@@ -517,6 +614,9 @@ class JobRecommendationService:
         """
         Trả về vector TF-IDF + SVD cho user profile do worker TF-IDF tính toán.
         """
+        if not self._has_profile_tfidf_text(profile):
+            return []
+
         job = self.tfidf_queue.enqueue(
             "job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_task",
             profile,
@@ -586,6 +686,16 @@ class JobRecommendationService:
         employee_id = result.scalar_one_or_none()
         if employee_id is None:
             raise ValueError(f"Employee with user_id {user_id} not found")
+
+        if not self._has_profile_tfidf_text(profile):
+            return {
+                "user_id": user_id,
+                "employee_id": employee_id,
+                "vector_tfidf_enqueued": False,
+                "vector_tfidf_updated": False,
+                "status": "skipped",
+                "reason": "empty_profile",
+            }
 
         self.enqueue_user_profile_tfidf_update(
             user_id=user_id,

@@ -85,6 +85,10 @@ class UserProfileTfidfVectorRequest(BaseModel):
     Skills: list[str] | str = Field(default_factory=list)
 
 
+class EmployeeSkillRequest(BaseModel):
+    skill_name: str = Field(..., min_length=1)
+
+
 def _fields_set(payload: BaseModel) -> set[str]:
     return getattr(payload, "model_fields_set", getattr(payload, "__fields_set__", set()))
 
@@ -110,6 +114,24 @@ async def create_employee_user(
     except ValueError as exc:
         message = str(exc)
         status_code = 409 if "already exists" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/{user_id}/profile")
+async def get_full_user_profile(
+    user_id: int = Path(..., ge=1),
+    db: AsyncSession = Depends(get_async_db),
+):
+    try:
+        return await UserService.get_full_user_profile_async(
+            db=db,
+            user_id=user_id,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
         raise HTTPException(status_code=status_code, detail=message) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -284,6 +306,51 @@ async def delete_user_experience(
             user_id=user_id,
             experience_id=experience_id,
             embedding_service=embedding_service,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/{user_id}/skills", status_code=201)
+async def add_employee_skill(
+    payload: EmployeeSkillRequest,
+    user_id: int = Path(..., ge=1),
+    db: AsyncSession = Depends(get_async_db),
+):
+    embedding_service = JobRecommendationService()
+
+    try:
+        return await UserService.add_employee_skill_async(
+            db=db,
+            user_id=user_id,
+            embedding_service=embedding_service,
+            skill_name=payload.skill_name,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.delete("/{user_id}/skills/{skill_id}")
+async def remove_employee_skill(
+    user_id: int = Path(..., ge=1),
+    skill_id: int = Path(..., ge=1),
+    db: AsyncSession = Depends(get_async_db),
+):
+    try:
+        return await UserService.remove_employee_skill_async(
+            db=db,
+            user_id=user_id,
+            skill_id=skill_id,
         )
     except ValueError as exc:
         message = str(exc)

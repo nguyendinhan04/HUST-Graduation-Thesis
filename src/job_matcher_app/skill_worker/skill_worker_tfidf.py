@@ -270,6 +270,10 @@ def process_user_profile_tfidf_task(profile: dict[str, Any]) -> list[float]:
     Nhận user profile, gộp education/experience/skills, trả về vector TF-IDF + SVD.
     """
     query_text = build_profile_query_text(profile)
+    if not clean_text(query_text):
+        logger.info("Bỏ qua TF-IDF vector vì user profile rỗng.")
+        return []
+
     logger.info("Đang tính TF-IDF vector cho user profile, query length=%s", len(query_text))
     return vectorize_tfidf_text(query_text)
 
@@ -292,7 +296,15 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
         profile_vector = process_user_profile_tfidf_task(profile)
         vector_size = len(profile_vector)
         if vector_size == 0:
-            raise ValueError(f"TF-IDF worker returned an empty vector for user_id={user_id}")
+            logger.info("Không cập nhật TF-IDF vector user_id=%s vì profile rỗng.", user_id)
+            return {
+                "user_id": user_id,
+                "employee_id": employee_id,
+                "vector_tfidf_updated": False,
+                "vector_size": 0,
+                "status": "skipped",
+                "reason": "empty_profile",
+            }
 
         upsert_user_profile_tfidf_embedding(
             employee_id=employee_id,

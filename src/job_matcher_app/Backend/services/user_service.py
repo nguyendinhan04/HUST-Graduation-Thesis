@@ -1602,6 +1602,235 @@ class UserService:
         }
 
     @staticmethod
+    async def add_employee_skill_async(
+        db: AsyncSession,
+        user_id: int,
+        embedding_service: Any,
+        skill_name: str,
+    ) -> dict:
+        """Add a standalone skill to an employee."""
+        if embedding_service is None:
+            raise RuntimeError("embedding service is not ready")
+
+        user = await db.get(User, user_id)
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
+
+        employee_result = await db.execute(
+            select(Employee).where(Employee.user_id == user_id)
+        )
+        employee = employee_result.scalars().first()
+        if not employee:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
+
+        normalized_skill_names = UserService._normalize_skill_names([skill_name])
+        skill, _ = await UserService._get_or_create_skills(db, normalized_skill_names)
+        skill = skill[0]
+
+        education_skill_result = await db.execute(
+            select(EducationSkill.skill_id)
+            .join(Education, EducationSkill.education_id == Education.id)
+            .where(
+                Education.employee_id == employee.id,
+                EducationSkill.skill_id == skill.id,
+            )
+        )
+        if education_skill_result.scalar_one_or_none() is not None:
+            raise ValueError(
+                f"Skill {skill.name} already belongs to an education record"
+            )
+
+        experience_skill_result = await db.execute(
+            select(ExperienceSkill.skill_id)
+            .join(Experience, ExperienceSkill.experience_id == Experience.id)
+            .where(
+                Experience.employee_id == employee.id,
+                ExperienceSkill.skill_id == skill.id,
+            )
+        )
+        if experience_skill_result.scalar_one_or_none() is not None:
+            raise ValueError(
+                f"Skill {skill.name} already belongs to an experience record"
+            )
+
+        existing_skill_result = await db.execute(
+            select(EmployeeSkill).where(
+                EmployeeSkill.employee_id == employee.id,
+                EmployeeSkill.skill_id == skill.id,
+            )
+        )
+        if existing_skill_result.scalars().first():
+            raise ValueError(f"Employee already has standalone skill {skill.id}")
+
+        try:
+            db.add(EmployeeSkill(employee_id=employee.id, skill_id=skill.id))
+            user.updated_at = datetime.utcnow()
+            await db.flush()
+            employee_id = employee.id
+            skill_id = skill.id
+            response_skill_name = skill.name
+
+            if skill.embedding_status != "done":
+                await embedding_service.embed_skills(
+                    db,
+                    [skill.name],
+                )
+
+            await db.commit()
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to add skill to employee: {exc}") from exc
+        except Exception:
+            await db.rollback()
+            raise
+
+        return {
+            "employee_id": employee_id,
+            "skill_id": skill_id,
+            "skill_name": response_skill_name,
+        }
+
+    @staticmethod
+    async def remove_employee_skill_async(
+        db: AsyncSession,
+        user_id: int,
+        skill_id: int,
+    ) -> dict:
+        """Remove a standalone skill from an employee."""
+        user = await db.get(User, user_id)
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
+
+        employee_result = await db.execute(
+            select(Employee).where(Employee.user_id == user_id)
+        )
+        employee = employee_result.scalars().first()
+        if not employee:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
+
+        employee_skill_result = await db.execute(
+            select(EmployeeSkill).where(
+                EmployeeSkill.employee_id == employee.id,
+                EmployeeSkill.skill_id == skill_id,
+            )
+        )
+        employee_skill = employee_skill_result.scalars().first()
+        if not employee_skill:
+            raise ValueError(f"Employee standalone skill {skill_id} not found")
+
+        try:
+            employee_id = employee.id
+            await db.delete(employee_skill)
+            user.updated_at = datetime.utcnow()
+            await db.commit()
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to remove skill from employee: {exc}") from exc
+        except Exception:
+            await db.rollback()
+            raise
+
+        return {
+            "employee_id": employee_id,
+            "skill_id": skill_id,
+            "message": "Skill removed successfully",
+        }
+
+    @staticmethod
+    async def list_user_skills_async(db: AsyncSession, user_id: int) -> list:
+        """List all standalone skills for a user."""
+        employee = await UserService._fetch_employee_with_skills(db, user_id)
+        if not employee:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
+
+        return [
+            {"skill_id": employee_skill.skill_id, "skill_name": employee_skill.skill.name}
+            for employee_skill in employee.employee_skills
+        ]
+
+    @staticmethod
+    async def get_full_user_profile_async(db: AsyncSession, user_id: int) -> dict:
+        """Retrieve a full employee profile for API display."""
+        result = await db.execute(
+            select(User)
+            .options(
+                selectinload(User.employee)
+                .selectinload(Employee.employee_skills)
+                .selectinload(EmployeeSkill.skill),
+                selectinload(User.employee)
+                .selectinload(Employee.educations)
+                .selectinload(Education.education_skills)
+                .selectinload(EducationSkill.skill),
+                selectinload(User.employee)
+                .selectinload(Employee.experiences)
+                .selectinload(Experience.experience_skills)
+                .selectinload(ExperienceSkill.skill),
+            )
+            .where(User.id == user_id)
+        )
+        user = result.scalars().first()
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
+
+        employee = user.employee
+        if not employee:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
+
+        educations = [
+            UserService._serialize_education(
+                education,
+                [
+                    education_skill.skill
+                    for education_skill in education.education_skills
+                ],
+            )
+            for education in employee.educations
+        ]
+        experiences = [
+            UserService._serialize_experience(
+                experience,
+                [
+                    experience_skill.skill
+                    for experience_skill in experience.experience_skills
+                ],
+            )
+            for experience in employee.experiences
+        ]
+        skills = [
+            {
+                "skill_id": employee_skill.skill_id,
+                "skill_name": employee_skill.skill.name,
+            }
+            for employee_skill in employee.employee_skills
+        ]
+
+        return {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "phone": user.phone,
+            "role": user.role,
+            "avatar_url": user.avatar_url,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+            "employee_profile": {
+                "employee_id": employee.id,
+                "headline": employee.headline,
+                "summary": employee.summary,
+                "years_of_experience": employee.years_of_experience,
+                "current_location": employee.current_location,
+                "created_at": (
+                    employee.created_at.isoformat()
+                    if employee.created_at
+                    else None
+                ),
+            },
+            "experiences": experiences,
+            "educations": educations,
+            "skills": skills,
+        }
+
+    @staticmethod
     def add_employee_skill(db: Session, user_id: int, skill_id: int) -> dict:
         """Add a skill to an employee."""
         employee = db.query(Employee).filter(Employee.user_id == user_id).first()
