@@ -734,6 +734,59 @@ class JobRecommendationService:
             "status": "queued",
         }
 
+    async def search_best_jobs_in_db_by_tfidf(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        limit: int = 100,
+    ) -> list[int]:
+        """
+        Search top jobs by comparing stored user TF-IDF vector with job TF-IDF vectors.
+        """
+        if limit <= 0:
+            raise ValueError("limit must be greater than 0")
+
+        employee_result = await db.execute(
+            select(Employee.id).where(Employee.user_id == user_id)
+        )
+        employee_id = employee_result.scalar_one_or_none()
+        if employee_id is None:
+            raise ValueError(f"Employee with user_id {user_id} not found")
+
+        profile_vector_result = await db.execute(
+            text(
+                """
+                SELECT vector_tfidf::text AS vector_tfidf
+                FROM user_profile_embedding
+                WHERE employee_id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+        profile_vector = profile_vector_result.scalar_one_or_none()
+        if profile_vector is None:
+            raise ValueError("User TF-IDF vector is not ready yet")
+
+        rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM job_tfidf_embedding
+                    WHERE embedding IS NOT NULL
+                    ORDER BY embedding <=> CAST(:vector_tfidf AS vector)
+                    LIMIT :limit
+                    """
+                ),
+                {
+                    "vector_tfidf": profile_vector,
+                    "limit": limit,
+                },
+            )
+        ).fetchall()
+
+        return [row.id for row in rows]
+
     # async def upsert_user_profile_embedding(
     #     self,
     #     db: AsyncSession,
@@ -779,7 +832,14 @@ class JobRecommendationService:
     #         },
     #     )
 
-    async def search_best_jobs_in_db_by_bert(self, db: AsyncSession, profile: dict, model=None, threshold: float = get_settings().DEFAULT_THRESHOLD, limit: int = 100):
+    async def search_best_jobs_in_db_by_bert(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        threshold: float = get_settings().DEFAULT_THRESHOLD,
+        limit: int = 100,
+    ):
+        profile = await self.get_user_profile(db, user_id)
         profile_vectors = await self.process_user_profile_multimodal(profile)
         W_EXP = 0.7
         W_EDU = 0.3
@@ -813,48 +873,333 @@ class JobRecommendationService:
             if record.similarity is not None and record.similarity >= threshold
         ]
 
-            
-
-    # async def recommend_jobs_2_phase(
-    #     self, db: AsyncSession, user_id: int, top_k: int = 100
-    # ):
-    #     """
-    #     Recommend top-k jobs for a user based on their skills and profile.
-    #     """
-    #     user_profile = await self.get_user_profile(db, user_id)
+    @staticmethod
+    def calculate_rrf(*rankings, k=60):
+        """
+        Tính RRF Score cho danh sách các bảng xếp hạng (rankings).
+        - rankings: List các Dataframe hoặc Series chứa ID công việc đã được rank từ cao xuống thấp.
+        - k: Hằng số smoothing (thường dùng chuẩn là 60).
+        """
+        rrf_scores = {}
         
-    #     if not user_profile["skills"]:
-    #         raise ValueError(f"User {user_id} has no skills in profile")
+        for ranking in rankings:
+            # Lặp qua từng kết quả của 1 model
+            for rank, job_id in enumerate(ranking):
+                if job_id not in rrf_scores:
+                    rrf_scores[job_id] = 0.0
+                
+                # Công thức RRF: 1 / (k + rank) -> rank ở đây tính từ 1
+                rrf_scores[job_id] += 1.0 / (k + rank + 1)
 
-    #     skill_ids = [s["skill_id"] for s in user_profile["skills"] if s.get("skill_id")]
-    #     result = await db.execute(
-    #         text(
-    #             """
-    #             SELECT s.id, s.name
-    #             FROM skills s
-    #             LEFT JOIN skill_embeddings se ON se.skill_id = s.id
-    #             WHERE s.id = ANY(:skill_ids)
-    #               AND (s.embedding_status != 'done' OR se.embedding IS NULL)
-    #             """
-    #         ),
-    #         {"skill_ids": skill_ids},
-    #     )
-    #     pending_rows = result.all()
-    #     if pending_rows:
-    #         pending_names = ", ".join(sorted({row.name for row in pending_rows}))
-    #         raise ValueError(
-    #             "Skill embeddings are not ready yet for: " + pending_names
-    #         )
+        # Sắp xếp công việc theo điểm RRF từ cao xuống thấp
+        sorted_jobs = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+        return sorted_jobs
 
-    #     skill_similiarity_results = await self.search_best_jobs_in_db_by_skill_embeddings(
-    #         db=db,
-    #         user_skills=[s["skill_name"] for s in user_profile["skills"]],
-    #         limit=top_k,
-    #     )
+    async def rerank_job_candidates(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        candidate_ids: list[int],
+        rrf_score_map: dict[int, float],
+        top_k: int,
+    ) -> list[int]:
+        if not candidate_ids:
+            return []
 
-    #     return skill_similiarity_results
+        user_profile = await self.get_user_profile(db, user_id)
+        user_skills = [
+            skill["skill_name"]
+            for skill in user_profile.get("skills", [])
+            if skill.get("skill_name")
+        ]
+        current_location = self.clean_text(user_profile.get("current_location")) or None
+
+        skill_scores: dict[int, dict[str, float]] = {}
+        if user_skills:
+            embedding_map = await self.get_skill_embeddings(db, user_skills)
+            values_placeholders = ", ".join(
+                f"(:name_{i}, CAST(:emb_{i} AS vector))"
+                for i in range(len(user_skills))
+            )
+            params = {
+                "candidate_ids": candidate_ids,
+                "threshold": get_settings().DEFAULT_THRESHOLD,
+            }
+            for i, skill in enumerate(user_skills):
+                params[f"name_{i}"] = skill
+                params[f"emb_{i}"] = embedding_map[skill]
+
+            skill_query = text(f"""
+                WITH user_skills(name, embedding) AS (
+                    SELECT * FROM (VALUES {values_placeholders}) AS v(name, embedding)
+                ),
+                jd_skill_sims AS (
+                    SELECT
+                        js.job_id,
+                        s.name AS jd_skill,
+                        MAX(1 - (se.embedding <=> u.embedding)) AS best_sim
+                    FROM job_skills js
+                    JOIN skills s ON js.skill_id = s.id
+                    JOIN skill_embeddings se ON se.skill_id = s.id
+                    CROSS JOIN user_skills u
+                    WHERE js.job_id = ANY(:candidate_ids)
+                    GROUP BY js.job_id, s.name
+                )
+                SELECT
+                    job_id,
+                    COUNT(*) AS total_skills,
+                    SUM(CASE WHEN best_sim >= :threshold THEN 1 ELSE 0 END) AS covered_skills,
+                    AVG(best_sim) AS avg_sim
+                FROM jd_skill_sims
+                GROUP BY job_id
+            """)
+            rows = (await db.execute(skill_query, params)).fetchall()
+            for row in rows:
+                total_skills = int(row.total_skills or 0)
+                covered_skills = int(row.covered_skills or 0)
+                skill_coverage = (
+                    covered_skills / total_skills
+                    if total_skills > 0
+                    else 0.0
+                )
+                avg_sim = float(row.avg_sim or 0.0)
+                skill_scores[row.job_id] = {
+                    "skill_score": 0.7 * skill_coverage + 0.3 * avg_sim,
+                }
+
+        job_rows = (
+            await db.execute(
+                text(
+                    """
+                    WITH candidate_jobs AS (
+                        SELECT
+                            id,
+                            address,
+                            COALESCE(salary_max, salary_min, 0) AS salary_value
+                        FROM jobs
+                        WHERE id = ANY(:candidate_ids)
+                    ),
+                    salary_stats AS (
+                        SELECT MAX(salary_value) AS max_salary
+                        FROM candidate_jobs
+                    )
+                    SELECT
+                        cj.id AS job_id,
+                        CASE
+                            WHEN :current_location IS NOT NULL
+                                 AND cj.address ILIKE ('%' || :current_location || '%')
+                            THEN 1.0
+                            ELSE 0.0
+                        END AS location_score,
+                        CASE
+                            WHEN ss.max_salary IS NOT NULL AND ss.max_salary > 0
+                            THEN cj.salary_value / ss.max_salary
+                            ELSE 0.0
+                        END AS salary_score
+                    FROM candidate_jobs cj
+                    CROSS JOIN salary_stats ss
+                    """
+                ),
+                {
+                    "candidate_ids": candidate_ids,
+                    "current_location": current_location,
+                },
+            )
+        ).fetchall()
+
+        max_rrf = max(rrf_score_map.values()) if rrf_score_map else 0.0
+        reranked = []
+        for row in job_rows:
+            job_id = row.job_id
+            normalized_rrf = (
+                rrf_score_map.get(job_id, 0.0) / max_rrf
+                if max_rrf > 0
+                else 0.0
+            )
+            skill_score = skill_scores.get(job_id, {}).get("skill_score", 0.0)
+            location_score = float(row.location_score or 0.0)
+            salary_score = float(row.salary_score or 0.0)
+            final_score = (
+                0.20 * normalized_rrf
+                + 0.55 * skill_score
+                + 0.15 * location_score
+                + 0.10 * salary_score
+            )
+            reranked.append((job_id, final_score))
+
+        reranked.sort(key=lambda item: item[1], reverse=True)
+        return [job_id for job_id, _ in reranked[:top_k]]
+
+    async def get_recommended_job_details(
+        self,
+        db: AsyncSession,
+        job_ids: list[int],
+    ) -> list[dict]:
+        if not job_ids:
+            return []
+
+        rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT
+                        id,
+                        title,
+                        salary_min,
+                        salary_max,
+                        salary_currency,
+                        address,
+                        location_type
+                    FROM jobs
+                    WHERE id = ANY(:job_ids)
+                    """
+                ),
+                {"job_ids": job_ids},
+            )
+        ).fetchall()
+        jobs_by_id = {row.id: row for row in rows}
+
+        result = []
+        for job_id in job_ids:
+            job = jobs_by_id.get(job_id)
+            if job is None:
+                continue
+            result.append(
+                {
+                    "id": job.id,
+                    "title": job.title,
+                    "salary_min": str(job.salary_min) if job.salary_min is not None else None,
+                    "salary_max": str(job.salary_max) if job.salary_max is not None else None,
+                    "salary_currency": job.salary_currency,
+                    "location": job.address,
+                    "location_type": job.location_type,
+                }
+            )
+
+        return result
+
+    async def get_job_detail(
+        self,
+        db: AsyncSession,
+        job_id: int,
+    ) -> dict:
+        job_row = (
+            await db.execute(
+                text(
+                    """
+                    SELECT
+                        j.id,
+                        j.title,
+                        j.description,
+                        j.requirement,
+                        j.benefit,
+                        j.salary_min,
+                        j.salary_max,
+                        j.salary_currency,
+                        j.experience_required,
+                        j.employment_type,
+                        j.working_time,
+                        j.location_type,
+                        j.address,
+                        j.deadline,
+                        j.status,
+                        j.created_at,
+                        c.id AS company_id,
+                        c.name AS company_name,
+                        c.logo_url AS company_logo_url,
+                        c.industry AS company_industry,
+                        c.location AS company_location
+                    FROM jobs j
+                    JOIN companies c ON j.company_id = c.id
+                    WHERE j.id = :job_id
+                    """
+                ),
+                {"job_id": job_id},
+            )
+        ).mappings().first()
+        if job_row is None:
+            raise ValueError(f"Job with id {job_id} not found")
+
+        skill_rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT
+                        s.id,
+                        s.name,
+                        js.is_required
+                    FROM job_skills js
+                    JOIN skills s ON js.skill_id = s.id
+                    WHERE js.job_id = :job_id
+                    ORDER BY s.name
+                    """
+                ),
+                {"job_id": job_id},
+            )
+        ).mappings().all()
+
+        return {
+            "id": job_row["id"],
+            "title": job_row["title"],
+            "description": job_row["description"],
+            "requirement": job_row["requirement"],
+            "benefit": job_row["benefit"],
+            "salary_min": str(job_row["salary_min"]) if job_row["salary_min"] is not None else None,
+            "salary_max": str(job_row["salary_max"]) if job_row["salary_max"] is not None else None,
+            "salary_currency": job_row["salary_currency"],
+            "experience_required": job_row["experience_required"],
+            "employment_type": job_row["employment_type"],
+            "working_time": job_row["working_time"],
+            "location_type": job_row["location_type"],
+            "location": job_row["address"],
+            "deadline": job_row["deadline"].isoformat() if job_row["deadline"] else None,
+            "status": job_row["status"],
+            "created_at": job_row["created_at"].isoformat() if job_row["created_at"] else None,
+            "company": {
+                "id": job_row["company_id"],
+                "name": job_row["company_name"],
+                "logo_url": job_row["company_logo_url"],
+                "industry": job_row["company_industry"],
+                "location": job_row["company_location"],
+            },
+            "skills": [
+                {
+                    "skill_id": row["id"],
+                    "skill_name": row["name"],
+                    "is_required": row["is_required"],
+                }
+                for row in skill_rows
+            ],
+        }
 
 
+    async def recommend_jobs_2_phase(
+        self, db: AsyncSession, user_id: int, top_k: int = 20
+    ):
+        """
+        Recommend top-k jobs for a user based on their skills and profile.
+        """
 
-        
+        #Phase 1: Sử dụng skill embeddings để nhanh chóng lọc ra top 5x job candidates có độ tương đồng skill cao nhất.
+        top_job_tfidf = await self.search_best_jobs_in_db_by_tfidf(db, user_id, limit=top_k*5)
+
+        top_job_bert = await self.search_best_jobs_in_db_by_bert(db, user_id, limit=top_k*5)
+
+        # Kết hợp kết quả từ cả 2 phương pháp bằng RRF
+        combined_rankings = self.calculate_rrf(top_job_tfidf, top_job_bert, k=top_k*5)
+
+        if not combined_rankings:
+            return []
+
+        candidate_ids = [job_id for job_id, _ in combined_rankings]
+        rrf_score_map = {job_id: score for job_id, score in combined_rankings}
+
+        # Phase 2: rerank candidate set theo skill overlap, location và salary heuristic.
+        return await self.rerank_job_candidates(
+            db=db,
+            user_id=user_id,
+            candidate_ids=candidate_ids,
+            rrf_score_map=rrf_score_map,
+            top_k=top_k,
+        )
 
