@@ -772,7 +772,7 @@ class JobRecommendationService:
                 text(
                     """
                     SELECT id
-                    FROM job_tfidf_embedding
+                    FROM job_embeddings_tfidf
                     WHERE embedding IS NOT NULL
                     ORDER BY embedding <=> CAST(:vector_tfidf AS vector)
                     LIMIT :limit
