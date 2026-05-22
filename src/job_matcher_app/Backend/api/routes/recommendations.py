@@ -51,3 +51,51 @@ async def get_recommendations(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/users/{user_id}/jobs/tfidf")
+async def get_tfidf_recommendation_ids(
+    user_id: int = Path(..., ge=1),
+    top_k: int = Query(20, ge=1),
+    db: AsyncSession = Depends(get_async_db),
+) -> list[int]:
+    service = JobRecommendationService()
+
+    try:
+        return await service.search_best_jobs_in_db_by_tfidf(
+            db=db,
+            user_id=user_id,
+            limit=top_k,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/users/{user_id}/jobs/bert")
+async def get_bert_recommendation_ids(
+    user_id: int = Path(..., ge=1),
+    top_k: int = Query(20, ge=1),
+    db: AsyncSession = Depends(get_async_db),
+) -> list[int]:
+    service = JobRecommendationService()
+
+    try:
+        return await service.search_best_jobs_in_db_by_bert(
+            db=db,
+            user_id=user_id,
+            limit=top_k,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
