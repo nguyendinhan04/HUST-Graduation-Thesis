@@ -942,7 +942,7 @@ class JobRecommendationService:
                     JOIN skills s ON js.skill_id = s.id
                     JOIN skill_embeddings se ON se.skill_id = s.id
                     CROSS JOIN user_skills u
-                    WHERE js.job_id = ANY(:candidate_ids)
+                    WHERE js.job_id = ANY(CAST(:candidate_ids AS INTEGER[]))
                     GROUP BY js.job_id, s.name
                 )
                 SELECT
@@ -977,7 +977,7 @@ class JobRecommendationService:
                             address,
                             COALESCE(salary_max, salary_min, 0) AS salary_value
                         FROM jobs
-                        WHERE id = ANY(:candidate_ids)
+                        WHERE id = ANY(CAST(:candidate_ids AS INTEGER[]))
                     ),
                     salary_stats AS (
                         SELECT MAX(salary_value) AS max_salary
@@ -986,8 +986,8 @@ class JobRecommendationService:
                     SELECT
                         cj.id AS job_id,
                         CASE
-                            WHEN :current_location IS NOT NULL
-                                 AND cj.address ILIKE ('%' || :current_location || '%')
+                            WHEN CAST(:current_location AS TEXT) IS NOT NULL
+                                 AND cj.address ILIKE ('%' || CAST(:current_location AS TEXT) || '%')
                             THEN 1.0
                             ELSE 0.0
                         END AS location_score,
