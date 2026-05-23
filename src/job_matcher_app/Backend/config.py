@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "alvperez/skill-sim-model"
     # Matching config
     DEFAULT_TOP_K: int = 5
-    DEFAULT_THRESHOLD: float = 0.65   # cosine similarity threshold
+    DEFAULT_THRESHOLD: float = 0.3   # cosine similarity threshold
 
     
     pg_host: str = Field("192.168.100.221", env="PG_HOST")
