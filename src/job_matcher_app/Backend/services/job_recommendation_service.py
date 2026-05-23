@@ -746,6 +746,10 @@ class JobRecommendationService:
         if limit <= 0:
             raise ValueError("limit must be greater than 0")
 
+        lock_key = f"user:{user_id}:tfidf_embedding_lock"
+        if self.redis_conn.exists(lock_key):
+            raise ValueError("Profile TF-IDF vector is currently being updated. Please try again later.")
+
         employee_result = await db.execute(
             select(Employee.id).where(Employee.user_id == user_id)
         )
@@ -839,16 +843,52 @@ class JobRecommendationService:
         threshold: float = get_settings().DEFAULT_THRESHOLD,
         limit: int = 100,
     ):
-        profile = await self.get_user_profile(db, user_id)
-        profile_vectors = await self.process_user_profile_multimodal(profile)
+        lock_edu = f"user:{user_id}:education_embedding_lock"
+        lock_exp = f"user:{user_id}:experience_embedding_lock"
+        if self.redis_conn.exists(lock_edu) or self.redis_conn.exists(lock_exp):
+            raise ValueError("Profile BERT vectors are currently being updated. Please try again later.")
+
+        employee_result = await db.execute(
+            select(Employee.id).where(Employee.user_id == user_id)
+        )
+        employee_id = employee_result.scalar_one_or_none()
+        if employee_id is None:
+            raise ValueError(f"Employee with user_id {user_id} not found")
+
+        vectors_result = await db.execute(
+            text(
+                """
+                SELECT 
+                    experience_vec::text AS experience_vec,
+                    education_vec::text AS education_vec
+                FROM user_profile_embedding
+                WHERE employee_id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+        row = vectors_result.mappings().first()
+
+        if not row:
+            raise ValueError("User BERT vectors are not ready yet")
+
+        def _parse_pgvector(val: str | None) -> np.ndarray:
+            if not val:
+                return np.zeros(384)
+            return np.asarray([float(v) for v in val.strip("[]").split(",") if v.strip()], dtype=float)
+
+        experience_vec = _parse_pgvector(row.get("experience_vec"))
+        education_vec = _parse_pgvector(row.get("education_vec"))
+
         W_EXP = 0.7
         W_EDU = 0.3
-        experience_vec = np.asarray(profile_vectors["experience_vec_384"], dtype=float)
-        education_vec = np.asarray(profile_vectors["education_vec_384"], dtype=float)
         combined_query_384 = (W_EXP * experience_vec + W_EDU * education_vec) / (W_EXP + W_EDU)
 
         norm = np.linalg.norm(combined_query_384)
-        if norm > 0: combined_query_384 = combined_query_384 / norm
+        if norm > 0: 
+            combined_query_384 = combined_query_384 / norm
+        else:
+            return []
 
         query_vector = self._to_pgvector_literal(combined_query_384)
         search_query = text("""
