@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     minio_bucket: str = Field("models", env="MINIO_BUCKET")
     minio_secure: bool = Field(False, env="MINIO_SECURE")
 
+    # JWT Authentication
+    secret_key: str = Field("09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7", env="SECRET_KEY")
+    algorithm: str = Field("HS256", env="ALGORITHM")
+    access_token_expire_minutes: int = Field(1440, env="ACCESS_TOKEN_EXPIRE_MINUTES") # 24 hours
+
+
 
 
     @property

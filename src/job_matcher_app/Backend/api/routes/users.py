@@ -5,11 +5,23 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.dependencies import get_current_user
 from db import get_async_db
+from models import User
 from services import JobRecommendationService, UserService
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+@router.get("/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role,
+        "avatar_url": current_user.avatar_url
+    }
 
 
 class CreateEmployeeUserRequest(BaseModel):
@@ -119,11 +131,12 @@ async def create_employee_user(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.get("/{user_id}/profile")
+@router.get("/me/profile")
 async def get_full_user_profile(
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     try:
         return await UserService.get_full_user_profile_async(
             db=db,
@@ -137,12 +150,13 @@ async def get_full_user_profile(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.post("/{user_id}/educations", status_code=201)
+@router.post("/me/educations", status_code=201)
 async def create_user_education(
     payload: CreateUserEducationRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     data = _payload_data(payload)
     embedding_service = JobRecommendationService()
 
@@ -161,12 +175,13 @@ async def create_user_education(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.post("/{user_id}/educations/timing", status_code=201)
+@router.post("/me/educations/timing", status_code=201)
 async def create_user_education_with_timing(
     payload: CreateUserEducationRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     data = _payload_data(payload)
     embedding_service = JobRecommendationService()
 
@@ -185,13 +200,14 @@ async def create_user_education_with_timing(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.patch("/{user_id}/educations/{education_id}")
+@router.patch("/me/educations/{education_id}")
 async def update_user_education(
     payload: UpdateUserEducationRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     education_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     data = _payload_data(payload)
     skills_provided = "skills" in _fields_set(payload)
     skills = data.pop("skills", None)
@@ -215,12 +231,13 @@ async def update_user_education(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.delete("/{user_id}/educations/{education_id}")
+@router.delete("/me/educations/{education_id}")
 async def delete_user_education(
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     education_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     embedding_service = JobRecommendationService()
 
     try:
@@ -238,12 +255,13 @@ async def delete_user_education(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.post("/{user_id}/experiences", status_code=201)
+@router.post("/me/experiences", status_code=201)
 async def create_user_experience(
     payload: CreateUserExperienceRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     data = _payload_data(payload)
     embedding_service = JobRecommendationService()
 
@@ -262,13 +280,14 @@ async def create_user_experience(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.patch("/{user_id}/experiences/{experience_id}")
+@router.patch("/me/experiences/{experience_id}")
 async def update_user_experience(
     payload: UpdateUserExperienceRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     experience_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     data = _payload_data(payload)
     skills_provided = "skills" in _fields_set(payload)
     skills = data.pop("skills", None)
@@ -292,12 +311,13 @@ async def update_user_experience(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.delete("/{user_id}/experiences/{experience_id}")
+@router.delete("/me/experiences/{experience_id}")
 async def delete_user_experience(
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     experience_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     embedding_service = JobRecommendationService()
 
     try:
@@ -315,12 +335,13 @@ async def delete_user_experience(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.post("/{user_id}/skills", status_code=201)
+@router.post("/me/skills", status_code=201)
 async def add_employee_skill(
     payload: EmployeeSkillRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     embedding_service = JobRecommendationService()
 
     try:
@@ -340,12 +361,13 @@ async def add_employee_skill(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.delete("/{user_id}/skills/{skill_id}")
+@router.delete("/me/skills/{skill_id}")
 async def remove_employee_skill(
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     skill_id: int = Path(..., ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     try:
         return await UserService.remove_employee_skill_async(
             db=db,
@@ -360,12 +382,13 @@ async def remove_employee_skill(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.patch("/{user_id}/profile")
+@router.patch("/me/profile")
 async def update_user_profile(
     payload: UserProfileUpdateRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     data = _payload_data(payload)
     skills_provided = "skills" in _fields_set(payload)
     skills = data.pop("skills", None)
@@ -391,12 +414,13 @@ async def update_user_profile(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.patch("/{user_id}/tfidf-vector")
+@router.patch("/me/tfidf-vector")
 async def update_user_profile_tfidf_vector(
     payload: UserProfileTfidfVectorRequest,
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     data = _payload_data(payload)
     embedding_service = JobRecommendationService()
 

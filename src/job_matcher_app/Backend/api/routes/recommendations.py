@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.dependencies import get_current_user
+from models import User
 from db import get_async_db
 from services import JobRecommendationService
 
@@ -28,12 +30,13 @@ async def demo_recommendation(payload: RecommendRequest):
 
 
 
-@router.get("/users/{user_id}/jobs")
+@router.get("/me/jobs")
 async def get_recommendations(
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     top_k: int = Query(20, ge=1),
     db: AsyncSession = Depends(get_async_db),
 ):
+    user_id = current_user.id
     service = JobRecommendationService()
 
     try:
@@ -53,12 +56,13 @@ async def get_recommendations(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.get("/users/{user_id}/jobs/tfidf")
+@router.get("/me/jobs/tfidf")
 async def get_tfidf_recommendation_ids(
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     top_k: int = Query(20, ge=1),
     db: AsyncSession = Depends(get_async_db),
 ) -> list[int]:
+    user_id = current_user.id
     service = JobRecommendationService()
 
     try:
@@ -77,12 +81,13 @@ async def get_tfidf_recommendation_ids(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.get("/users/{user_id}/jobs/bert")
+@router.get("/me/jobs/bert")
 async def get_bert_recommendation_ids(
-    user_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     top_k: int = Query(20, ge=1),
     db: AsyncSession = Depends(get_async_db),
 ) -> list[int]:
+    user_id = current_user.id
     service = JobRecommendationService()
 
     try:
