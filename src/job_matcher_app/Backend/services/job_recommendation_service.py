@@ -1393,8 +1393,12 @@ class JobRecommendationService:
         db: AsyncSession,
         job_id: int,
         user_id: int,
-        threshold: float = get_settings().DEFAULT_THRESHOLD,
+        threshold: float = 0.6,
+        related_threshold: float = 0.35,
     ) -> dict:
+        if related_threshold > threshold:
+            raise ValueError("related_threshold must be less than or equal to threshold")
+
         job_exists = (
             await db.execute(
                 text("SELECT 1 FROM jobs WHERE id = :job_id"),
@@ -1437,6 +1441,7 @@ class JobRecommendationService:
         similarity_matrix = self._cosine_similarity_matrix(job_vectors, profile_vectors)
 
         covered_skills = []
+        related_skills = []
         missing_skills = []
         similarities = []
 
@@ -1458,14 +1463,25 @@ class JobRecommendationService:
             if best_similarity >= threshold:
                 item.update(
                     {
+                        "match_level": "covered",
                         "matched_profile_skill_id": profile_skill["skill_id"],
                         "matched_profile_skill_name": profile_skill["skill_name"],
                     }
                 )
                 covered_skills.append(item)
+            elif best_similarity >= related_threshold:
+                item.update(
+                    {
+                        "match_level": "related",
+                        "related_profile_skill_id": profile_skill["skill_id"],
+                        "related_profile_skill_name": profile_skill["skill_name"],
+                    }
+                )
+                related_skills.append(item)
             else:
                 item.update(
                     {
+                        "match_level": "missing",
                         "closest_profile_skill_id": profile_skill["skill_id"],
                         "closest_profile_skill_name": profile_skill["skill_name"],
                     }
@@ -1473,6 +1489,7 @@ class JobRecommendationService:
                 missing_skills.append(item)
 
         covered_skills.sort(key=lambda skill: skill["similarity"], reverse=True)
+        related_skills.sort(key=lambda skill: skill["similarity"], reverse=True)
         missing_skills.sort(key=lambda skill: skill["similarity"], reverse=True)
 
         covered_count = len(covered_skills)
@@ -1484,10 +1501,13 @@ class JobRecommendationService:
             "job_id": job_id,
             "user_id": user_id,
             "threshold": threshold,
+            "covered_threshold": threshold,
+            "related_threshold": related_threshold,
             "score": {
                 "coverage": coverage,
                 "coverage_display": f"{coverage * 100:.1f}%",
                 "covered_skill_count": covered_count,
+                "related_skill_count": len(related_skills),
                 "missing_skill_count": len(missing_skills),
                 "total_job_skill_count": total_count,
                 "avg_similarity": avg_similarity,
@@ -1495,6 +1515,7 @@ class JobRecommendationService:
             "job_skills": job_skills,
             "profile_skills": profile_skills,
             "covered_skills": covered_skills,
+            "related_skills": related_skills,
             "missing_skills": missing_skills,
         }
 

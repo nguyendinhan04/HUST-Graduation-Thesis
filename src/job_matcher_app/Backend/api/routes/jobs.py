@@ -15,7 +15,8 @@ settings = get_settings()
 @router.get("/{job_id}/skill-gap")
 async def get_job_skill_gap(
     job_id: int = Path(..., ge=1),
-    threshold: float = Query(settings.DEFAULT_THRESHOLD, ge=0.0, le=1.0),
+    threshold: float = Query(0.6, ge=0.0, le=1.0),
+    related_threshold: float = Query(0.35, ge=0.0, le=1.0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
@@ -27,6 +28,7 @@ async def get_job_skill_gap(
             job_id=job_id,
             user_id=current_user.id,
             threshold=threshold,
+            related_threshold=related_threshold,
         )
     except ValueError as exc:
         message = str(exc)
