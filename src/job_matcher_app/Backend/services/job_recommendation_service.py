@@ -1230,6 +1230,24 @@ class JobRecommendationService:
             return None
         return [float(item) for item in value.strip("[]").split(",") if item.strip()]
 
+    @staticmethod
+    def _normalize_vector(vector) -> list[float]:
+        normalized = np.asarray(vector, dtype=float).reshape(-1).tolist()
+        if not normalized:
+            raise ValueError("Skill embedding vector is empty")
+        return normalized
+
+    async def embed_skill_texts(self, skill_names: list[str]) -> list[list[float]]:
+        if not skill_names:
+            return []
+
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.embed_skills_task",
+            skill_names,
+            job_timeout="10m",
+        )
+        return await self._wait_for_job(job, "Skill Embedding Job in RQ worker failed")
+
     async def _get_skill_vectors(
         self,
         db: AsyncSession,
@@ -1268,14 +1286,14 @@ class JobRecommendationService:
                     }
                 )
             else:
-                vectors[row["skill_id"]] = embedding
+                vectors[row["skill_id"]] = self._normalize_vector(embedding)
 
         if missing:
-            embeddings = await self.embed_bert_texts(
+            embeddings = await self.embed_skill_texts(
                 [skill["skill_name"] for skill in missing]
             )
             for skill, embedding in zip(missing, embeddings):
-                vectors[skill["skill_id"]] = embedding
+                vectors[skill["skill_id"]] = self._normalize_vector(embedding)
 
         return vectors
 
@@ -1284,6 +1302,19 @@ class JobRecommendationService:
         job_vectors: list[list[float]],
         profile_vectors: list[list[float]],
     ) -> np.ndarray:
+        dimensions = {
+            len(vector)
+            for vector in [*job_vectors, *profile_vectors]
+            if vector
+        }
+        if not dimensions:
+            raise ValueError("No skill embedding vectors are available")
+        if len(dimensions) != 1:
+            raise ValueError(
+                "Skill embedding dimensions are inconsistent: "
+                + ", ".join(str(dimension) for dimension in sorted(dimensions))
+            )
+
         job_matrix = np.asarray(job_vectors, dtype=float)
         profile_matrix = np.asarray(profile_vectors, dtype=float)
 
