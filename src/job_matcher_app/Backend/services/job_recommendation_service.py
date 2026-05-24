@@ -22,6 +22,12 @@ from models import (
 )
 
 
+class RecommendationLockedError(RuntimeError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 class JobRecommendationService:
     def __init__(self):
         # Redis & RQ setup để push task embedding sang Worker
@@ -748,7 +754,10 @@ class JobRecommendationService:
 
         lock_key = f"user:{user_id}:tfidf_embedding_lock"
         if self.redis_conn.exists(lock_key):
-            raise ValueError("Profile TF-IDF vector is currently being updated. Please try again later.")
+            raise RecommendationLockedError(
+                code="PROFILE_TFIDF_LOCKED",
+                message="Profile TF-IDF vector is currently being updated. Please try again later.",
+            )
 
         employee_result = await db.execute(
             select(Employee.id).where(Employee.user_id == user_id)
@@ -846,7 +855,10 @@ class JobRecommendationService:
         lock_edu = f"user:{user_id}:education_embedding_lock"
         lock_exp = f"user:{user_id}:experience_embedding_lock"
         if self.redis_conn.exists(lock_edu) or self.redis_conn.exists(lock_exp):
-            raise ValueError("Profile BERT vectors are currently being updated. Please try again later.")
+            raise RecommendationLockedError(
+                code="PROFILE_BERT_LOCKED",
+                message="Profile BERT vectors are currently being updated. Please try again later.",
+            )
 
         employee_result = await db.execute(
             select(Employee.id).where(Employee.user_id == user_id)
@@ -1210,6 +1222,249 @@ class JobRecommendationService:
                 }
                 for row in skill_rows
             ],
+        }
+
+    @staticmethod
+    def _parse_pgvector(value: str | None) -> list[float] | None:
+        if not value:
+            return None
+        return [float(item) for item in value.strip("[]").split(",") if item.strip()]
+
+    async def _get_skill_vectors(
+        self,
+        db: AsyncSession,
+        skills: list[dict],
+    ) -> dict[int, list[float]]:
+        if not skills:
+            return {}
+
+        skill_ids = [skill["skill_id"] for skill in skills]
+        rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT
+                        s.id AS skill_id,
+                        s.name AS skill_name,
+                        se.embedding::text AS embedding
+                    FROM skills s
+                    LEFT JOIN skill_embeddings se ON se.skill_id = s.id
+                    WHERE s.id = ANY(:skill_ids)
+                    """
+                ),
+                {"skill_ids": skill_ids},
+            )
+        ).mappings().all()
+
+        vectors: dict[int, list[float]] = {}
+        missing: list[dict] = []
+        for row in rows:
+            embedding = self._parse_pgvector(row["embedding"])
+            if embedding is None:
+                missing.append(
+                    {
+                        "skill_id": row["skill_id"],
+                        "skill_name": row["skill_name"],
+                    }
+                )
+            else:
+                vectors[row["skill_id"]] = embedding
+
+        if missing:
+            embeddings = await self.embed_bert_texts(
+                [skill["skill_name"] for skill in missing]
+            )
+            for skill, embedding in zip(missing, embeddings):
+                vectors[skill["skill_id"]] = embedding
+
+        return vectors
+
+    @staticmethod
+    def _cosine_similarity_matrix(
+        job_vectors: list[list[float]],
+        profile_vectors: list[list[float]],
+    ) -> np.ndarray:
+        job_matrix = np.asarray(job_vectors, dtype=float)
+        profile_matrix = np.asarray(profile_vectors, dtype=float)
+
+        job_norms = np.linalg.norm(job_matrix, axis=1, keepdims=True)
+        profile_norms = np.linalg.norm(profile_matrix, axis=1, keepdims=True)
+        job_norms[job_norms == 0] = 1.0
+        profile_norms[profile_norms == 0] = 1.0
+
+        return (job_matrix / job_norms) @ (profile_matrix / profile_norms).T
+
+    async def _get_profile_skills_for_gap(
+        self,
+        db: AsyncSession,
+        user_id: int,
+    ) -> tuple[int, list[dict]]:
+        employee_id = (
+            await db.execute(
+                select(Employee.id).where(Employee.user_id == user_id)
+            )
+        ).scalar_one_or_none()
+        if employee_id is None:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
+
+        rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT s.id AS skill_id, s.name AS skill_name, 'standalone' AS source
+                    FROM employee_skills es
+                    JOIN skills s ON s.id = es.skill_id
+                    WHERE es.employee_id = :employee_id
+
+                    UNION ALL
+
+                    SELECT s.id AS skill_id, s.name AS skill_name, 'education' AS source
+                    FROM educations e
+                    JOIN education_skills es ON es.education_id = e.id
+                    JOIN skills s ON s.id = es.skill_id
+                    WHERE e.employee_id = :employee_id
+
+                    UNION ALL
+
+                    SELECT s.id AS skill_id, s.name AS skill_name, 'experience' AS source
+                    FROM experiences e
+                    JOIN experience_skills es ON es.experience_id = e.id
+                    JOIN skills s ON s.id = es.skill_id
+                    WHERE e.employee_id = :employee_id
+                    """
+                ),
+                {"employee_id": employee_id},
+            )
+        ).mappings().all()
+
+        skills_by_id: dict[int, dict] = {}
+        for row in rows:
+            skill_id = row["skill_id"]
+            if skill_id not in skills_by_id:
+                skills_by_id[skill_id] = {
+                    "skill_id": skill_id,
+                    "skill_name": row["skill_name"],
+                    "sources": [],
+                }
+            if row["source"] not in skills_by_id[skill_id]["sources"]:
+                skills_by_id[skill_id]["sources"].append(row["source"])
+
+        source_order = {"experience": 0, "education": 1, "standalone": 2}
+        profile_skills = list(skills_by_id.values())
+        for skill in profile_skills:
+            skill["sources"].sort(key=lambda source: source_order.get(source, 99))
+        profile_skills.sort(key=lambda skill: skill["skill_name"].lower())
+
+        return employee_id, profile_skills
+
+    async def get_job_skill_gap(
+        self,
+        db: AsyncSession,
+        job_id: int,
+        user_id: int,
+        threshold: float = get_settings().DEFAULT_THRESHOLD,
+    ) -> dict:
+        job_exists = (
+            await db.execute(
+                text("SELECT 1 FROM jobs WHERE id = :job_id"),
+                {"job_id": job_id},
+            )
+        ).scalar_one_or_none()
+        if job_exists is None:
+            raise ValueError(f"Job with id {job_id} not found")
+
+        job_skills = (
+            await db.execute(
+                text(
+                    """
+                    SELECT
+                        s.id AS skill_id,
+                        s.name AS skill_name,
+                        js.is_required
+                    FROM job_skills js
+                    JOIN skills s ON s.id = js.skill_id
+                    WHERE js.job_id = :job_id
+                    ORDER BY s.name
+                    """
+                ),
+                {"job_id": job_id},
+            )
+        ).mappings().all()
+        job_skills = [dict(row) for row in job_skills]
+        if not job_skills:
+            raise ValueError(f"Job {job_id} has no skills in job_skills")
+
+        _, profile_skills = await self._get_profile_skills_for_gap(db, user_id)
+        if not profile_skills:
+            raise ValueError("User profile has no skills")
+
+        all_skills = job_skills + profile_skills
+        vectors = await self._get_skill_vectors(db, all_skills)
+
+        job_vectors = [vectors[skill["skill_id"]] for skill in job_skills]
+        profile_vectors = [vectors[skill["skill_id"]] for skill in profile_skills]
+        similarity_matrix = self._cosine_similarity_matrix(job_vectors, profile_vectors)
+
+        covered_skills = []
+        missing_skills = []
+        similarities = []
+
+        for job_index, job_skill in enumerate(job_skills):
+            best_profile_index = int(np.argmax(similarity_matrix[job_index]))
+            best_similarity = round(
+                float(similarity_matrix[job_index, best_profile_index]),
+                4,
+            )
+            similarities.append(best_similarity)
+            profile_skill = profile_skills[best_profile_index]
+
+            item = {
+                "job_skill_id": job_skill["skill_id"],
+                "job_skill_name": job_skill["skill_name"],
+                "similarity": best_similarity,
+                "is_required": job_skill["is_required"],
+            }
+            if best_similarity >= threshold:
+                item.update(
+                    {
+                        "matched_profile_skill_id": profile_skill["skill_id"],
+                        "matched_profile_skill_name": profile_skill["skill_name"],
+                    }
+                )
+                covered_skills.append(item)
+            else:
+                item.update(
+                    {
+                        "closest_profile_skill_id": profile_skill["skill_id"],
+                        "closest_profile_skill_name": profile_skill["skill_name"],
+                    }
+                )
+                missing_skills.append(item)
+
+        covered_skills.sort(key=lambda skill: skill["similarity"], reverse=True)
+        missing_skills.sort(key=lambda skill: skill["similarity"], reverse=True)
+
+        covered_count = len(covered_skills)
+        total_count = len(job_skills)
+        coverage = round(covered_count / total_count, 4) if total_count else 0.0
+        avg_similarity = round(float(np.mean(similarities)), 4) if similarities else 0.0
+
+        return {
+            "job_id": job_id,
+            "user_id": user_id,
+            "threshold": threshold,
+            "score": {
+                "coverage": coverage,
+                "coverage_display": f"{coverage * 100:.1f}%",
+                "covered_skill_count": covered_count,
+                "missing_skill_count": len(missing_skills),
+                "total_job_skill_count": total_count,
+                "avg_similarity": avg_similarity,
+            },
+            "job_skills": job_skills,
+            "profile_skills": profile_skills,
+            "covered_skills": covered_skills,
+            "missing_skills": missing_skills,
         }
 
 

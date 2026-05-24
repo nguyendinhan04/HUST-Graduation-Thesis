@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.dependencies import get_current_user
 from models import User
 from db import get_async_db
-from services import JobRecommendationService
+from services import JobRecommendationService, RecommendationLockedError
 
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
@@ -13,6 +13,17 @@ router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
 class RecommendRequest(BaseModel):
     query: str = Field(..., min_length=1)
+
+
+def _recommendation_locked_http_exception(exc: RecommendationLockedError) -> HTTPException:
+    return HTTPException(
+        status_code=423,
+        detail={
+            "code": exc.code,
+            "status": "locked",
+            "message": str(exc),
+        },
+    )
 
 
 @router.post("/demo")
@@ -46,6 +57,8 @@ async def get_recommendations(
             top_k=top_k,
         )
         return await service.get_recommended_job_details(db, job_ids)
+    except RecommendationLockedError as exc:
+        raise _recommendation_locked_http_exception(exc) from exc
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -71,6 +84,8 @@ async def get_tfidf_recommendation_ids(
             user_id=user_id,
             limit=top_k,
         )
+    except RecommendationLockedError as exc:
+        raise _recommendation_locked_http_exception(exc) from exc
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -96,6 +111,8 @@ async def get_bert_recommendation_ids(
             user_id=user_id,
             limit=top_k,
         )
+    except RecommendationLockedError as exc:
+        raise _recommendation_locked_http_exception(exc) from exc
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
