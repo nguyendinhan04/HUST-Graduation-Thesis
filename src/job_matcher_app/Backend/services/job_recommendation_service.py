@@ -47,6 +47,10 @@ class JobRecommendationService:
             os.getenv("TFIDF_QUEUE_NAME", "profile-tfidf-queue"),
             connection=self.redis_conn,
         )
+        self.skill_extraction_queue = Queue(
+            os.getenv("SKILL_EXTRACTION_QUEUE_NAME", "job-skill-extraction-queue"),
+            connection=self.redis_conn,
+        )
 
     @staticmethod
     def _to_pgvector_literal(vector) -> str:
@@ -198,6 +202,54 @@ class JobRecommendationService:
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "education_id": education_id,
+            },
+            job_timeout="10m",
+        )
+        return job.id
+
+    def enqueue_job_bert_embedding_update(
+        self,
+        *,
+        job_id: int,
+        job_payload: dict,
+    ) -> str:
+        job = self.skill_queue.enqueue(
+            "job_matcher_app.skill_worker.process_job_bert_embedding_task",
+            {
+                "job_id": job_id,
+                "job": job_payload,
+            },
+            job_timeout="10m",
+        )
+        return job.id
+
+    def enqueue_job_tfidf_embedding_update(
+        self,
+        *,
+        job_id: int,
+        job_payload: dict,
+    ) -> str:
+        job = self.tfidf_queue.enqueue(
+            "job_matcher_app.skill_worker_tfidf.process_job_tfidf_embedding_task",
+            {
+                "job_id": job_id,
+                "job": job_payload,
+            },
+            job_timeout="10m",
+        )
+        return job.id
+
+    def enqueue_job_skill_extraction_update(
+        self,
+        *,
+        job_id: int,
+        job_payload: dict,
+    ) -> str:
+        job = self.skill_extraction_queue.enqueue(
+            "job_matcher_app.skill_extraction_worker.process_job_skill_extraction_task",
+            {
+                "job_id": job_id,
+                "job": job_payload,
             },
             job_timeout="10m",
         )
@@ -784,7 +836,7 @@ class JobRecommendationService:
             await db.execute(
                 text(
                     """
-                    SELECT id
+                    SELECT job_id
                     FROM job_embeddings_tfidf
                     WHERE embedding IS NOT NULL
                     ORDER BY embedding <=> CAST(:vector_tfidf AS vector)
@@ -798,7 +850,7 @@ class JobRecommendationService:
             )
         ).fetchall()
 
-        return [row.id for row in rows]
+        return [row.job_id for row in rows]
 
     # async def upsert_user_profile_embedding(
     #     self,

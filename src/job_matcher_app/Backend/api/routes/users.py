@@ -36,6 +36,23 @@ class CreateEmployeeUserRequest(BaseModel):
     current_location: str | None = None
 
 
+class CreateEmployerUserRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+    position: str | None = None
+    company_name: str = Field(..., min_length=1)
+    description: str | None = None
+    website: str | None = None
+    logo_url: str | None = None
+    industry: str | None = None
+    company_size: str | None = None
+    address: str | None = None
+    location: str | None = None
+
+
 class UserProfileUpdateRequest(BaseModel):
     full_name: str | None = None
     phone: str | None = None
@@ -120,6 +137,26 @@ async def create_employee_user(
 
     try:
         return await UserService.create_employee_user_async(
+            db=db,
+            **data,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 409 if "already exists" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/employers", status_code=201)
+async def create_employer_user(
+    payload: CreateEmployerUserRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    data = _payload_data(payload)
+
+    try:
+        return await UserService.create_employer_user_async(
             db=db,
             **data,
         )

@@ -36,3 +36,32 @@ async def login_access_token(
         subject=user.id, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/employer/login")
+async def login_employer_access_token(
+    db: AsyncSession = Depends(get_async_db),
+    form_data: OAuth2PasswordRequestForm = Depends()
+):
+    """
+    Employer-only token login, get an access token for future requests.
+    """
+    normalized_email = form_data.username.strip().lower()
+    result = await db.execute(select(User).where(func.lower(User.email) == normalized_email))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    if not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    if user.role != "employer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not an employer",
+        )
+
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        subject=user.id, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}

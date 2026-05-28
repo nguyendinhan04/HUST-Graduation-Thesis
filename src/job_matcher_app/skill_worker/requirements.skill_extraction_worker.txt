@@ -1,0 +1,8 @@
+boto3
+flashtext
+numpy
+psycopg2-binary
+redis
+rq
+sqlalchemy
+transformers

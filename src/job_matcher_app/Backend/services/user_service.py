@@ -12,10 +12,12 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
 from models import (
+    Company,
     Education,
     EducationSkill,
     Employee,
     EmployeeSkill,
+    Employer,
     Experience,
     ExperienceSkill,
     Skill,
@@ -151,6 +153,35 @@ class UserService:
                 "years_of_experience": employee.years_of_experience,
                 "current_location": employee.current_location,
                 "created_at": employee.created_at.isoformat() if employee.created_at else None,
+            },
+        }
+
+    @staticmethod
+    def _serialize_employer_user(user: User, employer: Employer, company: Company) -> dict:
+        return {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "phone": user.phone,
+            "role": user.role,
+            "avatar_url": user.avatar_url,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "employer_profile": {
+                "employer_id": employer.id,
+                "position": employer.position,
+                "created_at": employer.created_at.isoformat() if employer.created_at else None,
+            },
+            "company": {
+                "company_id": company.id,
+                "name": company.name,
+                "description": company.description,
+                "website": company.website,
+                "logo_url": company.logo_url,
+                "industry": company.industry,
+                "company_size": company.company_size,
+                "address": company.address,
+                "location": company.location,
+                "created_at": company.created_at.isoformat() if company.created_at else None,
             },
         }
 
@@ -560,6 +591,86 @@ class UserService:
             raise
 
         return UserService._serialize_employee_user(user, employee)
+
+    @staticmethod
+    async def create_employer_user_async(
+        db: AsyncSession,
+        email: str,
+        password: str,
+        full_name: str = None,
+        phone: str = None,
+        avatar_url: str = None,
+        position: str = None,
+        company_name: str = None,
+        description: str = None,
+        website: str = None,
+        logo_url: str = None,
+        industry: str = None,
+        company_size: str = None,
+        address: str = None,
+        location: str = None,
+    ) -> dict:
+        """Create a user with employer role, a company, and an employer profile."""
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            raise ValueError("email must not be empty")
+        if not password:
+            raise ValueError("password must not be empty")
+
+        normalized_company_name = company_name.strip() if company_name else ""
+        if not normalized_company_name:
+            raise ValueError("company_name must not be empty")
+
+        existing_user = await db.execute(
+            select(User.id).where(func.lower(User.email) == normalized_email)
+        )
+        if existing_user.scalar_one_or_none() is not None:
+            raise ValueError(f"User with email {normalized_email} already exists")
+
+        user = User(
+            email=normalized_email,
+            password_hash=password_context.hash(password),
+            full_name=full_name,
+            phone=phone,
+            role="employer",
+            avatar_url=avatar_url,
+        )
+        company = Company(
+            name=normalized_company_name,
+            description=description,
+            website=website,
+            logo_url=logo_url,
+            industry=industry,
+            company_size=company_size,
+            address=address,
+            location=location,
+        )
+
+        try:
+            db.add(user)
+            db.add(company)
+            await db.flush()
+
+            employer = Employer(
+                user_id=user.id,
+                company_id=company.id,
+                position=position,
+            )
+            db.add(employer)
+            await db.flush()
+
+            await db.commit()
+            await db.refresh(user)
+            await db.refresh(company)
+            await db.refresh(employer)
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to create employer user: {exc}") from exc
+        except Exception:
+            await db.rollback()
+            raise
+
+        return UserService._serialize_employer_user(user, employer, company)
 
     # @staticmethod
     # async def update_user_profile_async(

@@ -143,6 +143,7 @@ services:
       REDIS_PORT: 6379
       REDIS_DB: 0
       TFIDF_QUEUE_NAME: profile-tfidf-queue
+      SKILL_EXTRACTION_QUEUE_NAME: job-skill-extraction-queue
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ROOTUSER
       MINIO_SECRET_KEY: 1234567890
@@ -214,6 +215,45 @@ services:
       PG_PASSWORD: airflow
     volumes:
       - ./job_matcher_app/skill_worker/skill_worker_tfidf.py:/app/src/job_matcher_app/skill_worker_tfidf.py
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - airflow
+
+  job-skill-extraction-worker:
+    build:
+      context: .
+      dockerfile: job_matcher_app/skill_worker/Dockerfile.skill_extraction_worker
+    image: job-skill-extraction-worker:latest
+    container_name: job-matcher-skill-extraction-worker
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      QUEUE_NAME: job-skill-extraction-queue
+      WORKER_NAME: job_skill_extraction_worker
+      SKILL_EXTRACTOR_MODE: ${SKILL_EXTRACTOR_MODE:-ner_skilltrie}
+      NER_MODEL_PREFIX: ${NER_MODEL_PREFIX:-models/models/checkpoint-360/}
+      SKILL_REPO_SCHEMA: ${SKILL_REPO_SCHEMA:-public}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ROOTUSER
+      MINIO_SECRET_KEY: 1234567890
+      MINIO_BUCKET: models
+      MINIO_SECURE: "false"
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: job_db_2
+      PG_USER: airflow
+      PG_PASSWORD: airflow
+    volumes:
+      - ./job_matcher_app/skill_extraction_worker.py:/app/src/job_matcher_app/skill_extraction_worker.py
+      - ./job_matcher_app/skill_extraction:/app/src/job_matcher_app/skill_extraction
     depends_on:
       redis:
         condition: service_healthy

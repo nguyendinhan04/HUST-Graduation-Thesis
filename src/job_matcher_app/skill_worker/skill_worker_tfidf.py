@@ -320,6 +320,82 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
     }
 
 
+def build_job_query_text(job: dict[str, Any]) -> str:
+    title = clean_text(job.get("title") or job.get("job_title"))
+    description = clean_text(job.get("description"))
+    requirement = clean_text(job.get("requirement"))
+    return " ".join([title, title, description, requirement])
+
+
+def upsert_job_tfidf_embedding(
+    job_id: int,
+    job_title: str,
+    job_vector: list[float],
+) -> None:
+    embedding = to_pgvector_literal(job_vector)
+
+    db = SessionLocal()
+    try:
+        db.execute(
+            text(
+                """
+                DELETE FROM job_embeddings_tfidf
+                WHERE job_id = :job_id
+                """
+            ),
+            {"job_id": job_id},
+        )
+        db.execute(
+            text(
+                """
+                INSERT INTO job_embeddings_tfidf (job_id, job_title, embedding)
+                VALUES (:job_id, :job_title, CAST(:embedding AS vector))
+                """
+            ),
+            {
+                "job_id": job_id,
+                "job_title": job_title,
+                "embedding": embedding,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def process_job_tfidf_embedding_task(payload: dict[str, Any]) -> dict[str, Any]:
+    job_id = int(payload["job_id"])
+    job = payload["job"]
+    lock_key = f"job:{job_id}:tfidf_embedding_lock"
+
+    redis_conn = get_redis_connection()
+    lock = redis_conn.lock(
+        lock_key,
+        timeout=int(os.getenv("JOB_TFIDF_EMBEDDING_LOCK_TIMEOUT", 600)),
+        blocking_timeout=int(os.getenv("JOB_TFIDF_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
+    )
+
+    logger.info("Đang xử lý TF-IDF embedding task job_id=%s", job_id)
+    with lock:
+        query_text = build_job_query_text(job)
+        job_vector = vectorize_tfidf_text(query_text)
+        upsert_job_tfidf_embedding(
+            job_id=job_id,
+            job_title=job.get("job_title") or job.get("title") or "",
+            job_vector=job_vector,
+        )
+
+    logger.info("Đã cập nhật TF-IDF embedding task job_id=%s", job_id)
+    return {
+        "job_id": job_id,
+        "job_tfidf_embedding_updated": True,
+        "vector_size": len(job_vector),
+    }
+
+
 def embed_tfidf_texts_task(texts: list[str]) -> list[list[float]]:
     """
     Task chạy ngầm trên Worker RQ.

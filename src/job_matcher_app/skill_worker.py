@@ -214,6 +214,90 @@ def embed_bert_education_task(education: dict) -> List[float]:
     return embedding.tolist()
 
 
+def clean_job_vector_text(text: str) -> str:
+    text = str(text or "").lower()
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"[^\w\s]", " ", text)
+    return " ".join(text.split())
+
+
+def build_job_embedding_text(job: dict) -> str:
+    title = clean_job_vector_text(job.get("title") or job.get("job_title"))
+    description = clean_job_vector_text(job.get("description"))
+    requirement = clean_job_vector_text(job.get("requirement"))
+    title_weight = " ".join([title] * 2)
+    return clean_text(f"{title_weight} {description} {requirement}")
+
+
+def upsert_job_bert_embedding(
+    job_id: int,
+    job_title: str,
+    job_vector: List[float],
+) -> None:
+    embedding_literal = to_pgvector_literal(job_vector)
+
+    db = SessionLocal()
+    try:
+        db.execute(
+            text(
+                """
+                DELETE FROM job_embeddings_bert
+                WHERE job_id = :job_id
+                """
+            ),
+            {"job_id": job_id},
+        )
+        db.execute(
+            text(
+                """
+                INSERT INTO job_embeddings_bert (job_id, job_title, embedding)
+                VALUES (:job_id, :job_title, CAST(:embedding AS vector))
+                """
+            ),
+            {
+                "job_id": job_id,
+                "job_title": job_title,
+                "embedding": embedding_literal,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def process_job_bert_embedding_task(payload: dict) -> dict:
+    job_id = int(payload["job_id"])
+    job = payload["job"]
+    lock_key = f"job:{job_id}:bert_embedding_lock"
+
+    redis_conn = get_redis_connection()
+    lock = redis_conn.lock(
+        lock_key,
+        timeout=int(os.getenv("JOB_BERT_EMBEDDING_LOCK_TIMEOUT", 600)),
+        blocking_timeout=int(os.getenv("JOB_BERT_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
+    )
+
+    logger.info("Đang xử lý BERT embedding task job_id=%s", job_id)
+    with lock:
+        job_text = build_job_embedding_text(job)
+        job_vector = embed_bert_document(job_text).tolist()
+        upsert_job_bert_embedding(
+            job_id=job_id,
+            job_title=job.get("job_title") or job.get("title") or "",
+            job_vector=job_vector,
+        )
+
+    logger.info("Đã cập nhật BERT embedding task job_id=%s", job_id)
+    return {
+        "job_id": job_id,
+        "job_bert_embedding_updated": True,
+        "vector_size": len(job_vector),
+    }
+
+
 def ensure_and_lock_profile_embedding_row(db, employee_id: int) -> None:
     db.execute(
         text(

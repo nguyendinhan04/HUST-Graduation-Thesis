@@ -1,15 +1,124 @@
+from datetime import datetime
+from decimal import Decimal
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_current_user
 from config import get_settings
 from db import get_async_db
 from models import User
-from services import JobRecommendationService
+from services import JobRecommendationService, JobService
 
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 settings = get_settings()
+
+
+class CreateJobRequest(BaseModel):
+    title: str = Field(..., min_length=1)
+    description: str | None = None
+    requirement: str | None = None
+    benefit: str | None = None
+    salary_min: Decimal | None = Field(default=None, ge=0)
+    salary_max: Decimal | None = Field(default=None, ge=0)
+    salary_currency: str | None = None
+    experience_required: int | None = Field(default=None, ge=0)
+    employment_type: str | None = None
+    working_time: str | None = None
+    location_type: str | None = None
+    address: str | None = None
+    deadline: datetime | None = None
+    status: Literal["open", "closed", "draft"] = "open"
+
+
+class UpdateJobRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1)
+    description: str | None = None
+    requirement: str | None = None
+    benefit: str | None = None
+    salary_min: Decimal | None = Field(default=None, ge=0)
+    salary_max: Decimal | None = Field(default=None, ge=0)
+    salary_currency: str | None = None
+    experience_required: int | None = Field(default=None, ge=0)
+    employment_type: str | None = None
+    working_time: str | None = None
+    location_type: str | None = None
+    address: str | None = None
+    deadline: datetime | None = None
+    status: Literal["open", "closed", "draft"] | None = None
+
+
+def _fields_set(payload: BaseModel) -> set[str]:
+    return getattr(payload, "model_fields_set", getattr(payload, "__fields_set__", set()))
+
+
+def _payload_data(payload: BaseModel) -> dict:
+    if hasattr(payload, "model_dump"):
+        return payload.model_dump()
+    return payload.dict()
+
+
+@router.post("", status_code=201)
+async def create_job(
+    payload: CreateJobRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    data = _payload_data(payload)
+    embedding_service = JobRecommendationService()
+
+    try:
+        return await JobService.create_job_for_employer_async(
+            db=db,
+            current_user=current_user,
+            embedding_service=embedding_service,
+            **data,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.patch("/{job_id}")
+async def update_job(
+    payload: UpdateJobRequest,
+    job_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    data = _payload_data(payload)
+    fields_set = _fields_set(payload)
+    embedding_service = JobRecommendationService()
+
+    try:
+        return await JobService.update_job_for_employer_async(
+            db=db,
+            current_user=current_user,
+            embedding_service=embedding_service,
+            job_id=job_id,
+            fields_set=fields_set,
+            **data,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get("/{job_id}/skill-gap")

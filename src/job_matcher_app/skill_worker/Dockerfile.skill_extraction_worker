@@ -1,0 +1,18 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/src
+
+COPY job_matcher_app/skill_worker/requirements.skill_extraction_worker.txt /app/requirements.skill_extraction_worker.txt
+
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
+    && pip install --no-cache-dir -r /app/requirements.skill_extraction_worker.txt \
+    && mkdir -p /app/src/job_matcher_app
+
+COPY job_matcher_app/skill_extraction_worker.py /app/src/job_matcher_app/skill_extraction_worker.py
+COPY job_matcher_app/skill_extraction /app/src/job_matcher_app/skill_extraction
+
+CMD ["python", "-m", "job_matcher_app.skill_extraction_worker"]
