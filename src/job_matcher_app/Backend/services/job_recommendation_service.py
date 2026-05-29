@@ -836,10 +836,12 @@ class JobRecommendationService:
             await db.execute(
                 text(
                     """
-                    SELECT job_id
-                    FROM job_embeddings_tfidf
-                    WHERE embedding IS NOT NULL
-                    ORDER BY embedding <=> CAST(:vector_tfidf AS vector)
+                    SELECT jet.job_id
+                    FROM job_embeddings_tfidf jet
+                    JOIN jobs j ON j.id = jet.job_id
+                    WHERE jet.embedding IS NOT NULL
+                      AND j.status = 'open'
+                    ORDER BY jet.embedding <=> CAST(:vector_tfidf AS vector)
                     LIMIT :limit
                     """
                 ),
@@ -957,11 +959,13 @@ class JobRecommendationService:
         query_vector = self._to_pgvector_literal(combined_query_384)
         search_query = text("""
         SELECT
-            job_id,
-            1 - (embedding <=> CAST(:embedding AS vector)) AS similarity
-        FROM job_embeddings_bert
-        WHERE embedding IS NOT NULL
-        ORDER BY embedding <=> CAST(:embedding AS vector)
+            jeb.job_id,
+            1 - (jeb.embedding <=> CAST(:embedding AS vector)) AS similarity
+        FROM job_embeddings_bert jeb
+        JOIN jobs j ON j.id = jeb.job_id
+        WHERE jeb.embedding IS NOT NULL
+          AND j.status = 'open'
+        ORDER BY jeb.embedding <=> CAST(:embedding AS vector)
         LIMIT :limit;
         """)
 
@@ -1082,6 +1086,7 @@ class JobRecommendationService:
                             COALESCE(salary_max, salary_min, 0) AS salary_value
                         FROM jobs
                         WHERE id = ANY(CAST(:candidate_ids AS INTEGER[]))
+                          AND status = 'open'
                     ),
                     salary_stats AS (
                         SELECT MAX(salary_value) AS max_salary
@@ -1156,6 +1161,7 @@ class JobRecommendationService:
                         location_type
                     FROM jobs
                     WHERE id = ANY(:job_ids)
+                      AND status = 'open'
                     """
                 ),
                 {"job_ids": job_ids},
@@ -1216,6 +1222,7 @@ class JobRecommendationService:
                     FROM jobs j
                     JOIN companies c ON j.company_id = c.id
                     WHERE j.id = :job_id
+                      AND j.status = 'open'
                     """
                 ),
                 {"job_id": job_id},

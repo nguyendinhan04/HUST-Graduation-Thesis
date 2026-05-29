@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import boto3
+import numpy as np
 from redis import Redis
 from rq import Queue, SimpleWorker
 from sqlalchemy import create_engine, text
@@ -25,6 +26,8 @@ VALID_EXTRACTOR_MODES = {"ner_skilltrie", "skilltrie_only"}
 DEFAULT_NER_MODEL_PREFIX = "models/models/checkpoint-360/"
 DEFAULT_MODEL_CACHE_DIR = "/tmp/job_matcher_models"
 NER_LABELS = ["O", "B-LANG", "I-LANG", "B-TECH", "I-TECH"]
+DEFAULT_SKILL_SEMANTIC_MODEL = "alvperez/skill-sim-model"
+SHORT_SKILL_WHITELIST = {"go", "r", "c", "c#", "c++", ".net", "ui", "ux", "sql", "k8s", "ci/cd"}
 
 
 def _get_database_url() -> str:
@@ -52,6 +55,13 @@ def _env_int(name: str, default: int) -> int:
     if value is None:
         return default
     return int(value)
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return float(value)
 
 
 def get_s3_client():
@@ -152,12 +162,104 @@ def build_skill_trie() -> SkillTrie:
     return trie
 
 
+def parse_pgvector_text(vector_text: str) -> list[float]:
+    return [
+        float(value)
+        for value in str(vector_text).strip("[]").split(",")
+        if value.strip()
+    ]
+
+
+def l2_normalize(matrix: np.ndarray) -> np.ndarray:
+    matrix = np.asarray(matrix, dtype="float32")
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0
+    return matrix / norms
+
+
+def load_skill_embedding_index() -> dict[str, Any]:
+    db = SessionLocal()
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT
+                    s.id AS skill_id,
+                    s.name AS skill_name,
+                    se.embedding::text AS embedding
+                FROM skills s
+                JOIN skill_embeddings se ON se.skill_id = s.id
+                ORDER BY s.name ASC
+                """
+            )
+        ).mappings().all()
+    finally:
+        db.close()
+
+    if not rows:
+        raise ValueError("skill_embeddings is empty. Generate skill embeddings before starting worker.")
+
+    skill_ids = [int(row["skill_id"]) for row in rows]
+    skill_names = [str(row["skill_name"]) for row in rows]
+    matrix = np.asarray(
+        [parse_pgvector_text(str(row["embedding"])) for row in rows],
+        dtype="float32",
+    )
+    if matrix.ndim != 2 or matrix.shape[0] != len(skill_names):
+        raise ValueError(f"Invalid skill embedding matrix shape: {matrix.shape}")
+
+    matrix = l2_normalize(matrix)
+    logger.info(
+        "Loaded %s skill embeddings with dimension=%s",
+        len(skill_names),
+        matrix.shape[1],
+    )
+    return {
+        "skill_ids": skill_ids,
+        "skill_names": skill_names,
+        "matrix": matrix,
+    }
+
+
+def load_skill_semantic_model():
+    from sentence_transformers import SentenceTransformer
+
+    model_name = os.getenv("SKILL_SEMANTIC_MODEL", DEFAULT_SKILL_SEMANTIC_MODEL)
+    logger.info("Loading skill semantic model: %s", model_name)
+    return SentenceTransformer(model_name)
+
+
 def normalize_skill_name(value: Any) -> str:
     text_value = str(value or "")
     text_value = text_value.replace("##", "")
     text_value = text_value.replace("_", " ")
-    text_value = re.sub(r"\s+", " ", text_value).strip(" \t\r\n.,;:/\\|")
+    text_value = text_value.replace("▁", " ")
+    text_value = re.sub(r"\s+", " ", text_value).strip(" \t\r\n.,;:/\\|()[]{}-")
     return text_value
+
+
+def is_supported_ner_entity(entity_group: str) -> bool:
+    return "LANG" in entity_group or "TECH" in entity_group
+
+
+def reject_ner_phrase(raw_phrase: Any, normalized_phrase: str, score: float) -> str | None:
+    raw_text = str(raw_phrase or "").strip()
+    phrase = normalize_skill_name(normalized_phrase)
+    key = phrase.casefold()
+
+    if not phrase:
+        return "empty"
+    if score < _env_float("NER_SCORE_THRESHOLD", 0.75):
+        return "low_score"
+    if key in SHORT_SKILL_WHITELIST:
+        return None
+    if raw_text.startswith("-") or raw_text.endswith("-"):
+        return "dash_fragment"
+    if phrase.startswith("-") or phrase.endswith("-"):
+        return "dash_fragment"
+    if len(phrase) <= 3:
+        return "too_short"
+    return None
 
 
 def unique_skill_names(skill_names: list[str]) -> list[str]:
@@ -190,24 +292,95 @@ def build_job_text(job: dict[str, Any]) -> str:
     return re.sub(r"\s+", " ", text_value).strip()
 
 
-def extract_skills_with_ner(text_value: str) -> list[str]:
+def extract_ner_candidates(text_value: str) -> tuple[list[str], dict[str, int]]:
     if ner_pipeline is None or not text_value:
-        return []
+        return [], {"raw": 0, "accepted": 0, "rejected": 0}
 
-    max_chars = _env_int("NER_MAX_CHARS", 2000)
+    max_chars = _env_int("NER_MAX_CHARS", 4000)
     predictions = ner_pipeline(text_value[:max_chars])
-    skills: list[str] = []
+    candidates: list[str] = []
+    raw_count = 0
+    rejected_count = 0
+    seen: set[str] = set()
 
     for prediction in predictions:
         entity_group = str(prediction.get("entity_group", ""))
-        if "LANG" not in entity_group and "TECH" not in entity_group:
+        raw_count += 1
+        if not is_supported_ner_entity(entity_group):
+            rejected_count += 1
             continue
 
-        skill_name = normalize_skill_name(prediction.get("word", ""))
-        if skill_name:
-            skills.append(skill_name)
+        raw_phrase = prediction.get("word", "")
+        phrase = normalize_skill_name(raw_phrase)
+        score = float(prediction.get("score") or 0.0)
+        reject_reason = reject_ner_phrase(raw_phrase, phrase, score)
+        if reject_reason:
+            rejected_count += 1
+            logger.debug(
+                "Rejected NER candidate phrase=%r score=%.4f reason=%s",
+                raw_phrase,
+                score,
+                reject_reason,
+            )
+            continue
 
-    return unique_skill_names(skills)
+        key = phrase.casefold()
+        if key in seen:
+            rejected_count += 1
+            continue
+        seen.add(key)
+        candidates.append(phrase)
+
+    return candidates, {
+        "raw": raw_count,
+        "accepted": len(candidates),
+        "rejected": rejected_count,
+    }
+
+
+def semantic_normalize_ner_candidates(candidate_phrases: list[str]) -> list[str]:
+    if not candidate_phrases:
+        return []
+    if skill_semantic_model is None or skill_embedding_index is None:
+        raise RuntimeError("Semantic skill model and skill embeddings must be loaded")
+
+    phrases = unique_skill_names(candidate_phrases)
+    phrase_embeddings = skill_semantic_model.encode(
+        phrases,
+        batch_size=_env_int("NER_SEMANTIC_BATCH_SIZE", 64),
+        show_progress_bar=False,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+    ).astype("float32")
+
+    matrix = skill_embedding_index["matrix"]
+    skill_names = skill_embedding_index["skill_names"]
+    threshold = _env_float("NER_SEMANTIC_THRESHOLD", 0.70)
+    scores = phrase_embeddings @ matrix.T
+
+    normalized_skills: list[str] = []
+    for phrase, phrase_scores in zip(phrases, scores):
+        best_index = int(np.argmax(phrase_scores))
+        best_score = float(phrase_scores[best_index])
+        if best_score < threshold:
+            logger.debug(
+                "Dropped NER candidate phrase=%r semantic_score=%.4f threshold=%.4f",
+                phrase,
+                best_score,
+                threshold,
+            )
+            continue
+
+        skill_name = str(skill_names[best_index])
+        normalized_skills.append(skill_name)
+        logger.debug(
+            "Normalized NER candidate phrase=%r -> skill=%r score=%.4f",
+            phrase,
+            skill_name,
+            best_score,
+        )
+
+    return unique_skill_names(normalized_skills)
 
 
 def extract_skills_with_skilltrie(text_value: str) -> list[str]:
@@ -221,16 +394,24 @@ def extract_job_skills(job: dict[str, Any]) -> tuple[list[str], str]:
     if not text_value:
         return [], extractor_mode
 
-    if extractor_mode == "skilltrie_only":
-        return extract_skills_with_skilltrie(text_value), "skilltrie_only"
-
-    ner_skills = extract_skills_with_ner(text_value)
-    min_ner_skills = _env_int("NER_MIN_SKILLS_BEFORE_SKILLTRIE_FALLBACK", 1)
-    if len(ner_skills) >= min_ner_skills:
-        return ner_skills, "ner"
-
     skilltrie_skills = extract_skills_with_skilltrie(text_value)
-    return unique_skill_names(ner_skills + skilltrie_skills), "ner_skilltrie_fallback"
+    if extractor_mode == "skilltrie_only":
+        return skilltrie_skills, "skilltrie_only"
+
+    ner_candidates, ner_stats = extract_ner_candidates(text_value)
+    semantic_ner_skills = semantic_normalize_ner_candidates(ner_candidates)
+    final_skills = unique_skill_names(skilltrie_skills + semantic_ner_skills)
+    logger.info(
+        "Skill extraction candidates: skilltrie=%s ner_raw=%s ner_accepted=%s "
+        "ner_rejected=%s ner_semantic=%s final=%s",
+        len(skilltrie_skills),
+        ner_stats["raw"],
+        ner_stats["accepted"],
+        ner_stats["rejected"],
+        len(semantic_ner_skills),
+        len(final_skills),
+    )
+    return final_skills, "skilltrie_ner_semantic"
 
 
 def replace_job_skills(job_id: int, skill_names: list[str]) -> dict[str, Any]:
@@ -358,11 +539,15 @@ except Exception as exc:
     sys.exit(1)
 
 ner_pipeline = None
+skill_semantic_model = None
+skill_embedding_index = None
 if extractor_mode == "ner_skilltrie":
     try:
         ner_pipeline = load_ner_pipeline()
+        skill_semantic_model = load_skill_semantic_model()
+        skill_embedding_index = load_skill_embedding_index()
     except Exception as exc:
-        logger.error("Failed to load NER model: %s", exc)
+        logger.error("Failed to load NER/semantic extraction dependencies: %s", exc)
         sys.exit(1)
 
 
