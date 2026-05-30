@@ -64,6 +64,24 @@ class JobService:
         }
 
     @staticmethod
+    def _serialize_job_summary(job: Job) -> dict:
+        return {
+            "job_id": job.id,
+            "title": job.title,
+            "status": job.status,
+            "salary_min": str(job.salary_min) if job.salary_min is not None else None,
+            "salary_max": str(job.salary_max) if job.salary_max is not None else None,
+            "salary_currency": job.salary_currency,
+            "experience_required": job.experience_required,
+            "employment_type": job.employment_type,
+            "working_time": job.working_time,
+            "location_type": job.location_type,
+            "address": job.address,
+            "deadline": job.deadline.isoformat() if job.deadline else None,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+        }
+
+    @staticmethod
     def _build_job_embedding_payload(job: Job) -> dict:
         return {
             "job_id": job.id,
@@ -175,6 +193,32 @@ class JobService:
         }
 
         return JobService._serialize_job(job, [], vector_jobs)
+
+    @staticmethod
+    async def list_jobs_for_employer_async(
+        db: AsyncSession,
+        current_user: User,
+    ) -> list[dict]:
+        if current_user.role != "employer":
+            raise PermissionError("Only employers can list their jobs")
+
+        employer_result = await db.execute(
+            select(Employer).where(Employer.user_id == current_user.id)
+        )
+        employer = employer_result.scalars().first()
+        if employer is None:
+            raise ValueError(f"Employer profile not found for user_id {current_user.id}")
+
+        jobs_result = await db.execute(
+            select(Job)
+            .where(
+                Job.employer_id == employer.id,
+                Job.status.in_(("open", "closed")),
+            )
+            .order_by(Job.created_at.desc(), Job.id.desc())
+        )
+        jobs = jobs_result.scalars().all()
+        return [JobService._serialize_job_summary(job) for job in jobs]
 
     @staticmethod
     async def update_job_for_employer_async(
