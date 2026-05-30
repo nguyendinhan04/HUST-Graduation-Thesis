@@ -672,6 +672,35 @@ class UserService:
 
         return UserService._serialize_employer_user(user, employer, company)
 
+    @staticmethod
+    async def get_employer_user_profile_async(
+        db: AsyncSession,
+        user_id: int,
+    ) -> dict:
+        """Retrieve the current employer account, profile, and company."""
+        result = await db.execute(
+            select(User)
+            .options(
+                selectinload(User.employer).selectinload(Employer.company),
+            )
+            .where(User.id == user_id)
+        )
+        user = result.scalars().first()
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
+        if user.role != "employer":
+            raise PermissionError("Only employers can access employer profile")
+
+        employer = user.employer
+        if employer is None:
+            raise ValueError(f"Employer profile not found for user_id {user_id}")
+
+        company = employer.company
+        if company is None:
+            raise ValueError(f"Company not found for employer_id {employer.id}")
+
+        return UserService._serialize_employer_user(user, employer, company)
+
     # @staticmethod
     # async def update_user_profile_async(
     #     db: AsyncSession,
