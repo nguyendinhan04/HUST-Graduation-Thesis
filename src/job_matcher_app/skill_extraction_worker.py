@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 VALID_EXTRACTOR_MODES = {"ner_skilltrie", "skilltrie_only"}
-DEFAULT_NER_MODEL_PREFIX = "models/models/checkpoint-360/"
+DEFAULT_NER_MODEL_PREFIX = "models/checkpoint-360/"
 DEFAULT_MODEL_CACHE_DIR = "/tmp/job_matcher_models"
 NER_LABELS = ["O", "B-LANG", "I-LANG", "B-TECH", "I-TECH"]
 DEFAULT_SKILL_SEMANTIC_MODEL = "alvperez/skill-sim-model"
