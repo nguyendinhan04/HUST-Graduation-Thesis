@@ -220,7 +220,7 @@ def inject_linkedin_styles() -> None:
             transform: translateX(-50%) !important;
             width: min(760px, calc(100vw - 32px)) !important;
             max-width: min(760px, calc(100vw - 32px)) !important;
-            height: calc(100dvh - 32px) !important;
+            height: auto !important;
             max-height: calc(100dvh - 32px) !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -239,8 +239,8 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] > div {
             background: #ffffff !important;
             border-radius: 10px !important;
-            height: 100% !important;
-            max-height: 100% !important;
+            height: auto !important;
+            max-height: calc(100dvh - 34px) !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
             padding: 0 28px 84px !important;
@@ -259,7 +259,7 @@ def inject_linkedin_styles() -> None:
             position: sticky !important;
             top: 0 !important;
             z-index: 5 !important;
-            margin: 0 -28px 8px !important;
+            margin: 0 -28px 10px !important;
             padding: 14px 64px 12px 28px !important;
             background: #ffffff !important;
             border-bottom: 1px solid #e8e4de !important;
@@ -268,6 +268,7 @@ def inject_linkedin_styles() -> None:
         [data-testid="stDialog"] > div > div,
         dialog[open] > div > div,
         [role="dialog"] > div > div {
+            min-height: 0 !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
@@ -292,7 +293,7 @@ def inject_linkedin_styles() -> None:
         dialog[open] form,
         [role="dialog"] form {
             width: min(100%, 680px) !important;
-            margin: clamp(-220px, -24dvh, -120px) auto 8px !important;
+            margin: 8px auto 8px !important;
             padding-bottom: 0 !important;
         }
 
