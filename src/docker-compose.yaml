@@ -162,6 +162,25 @@ services:
     networks:
       - airflow
 
+  frontend:
+    build:
+      context: .
+      dockerfile: job_matcher_app/Frontend/Dockerfile.frontend
+    image: job-matcher-frontend
+    container_name: job-matcher-frontend
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://backend:8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./job_matcher_app/Frontend:/app
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - airflow
+
   skill-worker:
     build:
       context: .
