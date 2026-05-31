@@ -243,7 +243,7 @@ def inject_linkedin_styles() -> None:
             max-height: 100% !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
-            padding: 12px 28px 92px !important;
+            padding: 0 28px 84px !important;
             overscroll-behavior: contain;
         }
 
@@ -257,10 +257,10 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] h2,
         [role="dialog"] h3 {
             position: sticky !important;
-            top: -12px !important;
+            top: 0 !important;
             z-index: 5 !important;
-            margin: -12px -28px 12px !important;
-            padding: 18px 64px 16px 28px !important;
+            margin: 0 -28px 8px !important;
+            padding: 14px 64px 12px 28px !important;
             background: #ffffff !important;
             border-bottom: 1px solid #e8e4de !important;
         }
@@ -279,15 +279,27 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] div[data-testid="stVerticalBlock"] {
             justify-content: flex-start !important;
             align-items: stretch !important;
-            gap: 0.75rem;
+            gap: 0.45rem !important;
+        }
+
+        [data-testid="stDialog"] div[data-testid="stVerticalBlockBorderWrapper"],
+        dialog[open] div[data-testid="stVerticalBlockBorderWrapper"],
+        [role="dialog"] div[data-testid="stVerticalBlockBorderWrapper"] {
+            margin-top: 0 !important;
         }
 
         [data-testid="stDialog"] form,
         dialog[open] form,
         [role="dialog"] form {
             width: min(100%, 680px) !important;
-            margin: 0 auto !important;
+            margin: 0 auto 8px !important;
             padding-bottom: 0 !important;
+        }
+
+        [data-testid="stDialog"] form > div,
+        dialog[open] form > div,
+        [role="dialog"] form > div {
+            gap: 0.55rem !important;
         }
 
         [data-testid="stDialog"] form label,
@@ -366,7 +378,7 @@ def inject_linkedin_styles() -> None:
             [role="dialog"] > div {
                 height: 100% !important;
                 max-height: 100% !important;
-                padding: 10px 16px 88px !important;
+                padding: 0 16px 82px !important;
             }
 
             [data-testid="stDialog"] h1,
@@ -378,9 +390,9 @@ def inject_linkedin_styles() -> None:
             [role="dialog"] h1,
             [role="dialog"] h2,
             [role="dialog"] h3 {
-                top: -10px !important;
-                margin: -10px -16px 12px !important;
-                padding: 16px 56px 14px 16px !important;
+                top: 0 !important;
+                margin: 0 -16px 8px !important;
+                padding: 14px 56px 12px 16px !important;
             }
 
             [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
