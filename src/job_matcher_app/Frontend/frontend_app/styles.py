@@ -268,6 +268,9 @@ def inject_linkedin_styles() -> None:
 
         dialog[open] [data-testid="stDialog"] > div:first-child:not(:has(.custom-dialog-title)),
         dialog[open] [role="dialog"] > div:first-child:not(:has(.custom-dialog-title)),
+        dialog[open] div:has(> h1):not(:has(.custom-dialog-title)),
+        dialog[open] div:has(> h2):not(:has(.custom-dialog-title)),
+        dialog[open] div:has(> h3):not(:has(.custom-dialog-title)),
         dialog[open] div[data-testid="stVerticalBlock"] > div:has(h1):not(:has(.custom-dialog-title)),
         dialog[open] div[data-testid="stVerticalBlock"] > div:has(h2):not(:has(.custom-dialog-title)),
         dialog[open] div[data-testid="stVerticalBlock"] > div:has(h3):not(:has(.custom-dialog-title)) {
@@ -290,8 +293,10 @@ def inject_linkedin_styles() -> None:
             top: 0 !important;
             z-index: 6 !important;
             align-items: center !important;
-            margin: 0 -28px 6px !important;
-            padding: 4px 20px 6px 28px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 0 10px !important;
+            padding: 6px 0 8px !important;
             background: #ffffff !important;
             border-bottom: 1px solid #e8e4de !important;
         }
@@ -309,13 +314,18 @@ def inject_linkedin_styles() -> None:
         div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) button,
         dialog[open] div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) button {
             width: 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
+            height: 42px !important;
             min-height: 42px !important;
+            max-height: 42px !important;
             padding: 0 !important;
-            border-radius: 50% !important;
+            border-radius: 8px !important;
             color: #333333 !important;
             font-size: 32px !important;
             font-weight: 500 !important;
             line-height: 1 !important;
+            aspect-ratio: 1 / 1 !important;
         }
 
         dialog[open] .discard-confirm {
