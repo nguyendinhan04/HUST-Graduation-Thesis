@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import escape
 from typing import Any
 
 import streamlit as st
@@ -15,13 +16,15 @@ from frontend_app.formatting import (
 from frontend_app.state import close_dialog
 
 
-def render_dialog_close(key: str) -> None:
-    st.markdown('<div class="dialog-close-row">', unsafe_allow_html=True)
-    _, close_col = st.columns([10, 0.55], gap="small")
+def render_dialog_close(key: str, title: str) -> None:
+    title_col, close_col = st.columns([10, 0.7], gap="small")
+    title_col.markdown(
+        f'<div class="dialog-title">{escape(title)}</div>',
+        unsafe_allow_html=True,
+    )
     if close_col.button("×", key=key, help="Discard changes"):
         close_dialog()
         st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 

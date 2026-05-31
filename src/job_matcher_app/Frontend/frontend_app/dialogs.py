@@ -29,7 +29,7 @@ from frontend_app.state import close_dialog
 
 @st.dialog("Edit profile")
 def profile_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_profile")
+    render_dialog_close("discard_profile", "Edit profile")
 
     payload, action = profile_payload_form("profile_edit_form", profile)
     if action == "save":
@@ -46,7 +46,7 @@ def profile_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add experience")
 def add_experience_dialog() -> None:
-    render_dialog_close("discard_add_experience")
+    render_dialog_close("discard_add_experience", "Add experience")
 
     payload, action = experience_payload_form("create_experience_form")
     if action == "save":
@@ -63,7 +63,7 @@ def add_experience_dialog() -> None:
 
 @st.dialog("Edit experience")
 def edit_experience_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_edit_experience")
+    render_dialog_close("discard_edit_experience", "Edit experience")
 
     experiences = profile.get("experiences") or []
     experience_id = st.session_state.get("active_item_id")
@@ -107,7 +107,7 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add education")
 def add_education_dialog() -> None:
-    render_dialog_close("discard_add_education")
+    render_dialog_close("discard_add_education", "Add education")
 
     payload, action = education_payload_form("create_education_form")
     if action == "save":
@@ -124,7 +124,7 @@ def add_education_dialog() -> None:
 
 @st.dialog("Edit education")
 def edit_education_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_edit_education")
+    render_dialog_close("discard_edit_education", "Edit education")
 
     educations = profile.get("educations") or []
     education_id = st.session_state.get("active_item_id")
@@ -168,7 +168,7 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add skill")
 def add_skill_dialog() -> None:
-    render_dialog_close("discard_add_skill")
+    render_dialog_close("discard_add_skill", "Add skill")
 
     with st.form("add_skill_form"):
         skill_name = st.text_input("Skill name")
@@ -195,7 +195,7 @@ def add_skill_dialog() -> None:
 
 @st.dialog("Edit skills")
 def manage_skills_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_manage_skills")
+    render_dialog_close("discard_manage_skills", "Edit skills")
 
     skills = profile.get("skills") or []
     if not skills:

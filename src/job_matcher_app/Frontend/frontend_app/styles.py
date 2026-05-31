@@ -220,7 +220,8 @@ def inject_linkedin_styles() -> None:
             transform: translate(-50%, -50%) !important;
             width: min(760px, calc(100vw - 32px)) !important;
             max-width: min(760px, calc(100vw - 32px)) !important;
-            max-height: calc(100dvh - 24px) !important;
+            height: calc(100dvh - 32px) !important;
+            max-height: calc(100dvh - 32px) !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
@@ -238,56 +239,46 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] > div {
             background: #ffffff !important;
             border-radius: 10px !important;
-            max-height: calc(100dvh - 26px) !important;
+            height: calc(100dvh - 34px) !important;
+            max-height: calc(100dvh - 34px) !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
-            padding: 22px 28px 0 !important;
+            padding: 0 28px 92px !important;
             overscroll-behavior: contain;
         }
 
-        [data-testid="stDialog"] h1,
-        [data-testid="stDialog"] h2,
-        [data-testid="stDialog"] h3,
-        dialog[open] h1,
-        dialog[open] h2,
-        dialog[open] h3,
-        [role="dialog"] h1,
-        [role="dialog"] h2,
-        [role="dialog"] h3 {
+        [data-testid="stDialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
+        dialog[open] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
+        [role="dialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) {
             position: sticky !important;
-            top: -22px !important;
-            z-index: 4 !important;
+            top: 0 !important;
+            z-index: 6 !important;
+            align-items: center !important;
             background: #ffffff !important;
-            font-size: 24px !important;
-            font-weight: 650 !important;
-            line-height: 1.25 !important;
             margin: 0 -28px 18px !important;
-            padding: 20px 64px 18px 28px !important;
+            padding: 18px 20px 16px 28px !important;
             border-bottom: 1px solid #e8e4de !important;
         }
 
-        [data-testid="stDialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"],
-        dialog[open] .dialog-close-row + div[data-testid="stHorizontalBlock"],
-        [role="dialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"] {
-            position: sticky;
-            top: 14px;
-            float: right;
-            right: 16px;
-            width: 40px;
-            height: 0;
-            margin: -68px -12px 28px auto !important;
-            z-index: 5;
+        [data-testid="stDialog"] .dialog-title,
+        dialog[open] .dialog-title,
+        [role="dialog"] .dialog-title {
+            color: #191919;
+            font-size: 24px;
+            font-weight: 650;
+            line-height: 1.25;
         }
 
-        [data-testid="stDialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"] button,
-        dialog[open] .dialog-close-row + div[data-testid="stHorizontalBlock"] button,
-        [role="dialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"] button {
-            width: 36px !important;
+        [data-testid="stDialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) button,
+        dialog[open] div[data-testid="stHorizontalBlock"]:has(.dialog-title) button,
+        [role="dialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) button {
+            width: 40px !important;
             min-height: 36px !important;
             padding: 0 !important;
             border-radius: 50% !important;
             font-size: 24px !important;
             line-height: 1 !important;
+            color: #333333 !important;
         }
 
         [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
@@ -340,14 +331,18 @@ def inject_linkedin_styles() -> None:
         [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
         dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
         [role="dialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
-            position: sticky;
-            bottom: 0;
-            z-index: 4;
+            position: fixed !important;
+            bottom: 16px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: min(758px, calc(100vw - 34px)) !important;
+            z-index: 1000000;
             align-items: center;
-            margin: 18px -28px 0 !important;
+            margin: 0 !important;
             padding: 14px 20px 16px !important;
             background: #ffffff;
             border-top: 1px solid #e8e4de;
+            border-radius: 0 0 10px 10px;
             box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
         }
 
@@ -364,6 +359,7 @@ def inject_linkedin_styles() -> None:
             [role="dialog"] {
                 width: calc(100vw - 16px) !important;
                 max-width: calc(100vw - 16px) !important;
+                height: calc(100dvh - 16px) !important;
                 max-height: calc(100dvh - 16px) !important;
                 border-radius: 10px !important;
             }
@@ -371,35 +367,23 @@ def inject_linkedin_styles() -> None:
             [data-testid="stDialog"] > div,
             dialog[open] > div,
             [role="dialog"] > div {
+                height: calc(100dvh - 18px) !important;
                 max-height: calc(100dvh - 18px) !important;
-                padding: 18px 16px 0 !important;
+                padding: 0 16px 88px !important;
             }
 
-            [data-testid="stDialog"] h1,
-            [data-testid="stDialog"] h2,
-            [data-testid="stDialog"] h3,
-            dialog[open] h1,
-            dialog[open] h2,
-            dialog[open] h3,
-            [role="dialog"] h1,
-            [role="dialog"] h2,
-            [role="dialog"] h3 {
-                top: -18px !important;
+            [data-testid="stDialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
+            dialog[open] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
+            [role="dialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) {
                 margin: 0 -16px 18px !important;
-                padding: 18px 56px 16px 16px !important;
-            }
-
-            [data-testid="stDialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"],
-            dialog[open] .dialog-close-row + div[data-testid="stHorizontalBlock"],
-            [role="dialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"] {
-                top: 10px;
-                margin: -64px -10px 28px auto !important;
+                padding: 16px 14px 14px 16px !important;
             }
 
             [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
             dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
             [role="dialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
-                margin: 18px -16px 0 !important;
+                bottom: 8px !important;
+                width: calc(100vw - 18px) !important;
                 padding: 12px 14px 14px !important;
             }
         }
