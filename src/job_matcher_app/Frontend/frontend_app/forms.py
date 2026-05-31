@@ -10,7 +10,6 @@ from frontend_app.formatting import (
     clean_payload,
     date_to_api,
     nullable_text,
-    optional_date_input,
     parse_iso_date,
     skills_to_text,
     split_skills,
@@ -225,48 +224,73 @@ def education_payload_form(
     allow_delete: bool = False,
 ) -> tuple[dict[str, Any], str | None]:
     item = item or {}
-    with st.form(form_key):
-        school = st.text_input("School", value=nullable_text(item.get("school")))
-        degree = st.text_input("Degree", value=nullable_text(item.get("degree")))
-        field_of_study = st.text_input(
-            "Field of study",
-            value=nullable_text(item.get("field_of_study")),
-        )
-        start_date = optional_date_input(
-            "Start date",
-            f"{form_key}_start",
-            item.get("start_date"),
-        )
-        end_date = optional_date_input(
+    school = st.text_input(
+        "School",
+        value=nullable_text(item.get("school")),
+        key=f"{form_key}_school",
+    )
+    degree = st.text_input(
+        "Degree",
+        value=nullable_text(item.get("degree")),
+        key=f"{form_key}_degree",
+    )
+    field_of_study = st.text_input(
+        "Field of study",
+        value=nullable_text(item.get("field_of_study")),
+        key=f"{form_key}_field_of_study",
+    )
+    start_date = st.date_input(
+        "Start date",
+        value=parse_iso_date(item.get("start_date")) or date.today(),
+        key=f"{form_key}_start_date",
+    )
+    currently_studying_here = st.checkbox(
+        "Currently studying here",
+        value=item.get("end_date") is None,
+        key=f"{form_key}_currently_studying_here",
+    )
+    if currently_studying_here:
+        end_date = None
+        st.caption("End date will be shown as Now.")
+    else:
+        end_date = st.date_input(
             "End date",
-            f"{form_key}_end",
-            item.get("end_date"),
+            value=parse_iso_date(item.get("end_date")) or date.today(),
+            key=f"{form_key}_end_date",
         )
-        skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
-        description = st.text_area(
-            "Description",
-            value=nullable_text(item.get("description")),
-            height=120,
+    skills = st.text_input(
+        "Skills",
+        value=skills_to_text(item.get("skills")),
+        key=f"{form_key}_skills",
+    )
+    description = st.text_area(
+        "Description",
+        value=nullable_text(item.get("description")),
+        height=120,
+        key=f"{form_key}_description",
+    )
+    if allow_delete:
+        delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
+        delete_submitted = delete_col.button(
+            "Delete",
+            key=f"{form_key}_delete",
+            use_container_width=True,
         )
-        if allow_delete:
-            delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
-            delete_submitted = delete_col.form_submit_button(
-                "Delete",
-                use_container_width=True,
-            )
-            save_submitted = save_col.form_submit_button(
-                "Save",
-                type="primary",
-                use_container_width=True,
-            )
-        else:
-            delete_submitted = False
-            _, save_col = st.columns([5, 1.25])
-            save_submitted = save_col.form_submit_button(
-                "Save",
-                type="primary",
-                use_container_width=True,
-            )
+        save_submitted = save_col.button(
+            "Save",
+            key=f"{form_key}_save",
+            type="primary",
+            use_container_width=True,
+        )
+    else:
+        delete_submitted = False
+        _, save_col = st.columns([5, 1.25])
+        save_submitted = save_col.button(
+            "Save",
+            key=f"{form_key}_save",
+            type="primary",
+            use_container_width=True,
+        )
 
     payload = clean_payload(
         {
