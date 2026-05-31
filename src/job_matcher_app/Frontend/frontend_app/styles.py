@@ -266,10 +266,17 @@ def inject_linkedin_styles() -> None:
             display: none !important;
         }
 
-        dialog[open] div[style*="padding: 1.5rem"][style*="font-size: 1.5rem"],
-        dialog[open] div[style*="font-size: 1.5rem"][style*="font-weight: 600"],
-        dialog[open] div[style*="font-weight: 600"][style*="flex-direction: row"],
-        dialog[open] div[style*="max-height: 80vh"][style*="flex-direction: row"] {
+        div[style*="padding: 1.5rem 1.5rem 0.75rem"][style*="max-height: 80vh"][style*="flex-direction: row"]:has(.custom-dialog-title),
+        dialog[open] div[style*="padding: 1.5rem"][style*="max-height: 80vh"][style*="flex-direction: row"]:has(.custom-dialog-title) {
+            margin: 0 !important;
+            padding: 0.25rem 1.5rem 0.5rem !important;
+            max-height: none !important;
+        }
+
+        dialog[open] div[style*="padding: 1.5rem"][style*="font-size: 1.5rem"]:not(:has(.custom-dialog-title)),
+        dialog[open] div[style*="font-size: 1.5rem"][style*="font-weight: 600"]:not(:has(.custom-dialog-title)),
+        dialog[open] div[style*="font-weight: 600"][style*="flex-direction: row"]:not(:has(.custom-dialog-title)),
+        dialog[open] div[style*="max-height: 80vh"][style*="flex-direction: row"]:not(:has(.custom-dialog-title)) {
             display: none !important;
             height: 0 !important;
             min-height: 0 !important;
