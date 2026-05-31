@@ -348,6 +348,15 @@ def inject_linkedin_styles() -> None:
             aspect-ratio: 1 / 1 !important;
         }
 
+        dialog[open] .discard-confirm-backdrop {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 1000001 !important;
+            background: rgba(0, 0, 0, 0.46) !important;
+            backdrop-filter: blur(1px);
+            pointer-events: auto;
+        }
+
         dialog[open] .discard-confirm {
             position: fixed !important;
             top: 96px !important;

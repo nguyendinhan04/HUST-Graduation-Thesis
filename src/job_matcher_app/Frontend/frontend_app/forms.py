@@ -40,6 +40,7 @@ def render_discard_confirmation(key_prefix: str) -> bool:
 
     st.markdown(
         """
+        <div class="discard-confirm-backdrop"></div>
         <div class="discard-confirm">
             <div class="discard-title">Discard changes</div>
             <div class="discard-message">
