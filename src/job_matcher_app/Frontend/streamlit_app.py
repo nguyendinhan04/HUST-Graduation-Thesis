@@ -465,12 +465,12 @@ def inject_linkedin_styles() -> None:
         dialog[open],
         [role="dialog"] {
             position: fixed !important;
-            top: 50% !important;
+            top: 52% !important;
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: min(720px, calc(100vw - 40px)) !important;
-            max-width: min(720px, calc(100vw - 40px)) !important;
-            max-height: min(86vh, 900px) !important;
+            width: min(640px, calc(100vw - 56px)) !important;
+            max-width: min(640px, calc(100vw - 56px)) !important;
+            max-height: min(78vh, 760px) !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
@@ -487,14 +487,21 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] > div {
             background: #ffffff !important;
             border-radius: 16px !important;
-            max-height: min(86vh, 900px) !important;
+            max-height: min(78vh, 760px) !important;
             overflow-y: auto !important;
+            padding: 18px 24px 22px !important;
         }
 
         [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
         dialog[open] div[data-testid="stVerticalBlock"],
         [role="dialog"] div[data-testid="stVerticalBlock"] {
             gap: 0.75rem;
+        }
+
+        [data-testid="stDialog"] div[data-testid="column"]:last-child button,
+        dialog[open] div[data-testid="column"]:last-child button,
+        [role="dialog"] div[data-testid="column"]:last-child button {
+            min-height: 34px;
         }
         </style>
         """,
@@ -706,7 +713,7 @@ def render_profile_actions() -> None:
 
 
 def render_dialog_close(key: str) -> None:
-    _, close_col = st.columns([9, 0.65], gap="small")
+    _, close_col = st.columns([10, 0.55], gap="small")
     if close_col.button("×", key=key, help="Discard changes"):
         close_dialog()
         st.rerun()
@@ -735,7 +742,11 @@ def profile_payload_form(form_key: str, profile: dict[str, Any]) -> tuple[dict[s
                 "Current location",
                 value=nullable_text(employee.get("current_location")),
             )
-        summary = st.text_area("Summary", value=nullable_text(employee.get("summary")))
+        summary = st.text_area(
+            "Summary",
+            value=nullable_text(employee.get("summary")),
+            height=120,
+        )
         _, save_col = st.columns([5, 1.25])
         save_submitted = save_col.form_submit_button(
             "Save",
@@ -797,6 +808,7 @@ def experience_payload_form(
         description = st.text_area(
             "Description",
             value=nullable_text(item.get("description")),
+            height=120,
         )
         if allow_delete:
             delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
@@ -863,7 +875,11 @@ def education_payload_form(
                 item.get("end_date"),
             )
             skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
-        description = st.text_area("Description", value=nullable_text(item.get("description")))
+        description = st.text_area(
+            "Description",
+            value=nullable_text(item.get("description")),
+            height=120,
+        )
         if allow_delete:
             delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
             delete_submitted = delete_col.form_submit_button(
