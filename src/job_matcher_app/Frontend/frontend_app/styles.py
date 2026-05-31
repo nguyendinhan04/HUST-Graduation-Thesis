@@ -352,7 +352,7 @@ def inject_linkedin_styles() -> None:
             content: "" !important;
             position: absolute !important;
             inset: 0 !important;
-            z-index: 1000000 !important;
+            z-index: 1000010 !important;
             background: rgba(0, 0, 0, 0.46) !important;
             backdrop-filter: blur(1px);
             pointer-events: auto;
@@ -361,7 +361,7 @@ def inject_linkedin_styles() -> None:
         dialog[open] .discard-confirm-backdrop {
             position: absolute !important;
             inset: 0 !important;
-            z-index: 1000001 !important;
+            z-index: 1000011 !important;
             background: rgba(0, 0, 0, 0.46) !important;
             backdrop-filter: blur(1px);
             pointer-events: auto;
@@ -373,7 +373,7 @@ def inject_linkedin_styles() -> None:
             left: 50% !important;
             transform: translateX(-50%) !important;
             width: min(400px, calc(100vw - 48px)) !important;
-            z-index: 1000002 !important;
+            z-index: 1000020 !important;
             box-sizing: border-box !important;
             padding: 24px 28px 18px !important;
             background: #ffffff !important;
@@ -398,13 +398,24 @@ def inject_linkedin_styles() -> None:
             max-width: 460px;
         }
 
+        dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker),
+        dialog[open] div[data-testid="stMarkdownContainer"]:has(.discard-confirm-actions-marker) {
+            position: absolute !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+
+        dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker) + div[data-testid="stHorizontalBlock"],
         dialog[open] .discard-confirm + div[data-testid="stHorizontalBlock"] {
             position: absolute !important;
             top: 231px !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
             width: min(400px, calc(100vw - 48px)) !important;
-            z-index: 1000003 !important;
+            z-index: 1000030 !important;
             box-sizing: border-box !important;
             margin: 0 !important;
             padding: 14px 28px 16px !important;

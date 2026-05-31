@@ -35,8 +35,6 @@ DIALOG_NATIVE_TITLE = "\u200b"
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
 def profile_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit profile", "profile_dialog")
-    if render_discard_confirmation("profile_dialog"):
-        return
 
     payload, action = profile_payload_form("profile_edit_form", profile)
     if action == "save":
@@ -48,14 +46,13 @@ def profile_dialog(profile: dict[str, Any]) -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not update profile", exc)
+    render_discard_confirmation("profile_dialog")
 
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
 def add_experience_dialog() -> None:
     render_dialog_header("Add experience", "add_experience_dialog")
-    if render_discard_confirmation("add_experience_dialog"):
-        return
 
     payload, action = experience_payload_form("create_experience_form")
     if action == "save":
@@ -67,14 +64,13 @@ def add_experience_dialog() -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not add experience", exc)
+    render_discard_confirmation("add_experience_dialog")
 
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
 def edit_experience_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit experience", "edit_experience_dialog")
-    if render_discard_confirmation("edit_experience_dialog"):
-        return
 
     experiences = profile.get("experiences") or []
     experience_id = st.session_state.get("active_item_id")
@@ -113,14 +109,13 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not update experience", exc)
+    render_discard_confirmation("edit_experience_dialog")
 
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
 def add_education_dialog() -> None:
     render_dialog_header("Add education", "add_education_dialog")
-    if render_discard_confirmation("add_education_dialog"):
-        return
 
     payload, action = education_payload_form("create_education_form")
     if action == "save":
@@ -132,14 +127,13 @@ def add_education_dialog() -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not add education", exc)
+    render_discard_confirmation("add_education_dialog")
 
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
 def edit_education_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit education", "edit_education_dialog")
-    if render_discard_confirmation("edit_education_dialog"):
-        return
 
     educations = profile.get("educations") or []
     education_id = st.session_state.get("active_item_id")
@@ -178,14 +172,13 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not update education", exc)
+    render_discard_confirmation("edit_education_dialog")
 
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
 def add_skill_dialog() -> None:
     render_dialog_header("Add skill", "add_skill_dialog")
-    if render_discard_confirmation("add_skill_dialog"):
-        return
 
     with st.form("add_skill_form"):
         skill_name = st.text_input("Skill name")
@@ -207,18 +200,18 @@ def add_skill_dialog() -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not add skill", exc)
+    render_discard_confirmation("add_skill_dialog")
 
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
 def manage_skills_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit skills", "manage_skills_dialog")
-    if render_discard_confirmation("manage_skills_dialog"):
-        return
 
     skills = profile.get("skills") or []
     if not skills:
         st.info("No standalone skills yet.")
+        render_discard_confirmation("manage_skills_dialog")
         return
 
     for skill in skills:
@@ -237,6 +230,7 @@ def manage_skills_dialog(profile: dict[str, Any]) -> None:
                 st.rerun()
             except ApiError as exc:
                 show_api_error("Could not delete skill", exc)
+    render_discard_confirmation("manage_skills_dialog")
 
 
 

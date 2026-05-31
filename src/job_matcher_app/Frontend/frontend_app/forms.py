@@ -50,6 +50,10 @@ def render_discard_confirmation(key_prefix: str) -> bool:
         """,
         unsafe_allow_html=True,
     )
+    st.markdown(
+        '<div class="discard-confirm-actions-marker"></div>',
+        unsafe_allow_html=True,
+    )
     _, no_col, discard_col = st.columns([4.5, 1.35, 1.35], gap="small")
     if no_col.button("No thanks", key=f"{key_prefix}_keep_editing", use_container_width=True):
         cancel_discard_confirmation()
