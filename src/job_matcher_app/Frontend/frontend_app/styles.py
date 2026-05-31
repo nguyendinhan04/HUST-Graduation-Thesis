@@ -348,8 +348,18 @@ def inject_linkedin_styles() -> None:
             aspect-ratio: 1 / 1 !important;
         }
 
+        dialog[open]:has(.discard-confirm-backdrop)::after {
+            content: "" !important;
+            position: absolute !important;
+            inset: 0 !important;
+            z-index: 1000000 !important;
+            background: rgba(0, 0, 0, 0.46) !important;
+            backdrop-filter: blur(1px);
+            pointer-events: auto;
+        }
+
         dialog[open] .discard-confirm-backdrop {
-            position: fixed !important;
+            position: absolute !important;
             inset: 0 !important;
             z-index: 1000001 !important;
             background: rgba(0, 0, 0, 0.46) !important;
@@ -358,7 +368,7 @@ def inject_linkedin_styles() -> None:
         }
 
         dialog[open] .discard-confirm {
-            position: fixed !important;
+            position: absolute !important;
             top: 96px !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
@@ -389,7 +399,7 @@ def inject_linkedin_styles() -> None:
         }
 
         dialog[open] .discard-confirm + div[data-testid="stHorizontalBlock"] {
-            position: fixed !important;
+            position: absolute !important;
             top: 231px !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
