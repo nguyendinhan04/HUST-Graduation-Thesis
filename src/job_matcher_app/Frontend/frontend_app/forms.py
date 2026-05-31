@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 import streamlit as st
@@ -9,6 +10,7 @@ from frontend_app.formatting import (
     date_to_api,
     nullable_text,
     optional_date_input,
+    parse_iso_date,
     skills_to_text,
     split_skills,
 )
@@ -85,16 +87,25 @@ def experience_payload_form(
             "Location type",
             value=nullable_text(item.get("location_type")),
         )
-        start_date = optional_date_input(
+        start_date = st.date_input(
             "Start date",
-            f"{form_key}_start",
-            item.get("start_date"),
+            value=parse_iso_date(item.get("start_date")) or date.today(),
+            key=f"{form_key}_start_date",
         )
-        end_date = optional_date_input(
-            "End date",
-            f"{form_key}_end",
-            item.get("end_date"),
+        currently_work_here = st.checkbox(
+            "Currently work here",
+            value=item.get("end_date") is None,
+            key=f"{form_key}_currently_work_here",
         )
+        if currently_work_here:
+            end_date = None
+            st.caption("End date will be shown as Now.")
+        else:
+            end_date = st.date_input(
+                "End date",
+                value=parse_iso_date(item.get("end_date")) or date.today(),
+                key=f"{form_key}_end_date",
+            )
         skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
         description = st.text_area(
             "Description",

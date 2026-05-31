@@ -96,7 +96,7 @@ def format_month_year(value: str | None) -> str:
 
 def format_date_range(start: str | None, end: str | None) -> str:
     start_label = format_month_year(start)
-    end_label = format_month_year(end) or "Present"
+    end_label = format_month_year(end) if end else "Now"
     if start_label:
         return f"{start_label} - {end_label}"
     return end_label
