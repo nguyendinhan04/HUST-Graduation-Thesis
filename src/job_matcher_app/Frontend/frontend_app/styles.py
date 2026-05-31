@@ -266,7 +266,10 @@ def inject_linkedin_styles() -> None:
             display: none !important;
         }
 
-        dialog[open] div[style*="padding: 1.5rem 1.5rem 0.75rem"][style*="font-size: 1.5rem"][style*="display: flex"] {
+        dialog[open] div[style*="padding: 1.5rem"][style*="font-size: 1.5rem"],
+        dialog[open] div[style*="font-size: 1.5rem"][style*="font-weight: 600"],
+        dialog[open] div[style*="font-weight: 600"][style*="flex-direction: row"],
+        dialog[open] div[style*="max-height: 80vh"][style*="flex-direction: row"] {
             display: none !important;
             height: 0 !important;
             min-height: 0 !important;
