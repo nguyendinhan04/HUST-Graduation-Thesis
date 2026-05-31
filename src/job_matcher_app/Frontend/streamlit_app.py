@@ -26,6 +26,7 @@ def init_session_state() -> None:
     st.session_state.setdefault("profile", None)
     st.session_state.setdefault("active_dialog", None)
     st.session_state.setdefault("active_item_id", None)
+    st.session_state.setdefault("current_page", "profile")
 
 
 def api_base_url() -> str:
@@ -107,6 +108,7 @@ def logout() -> None:
     st.session_state["profile"] = None
     st.session_state["active_dialog"] = None
     st.session_state["active_item_id"] = None
+    st.session_state["current_page"] = "profile"
 
 
 def refresh_profile() -> None:
@@ -241,6 +243,11 @@ def open_dialog(name: str, item_id: int | None = None) -> None:
 def close_dialog() -> None:
     st.session_state["active_dialog"] = None
     st.session_state["active_item_id"] = None
+
+
+def navigate_to(page: str) -> None:
+    st.session_state["current_page"] = page
+    close_dialog()
 
 
 def inject_linkedin_styles() -> None:
@@ -422,12 +429,32 @@ def inject_linkedin_styles() -> None:
             gap: 4px;
         }
 
+        div[data-testid="stDialog"] {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: min(720px, calc(100vw - 40px)) !important;
+            max-width: min(720px, calc(100vw - 40px)) !important;
+            margin: 0 !important;
+        }
+
+        div[data-testid="stDialog"] > div {
+            border-radius: 14px !important;
+        }
+
         div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
             gap: 0.75rem;
         }
 
-        div[data-testid="stDialog"] {
-            max-width: 720px;
+        div[role="dialog"] {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: min(720px, calc(100vw - 40px)) !important;
+            max-width: min(720px, calc(100vw - 40px)) !important;
+            margin: 0 !important;
         }
         </style>
         """,
@@ -851,7 +878,8 @@ def render_experiences(profile: dict[str, Any]) -> None:
         if add_col.button("+", key="add_experience", help="Add experience"):
             open_dialog("add_experience")
         if edit_col.button("✎", key="manage_experiences", help="Edit experience"):
-            open_dialog("manage_experiences")
+            navigate_to("experiences")
+            st.rerun()
 
         if not experiences:
             st.markdown('<div class="empty-state">No experience yet.</div>', unsafe_allow_html=True)
@@ -869,7 +897,8 @@ def render_educations(profile: dict[str, Any]) -> None:
         if add_col.button("+", key="add_education", help="Add education"):
             open_dialog("add_education")
         if edit_col.button("✎", key="manage_educations", help="Edit education"):
-            open_dialog("manage_educations")
+            navigate_to("educations")
+            st.rerun()
 
         if not educations:
             st.markdown('<div class="empty-state">No education yet.</div>', unsafe_allow_html=True)
@@ -890,7 +919,8 @@ def render_standalone_skills(profile: dict[str, Any]) -> None:
         if add_col.button("+", key="add_skill", help="Add skill"):
             open_dialog("add_skill")
         if edit_col.button("✎", key="manage_skills", help="Edit skills"):
-            open_dialog("manage_skills")
+            navigate_to("skills")
+            st.rerun()
 
         if not skills:
             st.markdown('<div class="empty-state">No standalone skills yet.</div>', unsafe_allow_html=True)
@@ -944,48 +974,53 @@ def add_experience_dialog() -> None:
 
 
 @st.dialog("Edit experience")
-def manage_experiences_dialog(profile: dict[str, Any]) -> None:
-    if st.button("Discard", key="discard_manage_experience", use_container_width=True):
+def edit_experience_dialog(profile: dict[str, Any]) -> None:
+    if st.button("Discard", key="discard_edit_experience", use_container_width=True):
         close_dialog()
         st.rerun()
 
     experiences = profile.get("experiences") or []
-    if not experiences:
-        st.info("No experience yet.")
+    experience_id = st.session_state.get("active_item_id")
+    item = next(
+        (
+            experience
+            for experience in experiences
+            if experience.get("experience_id") == experience_id
+        ),
+        None,
+    )
+    if item is None:
+        st.info("Experience not found.")
         return
 
-    for index, item in enumerate(experiences, start=1):
-        title = item.get("title") or f"Experience #{index}"
-        company = item.get("company_name") or "No company yet"
-        with st.expander(f"{title} - {company}", expanded=index == 1):
-            delete_col, _ = st.columns([1, 3])
-            if delete_col.button(
-                "Delete",
-                key=f"delete_experience_{item['experience_id']}",
-                use_container_width=True,
-            ):
-                try:
-                    delete_experience(item["experience_id"])
-                    refresh_profile()
-                    close_dialog()
-                    st.success("Experience deleted.")
-                    st.rerun()
-                except ApiError as exc:
-                    show_api_error("Could not delete experience", exc)
+    delete_col, _ = st.columns([1, 3])
+    if delete_col.button(
+        "Delete",
+        key=f"delete_experience_{item['experience_id']}",
+        use_container_width=True,
+    ):
+        try:
+            delete_experience(item["experience_id"])
+            refresh_profile()
+            close_dialog()
+            st.success("Experience deleted.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not delete experience", exc)
 
-            payload, submitted = experience_payload_form(
-                f"edit_experience_form_{item['experience_id']}",
-                item,
-            )
-            if submitted:
-                try:
-                    update_experience(item["experience_id"], payload)
-                    refresh_profile()
-                    close_dialog()
-                    st.success("Experience updated.")
-                    st.rerun()
-                except ApiError as exc:
-                    show_api_error("Could not update experience", exc)
+    payload, submitted = experience_payload_form(
+        f"edit_experience_form_{item['experience_id']}",
+        item,
+    )
+    if submitted:
+        try:
+            update_experience(item["experience_id"], payload)
+            refresh_profile()
+            close_dialog()
+            st.success("Experience updated.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not update experience", exc)
 
 
 @st.dialog("Add education")
@@ -1007,48 +1042,53 @@ def add_education_dialog() -> None:
 
 
 @st.dialog("Edit education")
-def manage_educations_dialog(profile: dict[str, Any]) -> None:
-    if st.button("Discard", key="discard_manage_education", use_container_width=True):
+def edit_education_dialog(profile: dict[str, Any]) -> None:
+    if st.button("Discard", key="discard_edit_education", use_container_width=True):
         close_dialog()
         st.rerun()
 
     educations = profile.get("educations") or []
-    if not educations:
-        st.info("No education yet.")
+    education_id = st.session_state.get("active_item_id")
+    item = next(
+        (
+            education
+            for education in educations
+            if education.get("education_id") == education_id
+        ),
+        None,
+    )
+    if item is None:
+        st.info("Education not found.")
         return
 
-    for index, item in enumerate(educations, start=1):
-        school = item.get("school") or f"Education #{index}"
-        degree = item.get("degree") or "No degree yet"
-        with st.expander(f"{school} - {degree}", expanded=index == 1):
-            delete_col, _ = st.columns([1, 3])
-            if delete_col.button(
-                "Delete",
-                key=f"delete_education_{item['education_id']}",
-                use_container_width=True,
-            ):
-                try:
-                    delete_education(item["education_id"])
-                    refresh_profile()
-                    close_dialog()
-                    st.success("Education deleted.")
-                    st.rerun()
-                except ApiError as exc:
-                    show_api_error("Could not delete education", exc)
+    delete_col, _ = st.columns([1, 3])
+    if delete_col.button(
+        "Delete",
+        key=f"delete_education_{item['education_id']}",
+        use_container_width=True,
+    ):
+        try:
+            delete_education(item["education_id"])
+            refresh_profile()
+            close_dialog()
+            st.success("Education deleted.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not delete education", exc)
 
-            payload, submitted = education_payload_form(
-                f"edit_education_form_{item['education_id']}",
-                item,
-            )
-            if submitted:
-                try:
-                    update_education(item["education_id"], payload)
-                    refresh_profile()
-                    close_dialog()
-                    st.success("Education updated.")
-                    st.rerun()
-                except ApiError as exc:
-                    show_api_error("Could not update education", exc)
+    payload, submitted = education_payload_form(
+        f"edit_education_form_{item['education_id']}",
+        item,
+    )
+    if submitted:
+        try:
+            update_education(item["education_id"], payload)
+            refresh_profile()
+            close_dialog()
+            st.success("Education updated.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not update education", exc)
 
 
 @st.dialog("Add skill")
@@ -1103,18 +1143,130 @@ def manage_skills_dialog(profile: dict[str, Any]) -> None:
                 show_api_error("Could not delete skill", exc)
 
 
+def render_management_header(title: str, add_dialog: str) -> None:
+    with st.container(border=True):
+        back_col, title_col, add_col = st.columns([0.65, 8.8, 0.55], gap="small")
+        if back_col.button("←", key=f"back_{title}", help="Back to profile"):
+            navigate_to("profile")
+            st.rerun()
+        title_col.markdown(f'<div class="section-title">{escape(title)}</div>', unsafe_allow_html=True)
+        if add_col.button("+", key=f"add_from_{title}", help=f"Add {title.lower()}"):
+            open_dialog(add_dialog)
+
+
+def render_experience_management_page(profile: dict[str, Any]) -> None:
+    render_management_header("Experience", "add_experience")
+    experiences = profile.get("experiences") or []
+    if not experiences:
+        with st.container(border=True):
+            st.markdown('<div class="empty-state">No experience yet.</div>', unsafe_allow_html=True)
+        return
+
+    with st.container(border=True):
+        for index, item in enumerate(experiences, start=1):
+            title = item.get("title") or f"Experience #{index}"
+            company = item.get("company_name") or "No company yet"
+            location_bits = [
+                value
+                for value in [item.get("location"), item.get("location_type")]
+                if value
+            ]
+            location = " · ".join(location_bits)
+            skill_summary = summarize_skills(item.get("skills"))
+            logo_col, body_col, edit_col = st.columns([0.8, 8.6, 0.6], gap="small")
+            logo_col.markdown(
+                f'<div class="entity-logo">{escape(initials(company, "CO"))}</div>',
+                unsafe_allow_html=True,
+            )
+            body_col.markdown(
+                f"""
+                <div class="entity-title">{html_or_empty(title)}</div>
+                <div class="entity-subtitle">{html_or_empty(company)} · {html_or_empty(item.get("employment_type"), "No employment type yet")}</div>
+                <div class="entity-meta">{html_or_empty(format_date_range(item.get("start_date"), item.get("end_date")))}{(" · " + html_or_empty(location)) if location else ""}</div>
+                <div class="entity-desc">{html_or_empty(item.get("description"))}</div>
+                {f'<div class="skill-line">{html_or_empty(skill_summary)}</div>' if skill_summary else ""}
+                """,
+                unsafe_allow_html=True,
+            )
+            if edit_col.button("✎", key=f"edit_experience_page_{item['experience_id']}", help="Edit experience"):
+                open_dialog("edit_experience", item["experience_id"])
+            if index < len(experiences):
+                st.divider()
+
+
+def render_education_management_page(profile: dict[str, Any]) -> None:
+    render_management_header("Education", "add_education")
+    educations = profile.get("educations") or []
+    if not educations:
+        with st.container(border=True):
+            st.markdown('<div class="empty-state">No education yet.</div>', unsafe_allow_html=True)
+        return
+
+    with st.container(border=True):
+        for index, item in enumerate(educations, start=1):
+            school = item.get("school") or f"Education #{index}"
+            degree = item.get("degree") or "No degree yet"
+            skill_summary = summarize_skills(item.get("skills"))
+            logo_col, body_col, edit_col = st.columns([0.8, 8.6, 0.6], gap="small")
+            logo_col.markdown(
+                f'<div class="entity-logo">{escape(initials(school, "ED"))}</div>',
+                unsafe_allow_html=True,
+            )
+            body_col.markdown(
+                f"""
+                <div class="entity-title">{html_or_empty(school)}</div>
+                <div class="entity-subtitle">{html_or_empty(degree)}, {html_or_empty(item.get("field_of_study"), "No field of study yet")}</div>
+                <div class="entity-meta">{html_or_empty(format_date_range(item.get("start_date"), item.get("end_date")))}</div>
+                <div class="entity-desc">{html_or_empty(item.get("description"))}</div>
+                {f'<div class="skill-line">{html_or_empty(skill_summary)}</div>' if skill_summary else ""}
+                """,
+                unsafe_allow_html=True,
+            )
+            if edit_col.button("✎", key=f"edit_education_page_{item['education_id']}", help="Edit education"):
+                open_dialog("edit_education", item["education_id"])
+            if index < len(educations):
+                st.divider()
+
+
+def render_skill_management_page(profile: dict[str, Any]) -> None:
+    render_management_header("Skills", "add_skill")
+    skills = profile.get("skills") or []
+    if not skills:
+        with st.container(border=True):
+            st.markdown('<div class="empty-state">No standalone skills yet.</div>', unsafe_allow_html=True)
+        return
+
+    with st.container(border=True):
+        for index, skill in enumerate(skills, start=1):
+            name_col, delete_col = st.columns([9.3, 0.7], gap="small")
+            name_col.markdown(
+                f'<div class="skill-row">{html_or_empty(skill.get("skill_name"), "Unnamed skill")}</div>',
+                unsafe_allow_html=True,
+            )
+            if delete_col.button("×", key=f"delete_skill_page_{skill['skill_id']}", help="Delete skill"):
+                try:
+                    delete_skill(skill["skill_id"])
+                    refresh_profile()
+                    st.success("Skill deleted.")
+                    st.rerun()
+                except ApiError as exc:
+                    show_api_error("Could not delete skill", exc)
+            if index < len(skills):
+                st.divider()
+
+
 def render_active_dialog(profile: dict[str, Any]) -> None:
     active_dialog = st.session_state.get("active_dialog")
     if active_dialog == "profile":
         profile_dialog(profile)
     elif active_dialog == "add_experience":
         add_experience_dialog()
-    elif active_dialog == "manage_experiences":
-        manage_experiences_dialog(profile)
+    elif active_dialog == "edit_experience":
+        edit_experience_dialog(profile)
     elif active_dialog == "add_education":
         add_education_dialog()
-    elif active_dialog == "manage_educations":
-        manage_educations_dialog(profile)
+    elif active_dialog == "edit_education":
+        edit_education_dialog(profile)
     elif active_dialog == "add_skill":
         add_skill_dialog()
     elif active_dialog == "manage_skills":
@@ -1130,6 +1282,20 @@ def render_profile_page() -> None:
             return
 
     profile = st.session_state["profile"]
+    current_page = st.session_state.get("current_page", "profile")
+    if current_page == "experiences":
+        render_experience_management_page(profile)
+        render_active_dialog(profile)
+        return
+    if current_page == "educations":
+        render_education_management_page(profile)
+        render_active_dialog(profile)
+        return
+    if current_page == "skills":
+        render_skill_management_page(profile)
+        render_active_dialog(profile)
+        return
+
     render_profile_summary(profile)
     render_profile_actions()
     render_experiences(profile)
