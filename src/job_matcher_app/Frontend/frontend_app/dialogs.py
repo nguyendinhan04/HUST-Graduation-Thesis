@@ -22,15 +22,12 @@ from frontend_app.forms import (
     education_payload_form,
     experience_payload_form,
     profile_payload_form,
-    render_dialog_close,
 )
 from frontend_app.state import close_dialog
 
 
 @st.dialog("Edit profile")
 def profile_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_profile", "Edit profile")
-
     payload, action = profile_payload_form("profile_edit_form", profile)
     if action == "save":
         try:
@@ -46,8 +43,6 @@ def profile_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add experience")
 def add_experience_dialog() -> None:
-    render_dialog_close("discard_add_experience", "Add experience")
-
     payload, action = experience_payload_form("create_experience_form")
     if action == "save":
         try:
@@ -63,8 +58,6 @@ def add_experience_dialog() -> None:
 
 @st.dialog("Edit experience")
 def edit_experience_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_edit_experience", "Edit experience")
-
     experiences = profile.get("experiences") or []
     experience_id = st.session_state.get("active_item_id")
     item = next(
@@ -107,8 +100,6 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add education")
 def add_education_dialog() -> None:
-    render_dialog_close("discard_add_education", "Add education")
-
     payload, action = education_payload_form("create_education_form")
     if action == "save":
         try:
@@ -124,8 +115,6 @@ def add_education_dialog() -> None:
 
 @st.dialog("Edit education")
 def edit_education_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_edit_education", "Edit education")
-
     educations = profile.get("educations") or []
     education_id = st.session_state.get("active_item_id")
     item = next(
@@ -168,8 +157,6 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add skill")
 def add_skill_dialog() -> None:
-    render_dialog_close("discard_add_skill", "Add skill")
-
     with st.form("add_skill_form"):
         skill_name = st.text_input("Skill name")
         _, save_col = st.columns([5, 1.25])
@@ -195,8 +182,6 @@ def add_skill_dialog() -> None:
 
 @st.dialog("Edit skills")
 def manage_skills_dialog(profile: dict[str, Any]) -> None:
-    render_dialog_close("discard_manage_skills", "Edit skills")
-
     skills = profile.get("skills") or []
     if not skills:
         st.info("No standalone skills yet.")

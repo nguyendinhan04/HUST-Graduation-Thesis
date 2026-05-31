@@ -257,40 +257,6 @@ def inject_linkedin_styles() -> None:
             align-items: stretch !important;
         }
 
-        [data-testid="stDialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
-        dialog[open] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
-        [role="dialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) {
-            position: sticky !important;
-            top: 0 !important;
-            z-index: 6 !important;
-            align-items: center !important;
-            background: #ffffff !important;
-            margin: 0 -28px 18px !important;
-            padding: 18px 20px 16px 28px !important;
-            border-bottom: 1px solid #e8e4de !important;
-        }
-
-        [data-testid="stDialog"] .dialog-title,
-        dialog[open] .dialog-title,
-        [role="dialog"] .dialog-title {
-            color: #191919;
-            font-size: 24px;
-            font-weight: 650;
-            line-height: 1.25;
-        }
-
-        [data-testid="stDialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) button,
-        dialog[open] div[data-testid="stHorizontalBlock"]:has(.dialog-title) button,
-        [role="dialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) button {
-            width: 40px !important;
-            min-height: 36px !important;
-            padding: 0 !important;
-            border-radius: 50% !important;
-            font-size: 24px !important;
-            line-height: 1 !important;
-            color: #333333 !important;
-        }
-
         [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
         dialog[open] div[data-testid="stVerticalBlock"],
         [role="dialog"] div[data-testid="stVerticalBlock"] {
@@ -383,13 +349,6 @@ def inject_linkedin_styles() -> None:
                 height: 100% !important;
                 max-height: 100% !important;
                 padding: 0 16px 88px !important;
-            }
-
-            [data-testid="stDialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
-            dialog[open] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
-            [role="dialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title) {
-                margin: 0 -16px 18px !important;
-                padding: 16px 14px 14px 16px !important;
             }
 
             [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
