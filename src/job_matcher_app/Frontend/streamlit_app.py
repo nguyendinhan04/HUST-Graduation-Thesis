@@ -24,13 +24,8 @@ def init_session_state() -> None:
     st.session_state.setdefault("access_token", None)
     st.session_state.setdefault("token_type", "bearer")
     st.session_state.setdefault("profile", None)
-    st.session_state.setdefault("editing_profile", False)
-    st.session_state.setdefault("show_add_experience", False)
-    st.session_state.setdefault("show_edit_experiences", False)
-    st.session_state.setdefault("show_add_education", False)
-    st.session_state.setdefault("show_edit_educations", False)
-    st.session_state.setdefault("show_add_skill", False)
-    st.session_state.setdefault("show_edit_skills", False)
+    st.session_state.setdefault("active_dialog", None)
+    st.session_state.setdefault("active_item_id", None)
 
 
 def api_base_url() -> str:
@@ -86,7 +81,7 @@ def request_json(
             timeout=20,
         )
     except requests.RequestException as exc:
-        raise ApiError(f"Không kết nối được backend: {exc}") from exc
+        raise ApiError(f"Could not connect to backend: {exc}") from exc
 
     if response.status_code >= 400:
         raise ApiError(parse_api_error(response))
@@ -110,7 +105,8 @@ def logout() -> None:
     st.session_state["access_token"] = None
     st.session_state["token_type"] = "bearer"
     st.session_state["profile"] = None
-    st.session_state["editing_profile"] = False
+    st.session_state["active_dialog"] = None
+    st.session_state["active_item_id"] = None
 
 
 def refresh_profile() -> None:
@@ -210,7 +206,7 @@ def optional_date_input(
 ) -> date | None:
     parsed_value = parse_iso_date(value)
     enabled = st.checkbox(
-        f"Có {label.lower()}",
+        f"Set {label.lower()}",
         value=parsed_value is not None,
         key=f"{key_prefix}_enabled",
     )
@@ -235,6 +231,16 @@ def clean_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 def show_api_error(message: str, exc: ApiError) -> None:
     st.error(f"{message}: {exc}")
+
+
+def open_dialog(name: str, item_id: int | None = None) -> None:
+    st.session_state["active_dialog"] = name
+    st.session_state["active_item_id"] = item_id
+
+
+def close_dialog() -> None:
+    st.session_state["active_dialog"] = None
+    st.session_state["active_item_id"] = None
 
 
 def inject_linkedin_styles() -> None:
@@ -321,7 +327,7 @@ def inject_linkedin_styles() -> None:
         .section-title {
             font-size: 20px;
             font-weight: 650;
-            margin: 0 0 14px;
+            margin: 2px 0 12px;
         }
 
         .entity-row {
@@ -396,6 +402,7 @@ def inject_linkedin_styles() -> None:
             color: #191919;
             min-height: 36px;
             font-weight: 600;
+            width: 100%;
         }
 
         div.stButton > button:hover {
@@ -412,7 +419,15 @@ def inject_linkedin_styles() -> None:
         }
 
         .stTabs [data-baseweb="tab-list"] {
-            gap: 0;
+            gap: 4px;
+        }
+
+        div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
+            gap: 0.75rem;
+        }
+
+        div[data-testid="stDialog"] {
+            max-width: 720px;
         }
         </style>
         """,
@@ -459,8 +474,8 @@ def html_or_empty(value: Any, fallback: str = "") -> str:
 
 def sidebar() -> None:
     with st.sidebar:
-        st.header("Cấu hình")
-        api_url = st.text_input("API backend", value=api_base_url())
+        st.header("Settings")
+        api_url = st.text_input("Backend API", value=api_base_url())
         normalized_url = api_url.strip().rstrip("/") or DEFAULT_API_BASE_URL
         if normalized_url != st.session_state["api_base_url"]:
             st.session_state["api_base_url"] = normalized_url
@@ -469,15 +484,15 @@ def sidebar() -> None:
         if st.session_state.get("access_token"):
             profile = st.session_state.get("profile") or {}
             st.divider()
-            st.caption("Đang đăng nhập")
+            st.caption("Signed in")
             st.write(profile.get("email", "Employee"))
-            if st.button("Làm mới profile", use_container_width=True):
+            if st.button("Refresh profile", use_container_width=True):
                 try:
                     refresh_profile()
-                    st.success("Đã tải lại profile.")
+                    st.success("Profile refreshed.")
                 except ApiError as exc:
-                    show_api_error("Không tải được profile", exc)
-            if st.button("Đăng xuất", use_container_width=True):
+                    show_api_error("Could not load profile", exc)
+            if st.button("Sign out", use_container_width=True):
                 logout()
                 st.rerun()
 
@@ -485,19 +500,19 @@ def sidebar() -> None:
 def render_login_tab() -> None:
     with st.form("login_form"):
         email = st.text_input("Email", key="login_email")
-        password = st.text_input("Mật khẩu", type="password", key="login_password")
-        submitted = st.form_submit_button("Đăng nhập", use_container_width=True)
+        password = st.text_input("Password", type="password", key="login_password")
+        submitted = st.form_submit_button("Sign in", use_container_width=True)
 
     if submitted:
         if not email.strip() or not password:
-            st.warning("Vui lòng nhập email và mật khẩu.")
+            st.warning("Please enter email and password.")
             return
         try:
             login(email.strip(), password)
-            st.success("Đăng nhập thành công.")
+            st.success("Signed in successfully.")
             st.rerun()
         except ApiError as exc:
-            show_api_error("Đăng nhập thất bại", exc)
+            show_api_error("Sign in failed", exc)
 
 
 def render_register_tab() -> None:
@@ -505,33 +520,33 @@ def render_register_tab() -> None:
         col1, col2 = st.columns(2)
         with col1:
             email = st.text_input("Email", key="register_email")
-            password = st.text_input("Mật khẩu", type="password", key="register_password")
+            password = st.text_input("Password", type="password", key="register_password")
             password_confirm = st.text_input(
-                "Nhập lại mật khẩu",
+                "Confirm password",
                 type="password",
                 key="register_password_confirm",
             )
-            full_name = st.text_input("Họ tên", key="register_full_name")
-            phone = st.text_input("Số điện thoại", key="register_phone")
+            full_name = st.text_input("Full name", key="register_full_name")
+            phone = st.text_input("Phone", key="register_phone")
         with col2:
             avatar_url = st.text_input("Avatar URL", key="register_avatar")
             headline = st.text_input("Headline", key="register_headline")
             years_of_experience = st.number_input(
-                "Số năm kinh nghiệm",
+                "Years of experience",
                 min_value=0,
                 step=1,
                 key="register_years",
             )
-            current_location = st.text_input("Địa điểm hiện tại", key="register_location")
-        summary = st.text_area("Tóm tắt hồ sơ", key="register_summary")
-        submitted = st.form_submit_button("Đăng ký employee", use_container_width=True)
+            current_location = st.text_input("Current location", key="register_location")
+        summary = st.text_area("Profile summary", key="register_summary")
+        submitted = st.form_submit_button("Create employee account", use_container_width=True)
 
     if submitted:
         if not email.strip() or not password:
-            st.warning("Email và mật khẩu là bắt buộc.")
+            st.warning("Email and password are required.")
             return
         if password != password_confirm:
-            st.warning("Mật khẩu nhập lại không khớp.")
+            st.warning("Password confirmation does not match.")
             return
 
         payload = clean_payload(
@@ -551,17 +566,17 @@ def render_register_tab() -> None:
         try:
             create_employee(payload)
             login(email.strip(), password)
-            st.success("Đăng ký và đăng nhập thành công.")
+            st.success("Account created and signed in.")
             st.rerun()
         except ApiError as exc:
-            show_api_error("Đăng ký thất bại", exc)
+            show_api_error("Registration failed", exc)
 
 
 def render_auth_page() -> None:
     st.title("Employee Portal")
-    st.caption("Đăng nhập hoặc đăng ký tài khoản employee để quản lý profile.")
+    st.caption("Sign in or create an employee account to manage your profile.")
 
-    login_tab, register_tab = st.tabs(["Đăng nhập", "Đăng ký"])
+    login_tab, register_tab = st.tabs(["Sign in", "Register"])
     with login_tab:
         render_login_tab()
     with register_tab:
@@ -570,7 +585,7 @@ def render_auth_page() -> None:
 
 def render_skill_chips(skills: list[dict[str, Any]] | None) -> None:
     if not skills:
-        st.caption("Chưa có skill.")
+        st.caption("No skills yet.")
         return
 
     names = [skill.get("skill_name", "") for skill in skills if skill.get("skill_name")]
@@ -591,17 +606,17 @@ def render_profile_summary(profile: dict[str, Any]) -> None:
             f'{escape(initials(profile.get("full_name"), "E"))}</div>'
         )
 
-    summary = employee.get("summary") or "Chưa cập nhật tóm tắt hồ sơ."
+    summary = employee.get("summary") or "No profile summary yet."
     st.markdown(
         f"""
         <div class="linkedin-card">
             <div class="profile-cover"></div>
             <div class="profile-body">
                 {avatar_markup}
-                <div class="profile-name">{html_or_empty(profile.get("full_name"), "Chưa cập nhật họ tên")}</div>
-                <div class="profile-headline">{html_or_empty(employee.get("headline"), "Chưa cập nhật headline")}</div>
-                <div class="muted">{html_or_empty(employee.get("current_location"), "Chưa cập nhật địa điểm")} · {html_or_empty(profile.get("email"))}</div>
-                <div class="muted">{html_or_empty(profile.get("phone"), "Chưa cập nhật số điện thoại")} · {employee.get("years_of_experience") or 0} năm kinh nghiệm</div>
+                <div class="profile-name">{html_or_empty(profile.get("full_name"), "No name yet")}</div>
+                <div class="profile-headline">{html_or_empty(employee.get("headline"), "No headline yet")}</div>
+                <div class="muted">{html_or_empty(employee.get("current_location"), "No location yet")} · {html_or_empty(profile.get("email"))}</div>
+                <div class="muted">{html_or_empty(profile.get("phone"), "No phone yet")} · {employee.get("years_of_experience") or 0} years of experience</div>
                 <div class="entity-desc">{html_or_empty(summary)}</div>
             </div>
         </div>
@@ -610,30 +625,26 @@ def render_profile_summary(profile: dict[str, Any]) -> None:
     )
 
 
-def render_profile_edit(profile: dict[str, Any]) -> None:
-    action_cols = st.columns([1, 1, 8])
-    if action_cols[0].button("✎", key="toggle_profile_edit", help="Sửa thông tin chung"):
-        st.session_state["editing_profile"] = not st.session_state.get(
-            "editing_profile",
-            False,
-        )
-    if action_cols[1].button("↻", key="refresh_profile_top", help="Làm mới profile"):
+def render_profile_actions() -> None:
+    spacer, edit_col, refresh_col = st.columns([9, 0.55, 0.55], gap="small")
+    if edit_col.button("✎", key="open_profile_dialog", help="Edit profile"):
+        open_dialog("profile")
+    if refresh_col.button("↻", key="refresh_profile_top", help="Refresh profile"):
         try:
             refresh_profile()
-            st.success("Đã tải lại profile.")
+            st.success("Profile refreshed.")
             st.rerun()
         except ApiError as exc:
-            show_api_error("Không tải được profile", exc)
+            show_api_error("Could not load profile", exc)
 
-    if not st.session_state.get("editing_profile"):
-        return
 
+def profile_payload_form(form_key: str, profile: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     employee = profile.get("employee_profile") or {}
-    with st.form("profile_edit_form"):
+    with st.form(form_key):
         col1, col2 = st.columns(2)
         with col1:
-            full_name = st.text_input("Họ tên", value=nullable_text(profile.get("full_name")))
-            phone = st.text_input("Số điện thoại", value=nullable_text(profile.get("phone")))
+            full_name = st.text_input("Full name", value=nullable_text(profile.get("full_name")))
+            phone = st.text_input("Phone", value=nullable_text(profile.get("phone")))
             avatar_url = st.text_input(
                 "Avatar URL",
                 value=nullable_text(profile.get("avatar_url")),
@@ -641,38 +652,30 @@ def render_profile_edit(profile: dict[str, Any]) -> None:
         with col2:
             headline = st.text_input("Headline", value=nullable_text(employee.get("headline")))
             years_of_experience = st.number_input(
-                "Số năm kinh nghiệm",
+                "Years of experience",
                 min_value=0,
                 step=1,
                 value=int(employee.get("years_of_experience") or 0),
             )
             current_location = st.text_input(
-                "Địa điểm hiện tại",
+                "Current location",
                 value=nullable_text(employee.get("current_location")),
             )
-        summary = st.text_area("Tóm tắt", value=nullable_text(employee.get("summary")))
-        submitted = st.form_submit_button("Lưu thông tin chung", use_container_width=True)
+        summary = st.text_area("Summary", value=nullable_text(employee.get("summary")))
+        submitted = st.form_submit_button("Save changes", use_container_width=True)
 
-    if submitted:
-        payload = clean_payload(
-            {
-                "full_name": full_name,
-                "phone": phone,
-                "avatar_url": avatar_url,
-                "headline": headline,
-                "summary": summary,
-                "years_of_experience": int(years_of_experience),
-                "current_location": current_location,
-            }
-        )
-        try:
-            update_profile(payload)
-            refresh_profile()
-            st.session_state["editing_profile"] = False
-            st.success("Đã cập nhật thông tin chung.")
-            st.rerun()
-        except ApiError as exc:
-            show_api_error("Không cập nhật được profile", exc)
+    payload = clean_payload(
+        {
+            "full_name": full_name,
+            "phone": phone,
+            "avatar_url": avatar_url,
+            "headline": headline,
+            "summary": summary,
+            "years_of_experience": int(years_of_experience),
+            "current_location": current_location,
+        }
+    )
+    return payload, submitted
 
 
 def experience_payload_form(
@@ -683,37 +686,37 @@ def experience_payload_form(
     with st.form(form_key):
         col1, col2 = st.columns(2)
         with col1:
-            title = st.text_input("Chức danh", value=nullable_text(item.get("title")))
+            title = st.text_input("Title", value=nullable_text(item.get("title")))
             company_name = st.text_input(
-                "Công ty",
+                "Company",
                 value=nullable_text(item.get("company_name")),
             )
             employment_type = st.text_input(
-                "Loại công việc",
+                "Employment type",
                 value=nullable_text(item.get("employment_type")),
             )
-            location = st.text_input("Địa điểm", value=nullable_text(item.get("location")))
+            location = st.text_input("Location", value=nullable_text(item.get("location")))
         with col2:
             location_type = st.text_input(
-                "Hình thức làm việc",
+                "Location type",
                 value=nullable_text(item.get("location_type")),
             )
             start_date = optional_date_input(
-                "Ngày bắt đầu",
+                "Start date",
                 f"{form_key}_start",
                 item.get("start_date"),
             )
             end_date = optional_date_input(
-                "Ngày kết thúc",
+                "End date",
                 f"{form_key}_end",
                 item.get("end_date"),
             )
             skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
         description = st.text_area(
-            "Mô tả",
+            "Description",
             value=nullable_text(item.get("description")),
         )
-        submitted = st.form_submit_button("Lưu experience", use_container_width=True)
+        submitted = st.form_submit_button("Save", use_container_width=True)
 
     payload = clean_payload(
         {
@@ -739,26 +742,26 @@ def education_payload_form(
     with st.form(form_key):
         col1, col2 = st.columns(2)
         with col1:
-            school = st.text_input("Trường", value=nullable_text(item.get("school")))
-            degree = st.text_input("Bằng cấp", value=nullable_text(item.get("degree")))
+            school = st.text_input("School", value=nullable_text(item.get("school")))
+            degree = st.text_input("Degree", value=nullable_text(item.get("degree")))
             field_of_study = st.text_input(
-                "Ngành học",
+                "Field of study",
                 value=nullable_text(item.get("field_of_study")),
             )
         with col2:
             start_date = optional_date_input(
-                "Ngày bắt đầu",
+                "Start date",
                 f"{form_key}_start",
                 item.get("start_date"),
             )
             end_date = optional_date_input(
-                "Ngày kết thúc",
+                "End date",
                 f"{form_key}_end",
                 item.get("end_date"),
             )
             skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
-        description = st.text_area("Mô tả", value=nullable_text(item.get("description")))
-        submitted = st.form_submit_button("Lưu education", use_container_width=True)
+        description = st.text_area("Description", value=nullable_text(item.get("description")))
+        submitted = st.form_submit_button("Save", use_container_width=True)
 
     payload = clean_payload(
         {
@@ -775,9 +778,9 @@ def education_payload_form(
 
 
 def render_experience_item(item: dict[str, Any]) -> None:
-    title = item.get("title") or "Chưa cập nhật chức danh"
-    company = item.get("company_name") or "Chưa cập nhật công ty"
-    employment = item.get("employment_type") or "Chưa cập nhật loại công việc"
+    title = item.get("title") or "No title yet"
+    company = item.get("company_name") or "No company yet"
+    employment = item.get("employment_type") or "No employment type yet"
     location_bits = [
         value
         for value in [item.get("location"), item.get("location_type")]
@@ -811,9 +814,9 @@ def render_experience_item(item: dict[str, Any]) -> None:
 
 
 def render_education_item(item: dict[str, Any]) -> None:
-    school = item.get("school") or "Chưa cập nhật trường"
-    degree = item.get("degree") or "Chưa cập nhật bằng cấp"
-    field_of_study = item.get("field_of_study") or "Chưa cập nhật ngành học"
+    school = item.get("school") or "No school yet"
+    degree = item.get("degree") or "No degree yet"
+    field_of_study = item.get("field_of_study") or "No field of study yet"
     date_range = format_date_range(item.get("start_date"), item.get("end_date"))
     description = item.get("description") or ""
     skill_summary = summarize_skills(item.get("skills"))
@@ -843,60 +846,132 @@ def render_education_item(item: dict[str, Any]) -> None:
 def render_experiences(profile: dict[str, Any]) -> None:
     experiences = profile.get("experiences") or []
     with st.container(border=True):
-        header_left, add_col, edit_col = st.columns([8, 1, 1])
+        header_left, add_col, edit_col = st.columns([9, 0.55, 0.55], gap="small")
         header_left.markdown('<div class="section-title">Experience</div>', unsafe_allow_html=True)
-        if add_col.button("+", key="toggle_add_experience", help="Thêm experience"):
-            st.session_state["show_add_experience"] = not st.session_state.get(
-                "show_add_experience",
-                False,
-            )
-        if edit_col.button("✎", key="toggle_edit_experiences", help="Sửa experience"):
-            st.session_state["show_edit_experiences"] = not st.session_state.get(
-                "show_edit_experiences",
-                False,
-            )
-
-        if st.session_state.get("show_add_experience"):
-            st.markdown("**Thêm experience**")
-            payload, submitted = experience_payload_form("create_experience_form")
-            if submitted:
-                try:
-                    create_experience(payload)
-                    refresh_profile()
-                    st.session_state["show_add_experience"] = False
-                    st.success("Đã thêm experience.")
-                    st.rerun()
-                except ApiError as exc:
-                    show_api_error("Không thêm được experience", exc)
+        if add_col.button("+", key="add_experience", help="Add experience"):
+            open_dialog("add_experience")
+        if edit_col.button("✎", key="manage_experiences", help="Edit experience"):
+            open_dialog("manage_experiences")
 
         if not experiences:
-            st.markdown('<div class="empty-state">Chưa có experience.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="empty-state">No experience yet.</div>', unsafe_allow_html=True)
             return
 
         for item in experiences:
             render_experience_item(item)
 
-    if not st.session_state.get("show_edit_experiences"):
+
+def render_educations(profile: dict[str, Any]) -> None:
+    educations = profile.get("educations") or []
+    with st.container(border=True):
+        header_left, add_col, edit_col = st.columns([9, 0.55, 0.55], gap="small")
+        header_left.markdown('<div class="section-title">Education</div>', unsafe_allow_html=True)
+        if add_col.button("+", key="add_education", help="Add education"):
+            open_dialog("add_education")
+        if edit_col.button("✎", key="manage_educations", help="Edit education"):
+            open_dialog("manage_educations")
+
+        if not educations:
+            st.markdown('<div class="empty-state">No education yet.</div>', unsafe_allow_html=True)
+            return
+
+        for item in educations:
+            render_education_item(item)
+
+
+def render_standalone_skills(profile: dict[str, Any]) -> None:
+    skills = profile.get("skills") or []
+    with st.container(border=True):
+        header_left, add_col, edit_col = st.columns([9, 0.55, 0.55], gap="small")
+        header_left.markdown(
+            f'<div class="section-title">Skills ({len(skills)})</div>',
+            unsafe_allow_html=True,
+        )
+        if add_col.button("+", key="add_skill", help="Add skill"):
+            open_dialog("add_skill")
+        if edit_col.button("✎", key="manage_skills", help="Edit skills"):
+            open_dialog("manage_skills")
+
+        if not skills:
+            st.markdown('<div class="empty-state">No standalone skills yet.</div>', unsafe_allow_html=True)
+            return
+
+        visible_skills = skills[:5]
+        for skill in visible_skills:
+            st.markdown(
+                f'<div class="skill-row">{html_or_empty(skill.get("skill_name"))}</div>',
+                unsafe_allow_html=True,
+            )
+
+        if len(skills) > 5:
+            st.caption(f"Show all {len(skills)} skills")
+
+
+@st.dialog("Edit profile")
+def profile_dialog(profile: dict[str, Any]) -> None:
+    if st.button("Discard", key="discard_profile", use_container_width=True):
+        close_dialog()
+        st.rerun()
+
+    payload, submitted = profile_payload_form("profile_edit_form", profile)
+    if submitted:
+        try:
+            update_profile(payload)
+            refresh_profile()
+            close_dialog()
+            st.success("Profile updated.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not update profile", exc)
+
+
+@st.dialog("Add experience")
+def add_experience_dialog() -> None:
+    if st.button("Discard", key="discard_add_experience", use_container_width=True):
+        close_dialog()
+        st.rerun()
+
+    payload, submitted = experience_payload_form("create_experience_form")
+    if submitted:
+        try:
+            create_experience(payload)
+            refresh_profile()
+            close_dialog()
+            st.success("Experience added.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not add experience", exc)
+
+
+@st.dialog("Edit experience")
+def manage_experiences_dialog(profile: dict[str, Any]) -> None:
+    if st.button("Discard", key="discard_manage_experience", use_container_width=True):
+        close_dialog()
+        st.rerun()
+
+    experiences = profile.get("experiences") or []
+    if not experiences:
+        st.info("No experience yet.")
         return
 
-    st.markdown("#### Sửa Experience")
     for index, item in enumerate(experiences, start=1):
         title = item.get("title") or f"Experience #{index}"
-        company = item.get("company_name") or "Chưa cập nhật công ty"
-        with st.expander(f"{title} - {company}"):
-            delete_col, _ = st.columns([1, 5])
+        company = item.get("company_name") or "No company yet"
+        with st.expander(f"{title} - {company}", expanded=index == 1):
+            delete_col, _ = st.columns([1, 3])
             if delete_col.button(
-                "Xóa",
+                "Delete",
                 key=f"delete_experience_{item['experience_id']}",
                 use_container_width=True,
             ):
                 try:
                     delete_experience(item["experience_id"])
                     refresh_profile()
-                    st.success("Đã xóa experience.")
+                    close_dialog()
+                    st.success("Experience deleted.")
                     st.rerun()
                 except ApiError as exc:
-                    show_api_error("Không xóa được experience", exc)
+                    show_api_error("Could not delete experience", exc)
 
             payload, submitted = experience_payload_form(
                 f"edit_experience_form_{item['experience_id']}",
@@ -906,80 +981,61 @@ def render_experiences(profile: dict[str, Any]) -> None:
                 try:
                     update_experience(item["experience_id"], payload)
                     refresh_profile()
-                    st.success("Đã cập nhật experience.")
+                    close_dialog()
+                    st.success("Experience updated.")
                     st.rerun()
                 except ApiError as exc:
-                    show_api_error("Không cập nhật được experience", exc)
+                    show_api_error("Could not update experience", exc)
 
 
-def render_educations(profile: dict[str, Any]) -> None:
+@st.dialog("Add education")
+def add_education_dialog() -> None:
+    if st.button("Discard", key="discard_add_education", use_container_width=True):
+        close_dialog()
+        st.rerun()
+
+    payload, submitted = education_payload_form("create_education_form")
+    if submitted:
+        try:
+            create_education(payload)
+            refresh_profile()
+            close_dialog()
+            st.success("Education added.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not add education", exc)
+
+
+@st.dialog("Edit education")
+def manage_educations_dialog(profile: dict[str, Any]) -> None:
+    if st.button("Discard", key="discard_manage_education", use_container_width=True):
+        close_dialog()
+        st.rerun()
+
     educations = profile.get("educations") or []
-    with st.container(border=True):
-        header_left, add_col, edit_col = st.columns([8, 1, 1])
-        header_left.markdown('<div class="section-title">Education</div>', unsafe_allow_html=True)
-        if add_col.button("+", key="toggle_add_education", help="Thêm education"):
-            st.session_state["show_add_education"] = not st.session_state.get(
-                "show_add_education",
-                False,
-            )
-        if edit_col.button("✎", key="toggle_edit_educations", help="Sửa education"):
-            st.session_state["show_edit_educations"] = not st.session_state.get(
-                "show_edit_educations",
-                False,
-            )
-
-        if st.session_state.get("show_add_education"):
-            st.markdown("**Thêm education**")
-            payload, submitted = education_payload_form("create_education_form")
-            if submitted:
-                try:
-                    create_education(payload)
-                    refresh_profile()
-                    st.session_state["show_add_education"] = False
-                    st.success("Đã thêm education.")
-                    st.rerun()
-                except ApiError as exc:
-                    show_api_error("Không thêm được education", exc)
-
-        if not educations:
-            st.markdown('<div class="empty-state">Chưa có education.</div>', unsafe_allow_html=True)
-            return
-
-        for item in educations:
-            render_education_item(item)
-
-    if not st.session_state.get("show_edit_educations"):
+    if not educations:
+        st.info("No education yet.")
         return
 
-    st.markdown("#### Sửa Education")
     for index, item in enumerate(educations, start=1):
         school = item.get("school") or f"Education #{index}"
-        degree = item.get("degree") or "Chưa cập nhật bằng cấp"
-        with st.expander(f"{school} - {degree}"):
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(f"**Ngành học:** {item.get('field_of_study') or 'N/A'}")
-                st.write(
-                    f"**Thời gian:** {item.get('start_date') or 'N/A'} - "
-                    f"{item.get('end_date') or 'Hiện tại'}"
-                )
-                st.write(item.get("description") or "Chưa có mô tả.")
-                render_skill_chips(item.get("skills"))
-            with col2:
-                if st.button(
-                    "Xóa",
-                    key=f"delete_education_{item['education_id']}",
-                    use_container_width=True,
-                ):
-                    try:
-                        delete_education(item["education_id"])
-                        refresh_profile()
-                        st.success("Đã xóa education.")
-                        st.rerun()
-                    except ApiError as exc:
-                        show_api_error("Không xóa được education", exc)
+        degree = item.get("degree") or "No degree yet"
+        with st.expander(f"{school} - {degree}", expanded=index == 1):
+            delete_col, _ = st.columns([1, 3])
+            if delete_col.button(
+                "Delete",
+                key=f"delete_education_{item['education_id']}",
+                use_container_width=True,
+            ):
+                try:
+                    delete_education(item["education_id"])
+                    refresh_profile()
+                    close_dialog()
+                    st.success("Education deleted.")
+                    st.rerun()
+                except ApiError as exc:
+                    show_api_error("Could not delete education", exc)
 
-            st.divider()
             payload, submitted = education_payload_form(
                 f"edit_education_form_{item['education_id']}",
                 item,
@@ -988,81 +1044,81 @@ def render_educations(profile: dict[str, Any]) -> None:
                 try:
                     update_education(item["education_id"], payload)
                     refresh_profile()
-                    st.success("Đã cập nhật education.")
+                    close_dialog()
+                    st.success("Education updated.")
                     st.rerun()
                 except ApiError as exc:
-                    show_api_error("Không cập nhật được education", exc)
+                    show_api_error("Could not update education", exc)
 
 
-def render_standalone_skills(profile: dict[str, Any]) -> None:
-    skills = profile.get("skills") or []
-    with st.container(border=True):
-        header_left, add_col, edit_col = st.columns([8, 1, 1])
-        header_left.markdown(
-            f'<div class="section-title">Skills ({len(skills)})</div>',
-            unsafe_allow_html=True,
-        )
-        if add_col.button("+", key="toggle_add_skill", help="Thêm skill"):
-            st.session_state["show_add_skill"] = not st.session_state.get(
-                "show_add_skill",
-                False,
-            )
-        if edit_col.button("✎", key="toggle_edit_skills", help="Sửa skill"):
-            st.session_state["show_edit_skills"] = not st.session_state.get(
-                "show_edit_skills",
-                False,
-            )
+@st.dialog("Add skill")
+def add_skill_dialog() -> None:
+    if st.button("Discard", key="discard_add_skill", use_container_width=True):
+        close_dialog()
+        st.rerun()
 
-        if st.session_state.get("show_add_skill"):
-            with st.form("add_skill_form"):
-                skill_name = st.text_input("Thêm skill")
-                submitted = st.form_submit_button("Thêm skill", use_container_width=True)
-            if submitted:
-                if not skill_name.strip():
-                    st.warning("Vui lòng nhập tên skill.")
-                else:
-                    try:
-                        add_skill(skill_name.strip())
-                        refresh_profile()
-                        st.session_state["show_add_skill"] = False
-                        st.success("Đã thêm skill.")
-                        st.rerun()
-                    except ApiError as exc:
-                        show_api_error("Không thêm được skill", exc)
-
-        if not skills:
-            st.markdown('<div class="empty-state">Chưa có standalone skill.</div>', unsafe_allow_html=True)
+    with st.form("add_skill_form"):
+        skill_name = st.text_input("Skill name")
+        submitted = st.form_submit_button("Save", use_container_width=True)
+    if submitted:
+        if not skill_name.strip():
+            st.warning("Please enter a skill name.")
             return
+        try:
+            add_skill(skill_name.strip())
+            refresh_profile()
+            close_dialog()
+            st.success("Skill added.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not add skill", exc)
 
-        visible_skills = skills if st.session_state.get("show_edit_skills") else skills[:5]
-        for skill in visible_skills:
-            st.markdown(
-                f'<div class="skill-row">{html_or_empty(skill.get("skill_name"))}</div>',
-                unsafe_allow_html=True,
-            )
 
-        if not st.session_state.get("show_edit_skills") and len(skills) > 5:
-            st.caption(f"Show all {len(skills)} skills")
+@st.dialog("Edit skills")
+def manage_skills_dialog(profile: dict[str, Any]) -> None:
+    if st.button("Discard", key="discard_manage_skills", use_container_width=True):
+        close_dialog()
+        st.rerun()
 
-    if not st.session_state.get("show_edit_skills"):
+    skills = profile.get("skills") or []
+    if not skills:
+        st.info("No standalone skills yet.")
         return
 
-    st.markdown("#### Sửa Skills")
     for skill in skills:
-        col1, col2 = st.columns([4, 1])
+        col1, col2 = st.columns([3, 1])
         col1.write(skill.get("skill_name") or "Unnamed skill")
         if col2.button(
-            "Xóa",
+            "Delete",
             key=f"delete_skill_{skill['skill_id']}",
             use_container_width=True,
         ):
             try:
                 delete_skill(skill["skill_id"])
                 refresh_profile()
-                st.success("Đã xóa skill.")
+                close_dialog()
+                st.success("Skill deleted.")
                 st.rerun()
             except ApiError as exc:
-                show_api_error("Không xóa được skill", exc)
+                show_api_error("Could not delete skill", exc)
+
+
+def render_active_dialog(profile: dict[str, Any]) -> None:
+    active_dialog = st.session_state.get("active_dialog")
+    if active_dialog == "profile":
+        profile_dialog(profile)
+    elif active_dialog == "add_experience":
+        add_experience_dialog()
+    elif active_dialog == "manage_experiences":
+        manage_experiences_dialog(profile)
+    elif active_dialog == "add_education":
+        add_education_dialog()
+    elif active_dialog == "manage_educations":
+        manage_educations_dialog(profile)
+    elif active_dialog == "add_skill":
+        add_skill_dialog()
+    elif active_dialog == "manage_skills":
+        manage_skills_dialog(profile)
 
 
 def render_profile_page() -> None:
@@ -1070,15 +1126,16 @@ def render_profile_page() -> None:
         try:
             refresh_profile()
         except ApiError as exc:
-            show_api_error("Không tải được profile", exc)
+            show_api_error("Could not load profile", exc)
             return
 
     profile = st.session_state["profile"]
     render_profile_summary(profile)
-    render_profile_edit(profile)
+    render_profile_actions()
     render_experiences(profile)
     render_educations(profile)
     render_standalone_skills(profile)
+    render_active_dialog(profile)
 
 
 def main() -> None:
