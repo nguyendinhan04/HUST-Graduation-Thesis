@@ -253,7 +253,14 @@ def inject_linkedin_styles() -> None:
 
         dialog[open] > button,
         dialog[open] button[aria-label="Close"],
+        dialog[open] button[aria-label="Close dialog"],
+        dialog[open] button[title="Close"],
         dialog[open] [data-testid="stDialogCloseButton"] {
+            display: none !important;
+        }
+
+        dialog[open] [data-testid="stDialog"] > div:first-child:not(:has(.custom-dialog-title)):has(button),
+        dialog[open] [role="dialog"] > div:first-child:not(:has(.custom-dialog-title)):has(button) {
             display: none !important;
         }
 
