@@ -220,8 +220,8 @@ def inject_linkedin_styles() -> None:
             transform: translate(-50%, -50%) !important;
             width: min(760px, calc(100vw - 32px)) !important;
             max-width: min(760px, calc(100vw - 32px)) !important;
-            height: min(760px, calc(100dvh - 32px)) !important;
-            max-height: min(760px, calc(100dvh - 32px)) !important;
+            height: auto !important;
+            max-height: calc(100dvh - 32px) !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
@@ -239,18 +239,17 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] > div {
             background: #ffffff !important;
             border-radius: 10px !important;
-            height: 100% !important;
-            max-height: 100% !important;
+            height: auto !important;
+            max-height: calc(100dvh - 34px) !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
-            padding: 0 28px 92px !important;
+            padding: 12px 28px 92px !important;
             overscroll-behavior: contain;
         }
 
         [data-testid="stDialog"] > div > div,
         dialog[open] > div > div,
         [role="dialog"] > div > div {
-            min-height: 100% !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
@@ -338,7 +337,7 @@ def inject_linkedin_styles() -> None:
             [role="dialog"] {
                 width: calc(100vw - 16px) !important;
                 max-width: calc(100vw - 16px) !important;
-                height: calc(100dvh - 16px) !important;
+                height: auto !important;
                 max-height: calc(100dvh - 16px) !important;
                 border-radius: 10px !important;
             }
@@ -346,9 +345,9 @@ def inject_linkedin_styles() -> None:
             [data-testid="stDialog"] > div,
             dialog[open] > div,
             [role="dialog"] > div {
-                height: 100% !important;
-                max-height: 100% !important;
-                padding: 0 16px 88px !important;
+                height: auto !important;
+                max-height: calc(100dvh - 18px) !important;
+                padding: 10px 16px 88px !important;
             }
 
             [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
