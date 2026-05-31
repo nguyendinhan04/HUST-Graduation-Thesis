@@ -197,15 +197,6 @@ def inject_linkedin_styles() -> None:
             gap: 4px;
         }
 
-        .dialog-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.58);
-            backdrop-filter: blur(1px);
-            z-index: 999990;
-            pointer-events: auto;
-        }
-
         dialog[open]::backdrop {
             background: rgba(0, 0, 0, 0.58) !important;
             backdrop-filter: blur(1px);

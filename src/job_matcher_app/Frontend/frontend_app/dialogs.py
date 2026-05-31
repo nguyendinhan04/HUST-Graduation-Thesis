@@ -208,8 +208,6 @@ def manage_skills_dialog(profile: dict[str, Any]) -> None:
 
 def render_active_dialog(profile: dict[str, Any]) -> None:
     active_dialog = st.session_state.get("active_dialog")
-    if active_dialog:
-        st.markdown('<div class="dialog-backdrop"></div>', unsafe_allow_html=True)
 
     if active_dialog == "profile":
         profile_dialog(profile)
