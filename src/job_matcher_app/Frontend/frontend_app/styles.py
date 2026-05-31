@@ -350,7 +350,7 @@ def inject_linkedin_styles() -> None:
 
         dialog[open]:has(.discard-confirm-backdrop)::after {
             content: "" !important;
-            position: absolute !important;
+            position: fixed !important;
             inset: 0 !important;
             z-index: 1000010 !important;
             background: rgba(0, 0, 0, 0.46) !important;
@@ -358,8 +358,9 @@ def inject_linkedin_styles() -> None:
             pointer-events: auto;
         }
 
+        .discard-confirm-backdrop,
         dialog[open] .discard-confirm-backdrop {
-            position: absolute !important;
+            position: fixed !important;
             inset: 0 !important;
             z-index: 1000011 !important;
             background: rgba(0, 0, 0, 0.46) !important;
@@ -367,11 +368,12 @@ def inject_linkedin_styles() -> None:
             pointer-events: auto;
         }
 
+        .discard-confirm,
         dialog[open] .discard-confirm {
-            position: absolute !important;
-            top: 96px !important;
+            position: fixed !important;
+            top: 50% !important;
             left: 50% !important;
-            transform: translateX(-50%) !important;
+            transform: translate(-50%, -50%) translateY(-34px) !important;
             width: min(400px, calc(100vw - 48px)) !important;
             z-index: 1000020 !important;
             box-sizing: border-box !important;
@@ -383,6 +385,7 @@ def inject_linkedin_styles() -> None:
             box-shadow: 0 18px 56px rgba(0, 0, 0, 0.28) !important;
         }
 
+        .discard-title,
         dialog[open] .discard-title {
             color: #191919;
             font-size: 22px;
@@ -391,6 +394,7 @@ def inject_linkedin_styles() -> None:
             margin-bottom: 18px;
         }
 
+        .discard-message,
         dialog[open] .discard-message {
             color: #191919;
             font-size: 16px;
@@ -398,9 +402,11 @@ def inject_linkedin_styles() -> None:
             max-width: 460px;
         }
 
+        div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker),
+        div[data-testid="stMarkdownContainer"]:has(.discard-confirm-actions-marker),
         dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker),
         dialog[open] div[data-testid="stMarkdownContainer"]:has(.discard-confirm-actions-marker) {
-            position: absolute !important;
+            position: fixed !important;
             width: 0 !important;
             height: 0 !important;
             margin: 0 !important;
@@ -408,12 +414,14 @@ def inject_linkedin_styles() -> None:
             overflow: hidden !important;
         }
 
+        div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker) ~ div[data-testid="stHorizontalBlock"],
         dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker) + div[data-testid="stHorizontalBlock"],
+        dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker) ~ div[data-testid="stHorizontalBlock"],
         dialog[open] .discard-confirm + div[data-testid="stHorizontalBlock"] {
-            position: absolute !important;
-            top: 231px !important;
+            position: fixed !important;
+            top: 50% !important;
             left: 50% !important;
-            transform: translateX(-50%) !important;
+            transform: translate(-50%, -50%) translateY(86px) !important;
             width: min(400px, calc(100vw - 48px)) !important;
             z-index: 1000030 !important;
             box-sizing: border-box !important;
