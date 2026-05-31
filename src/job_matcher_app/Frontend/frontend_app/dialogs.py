@@ -22,12 +22,18 @@ from frontend_app.forms import (
     education_payload_form,
     experience_payload_form,
     profile_payload_form,
+    render_dialog_header,
+    render_discard_confirmation,
 )
 from frontend_app.state import close_dialog
 
 
-@st.dialog("Edit profile")
+@st.dialog("")
 def profile_dialog(profile: dict[str, Any]) -> None:
+    render_dialog_header("Edit profile", "profile_dialog")
+    if render_discard_confirmation("profile_dialog"):
+        return
+
     payload, action = profile_payload_form("profile_edit_form", profile)
     if action == "save":
         try:
@@ -41,8 +47,12 @@ def profile_dialog(profile: dict[str, Any]) -> None:
 
 
 
-@st.dialog("Add experience")
+@st.dialog("")
 def add_experience_dialog() -> None:
+    render_dialog_header("Add experience", "add_experience_dialog")
+    if render_discard_confirmation("add_experience_dialog"):
+        return
+
     payload, action = experience_payload_form("create_experience_form")
     if action == "save":
         try:
@@ -56,8 +66,12 @@ def add_experience_dialog() -> None:
 
 
 
-@st.dialog("Edit experience")
+@st.dialog("")
 def edit_experience_dialog(profile: dict[str, Any]) -> None:
+    render_dialog_header("Edit experience", "edit_experience_dialog")
+    if render_discard_confirmation("edit_experience_dialog"):
+        return
+
     experiences = profile.get("experiences") or []
     experience_id = st.session_state.get("active_item_id")
     item = next(
@@ -98,8 +112,12 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
 
 
 
-@st.dialog("Add education")
+@st.dialog("")
 def add_education_dialog() -> None:
+    render_dialog_header("Add education", "add_education_dialog")
+    if render_discard_confirmation("add_education_dialog"):
+        return
+
     payload, action = education_payload_form("create_education_form")
     if action == "save":
         try:
@@ -113,8 +131,12 @@ def add_education_dialog() -> None:
 
 
 
-@st.dialog("Edit education")
+@st.dialog("")
 def edit_education_dialog(profile: dict[str, Any]) -> None:
+    render_dialog_header("Edit education", "edit_education_dialog")
+    if render_discard_confirmation("edit_education_dialog"):
+        return
+
     educations = profile.get("educations") or []
     education_id = st.session_state.get("active_item_id")
     item = next(
@@ -155,8 +177,12 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
 
 
 
-@st.dialog("Add skill")
+@st.dialog("")
 def add_skill_dialog() -> None:
+    render_dialog_header("Add skill", "add_skill_dialog")
+    if render_discard_confirmation("add_skill_dialog"):
+        return
+
     with st.form("add_skill_form"):
         skill_name = st.text_input("Skill name")
         _, save_col = st.columns([5, 1.25])
@@ -180,8 +206,12 @@ def add_skill_dialog() -> None:
 
 
 
-@st.dialog("Edit skills")
+@st.dialog("")
 def manage_skills_dialog(profile: dict[str, Any]) -> None:
+    render_dialog_header("Edit skills", "manage_skills_dialog")
+    if render_discard_confirmation("manage_skills_dialog"):
+        return
+
     skills = profile.get("skills") or []
     if not skills:
         st.info("No standalone skills yet.")

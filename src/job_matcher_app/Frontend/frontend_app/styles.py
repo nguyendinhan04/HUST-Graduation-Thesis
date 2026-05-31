@@ -251,6 +251,12 @@ def inject_linkedin_styles() -> None:
             overscroll-behavior: contain;
         }
 
+        dialog[open] > button,
+        dialog[open] button[aria-label="Close"],
+        dialog[open] [data-testid="stDialogCloseButton"] {
+            display: none !important;
+        }
+
         dialog[open] h1,
         dialog[open] h2,
         dialog[open] h3 {
@@ -261,6 +267,69 @@ def inject_linkedin_styles() -> None:
             padding: 14px 64px 12px 28px !important;
             background: #ffffff !important;
             border-bottom: 1px solid #e8e4de !important;
+        }
+
+        dialog[open] h1,
+        dialog[open] h2,
+        dialog[open] h3 {
+            display: none !important;
+        }
+
+        dialog[open] div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 6 !important;
+            align-items: center !important;
+            margin: 0 -28px 10px !important;
+            padding: 14px 20px 12px 28px !important;
+            background: #ffffff !important;
+            border-bottom: 1px solid #e8e4de !important;
+        }
+
+        dialog[open] .custom-dialog-title {
+            color: #191919;
+            font-size: 24px;
+            font-weight: 650;
+            line-height: 1.25;
+        }
+
+        dialog[open] div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) button {
+            width: 40px !important;
+            min-height: 36px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            color: #333333 !important;
+            font-size: 24px !important;
+            line-height: 1 !important;
+        }
+
+        dialog[open] .discard-confirm {
+            padding: 10px 0 12px;
+        }
+
+        dialog[open] .discard-title {
+            color: #191919;
+            font-size: 22px;
+            font-weight: 650;
+            line-height: 1.25;
+            margin-bottom: 18px;
+        }
+
+        dialog[open] .discard-message {
+            color: #191919;
+            font-size: 16px;
+            line-height: 1.45;
+            max-width: 460px;
+        }
+
+        dialog[open] .discard-confirm + div[data-testid="stHorizontalBlock"] {
+            position: static !important;
+            transform: none !important;
+            width: auto !important;
+            margin: 14px 0 0 !important;
+            padding: 14px 0 0 !important;
+            border-top: 1px solid #e8e4de;
+            box-shadow: none !important;
         }
 
         dialog[open] > div > div {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from html import escape
 from typing import Any
 
 import streamlit as st
@@ -14,6 +15,52 @@ from frontend_app.formatting import (
     skills_to_text,
     split_skills,
 )
+from frontend_app.state import (
+    cancel_discard_confirmation,
+    close_dialog,
+    request_discard_confirmation,
+)
+
+
+def render_dialog_header(title: str, key_prefix: str) -> None:
+    title_col, close_col = st.columns([10, 0.7], gap="small")
+    title_col.markdown(
+        f'<div class="custom-dialog-title">{escape(title)}</div>',
+        unsafe_allow_html=True,
+    )
+    if close_col.button("×", key=f"{key_prefix}_close", help="Discard changes"):
+        request_discard_confirmation()
+        st.rerun()
+
+
+def render_discard_confirmation(key_prefix: str) -> bool:
+    if not st.session_state.get("confirm_discard"):
+        return False
+
+    st.markdown(
+        """
+        <div class="discard-confirm">
+            <div class="discard-title">Discard changes</div>
+            <div class="discard-message">
+                All unsaved changes will be discarded, and you'll return to your profile.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    _, no_col, discard_col = st.columns([4.5, 1.35, 1.35], gap="small")
+    if no_col.button("No thanks", key=f"{key_prefix}_keep_editing", use_container_width=True):
+        cancel_discard_confirmation()
+        st.rerun()
+    if discard_col.button(
+        "Discard",
+        key=f"{key_prefix}_discard",
+        type="primary",
+        use_container_width=True,
+    ):
+        close_dialog()
+        st.rerun()
+    return True
 
 
 

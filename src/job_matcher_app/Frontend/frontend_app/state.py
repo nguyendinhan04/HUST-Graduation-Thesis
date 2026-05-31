@@ -17,6 +17,7 @@ def init_session_state() -> None:
     st.session_state.setdefault("profile", None)
     st.session_state.setdefault("active_dialog", None)
     st.session_state.setdefault("active_item_id", None)
+    st.session_state.setdefault("confirm_discard", False)
     st.session_state.setdefault("current_page", "profile")
 
 
@@ -41,6 +42,7 @@ def logout() -> None:
     st.session_state["profile"] = None
     st.session_state["active_dialog"] = None
     st.session_state["active_item_id"] = None
+    st.session_state["confirm_discard"] = False
     st.session_state["current_page"] = "profile"
 
 
@@ -48,12 +50,24 @@ def logout() -> None:
 def open_dialog(name: str, item_id: int | None = None) -> None:
     st.session_state["active_dialog"] = name
     st.session_state["active_item_id"] = item_id
+    st.session_state["confirm_discard"] = False
 
 
 
 def close_dialog() -> None:
     st.session_state["active_dialog"] = None
     st.session_state["active_item_id"] = None
+    st.session_state["confirm_discard"] = False
+
+
+
+def request_discard_confirmation() -> None:
+    st.session_state["confirm_discard"] = True
+
+
+
+def cancel_discard_confirmation() -> None:
+    st.session_state["confirm_discard"] = False
 
 
 
