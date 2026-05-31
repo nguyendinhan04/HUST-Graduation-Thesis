@@ -202,9 +202,7 @@ def inject_linkedin_styles() -> None:
             backdrop-filter: blur(1px);
         }
 
-        [data-testid="stDialog"],
-        dialog[open],
-        [role="dialog"] {
+        dialog[open] {
             position: fixed !important;
             top: 16px !important;
             left: 50% !important;
@@ -225,9 +223,24 @@ def inject_linkedin_styles() -> None:
             z-index: 999999 !important;
         }
 
-        [data-testid="stDialog"] > div,
-        dialog[open] > div,
-        [role="dialog"] > div {
+        dialog[open] [data-testid="stDialog"],
+        dialog[open] [role="dialog"] {
+            position: static !important;
+            width: auto !important;
+            max-width: none !important;
+            height: auto !important;
+            max-height: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            outline: none !important;
+            overflow: visible !important;
+        }
+
+        dialog[open] > div {
             background: #ffffff !important;
             border-radius: 10px !important;
             height: auto !important;
@@ -238,15 +251,9 @@ def inject_linkedin_styles() -> None:
             overscroll-behavior: contain;
         }
 
-        [data-testid="stDialog"] h1,
-        [data-testid="stDialog"] h2,
-        [data-testid="stDialog"] h3,
         dialog[open] h1,
         dialog[open] h2,
-        dialog[open] h3,
-        [role="dialog"] h1,
-        [role="dialog"] h2,
-        [role="dialog"] h3 {
+        dialog[open] h3 {
             position: sticky !important;
             top: 0 !important;
             z-index: 5 !important;
@@ -256,9 +263,7 @@ def inject_linkedin_styles() -> None:
             border-bottom: 1px solid #e8e4de !important;
         }
 
-        [data-testid="stDialog"] > div > div,
-        dialog[open] > div > div,
-        [role="dialog"] > div > div {
+        dialog[open] > div > div {
             min-height: 0 !important;
             display: flex !important;
             flex-direction: column !important;
@@ -266,51 +271,35 @@ def inject_linkedin_styles() -> None:
             align-items: stretch !important;
         }
 
-        [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
-        dialog[open] div[data-testid="stVerticalBlock"],
-        [role="dialog"] div[data-testid="stVerticalBlock"] {
+        dialog[open] div[data-testid="stVerticalBlock"] {
             justify-content: flex-start !important;
             align-items: stretch !important;
             gap: 0.45rem !important;
         }
 
-        [data-testid="stDialog"] div[data-testid="stVerticalBlockBorderWrapper"],
-        dialog[open] div[data-testid="stVerticalBlockBorderWrapper"],
-        [role="dialog"] div[data-testid="stVerticalBlockBorderWrapper"] {
+        dialog[open] div[data-testid="stVerticalBlockBorderWrapper"] {
             margin-top: 0 !important;
         }
 
-        [data-testid="stDialog"] form,
-        dialog[open] form,
-        [role="dialog"] form {
+        dialog[open] form {
             width: min(100%, 680px) !important;
             margin: 8px auto 8px !important;
             padding-bottom: 0 !important;
         }
 
-        [data-testid="stDialog"] form > div,
-        dialog[open] form > div,
-        [role="dialog"] form > div {
+        dialog[open] form > div {
             gap: 0.55rem !important;
         }
 
-        [data-testid="stDialog"] form label,
-        dialog[open] form label,
-        [role="dialog"] form label {
+        dialog[open] form label {
             font-size: 15px !important;
             color: #191919 !important;
             font-weight: 400 !important;
         }
 
-        [data-testid="stDialog"] form input,
-        [data-testid="stDialog"] form textarea,
-        [data-testid="stDialog"] form [data-baseweb="select"] > div,
         dialog[open] form input,
         dialog[open] form textarea,
-        dialog[open] form [data-baseweb="select"] > div,
-        [role="dialog"] form input,
-        [role="dialog"] form textarea,
-        [role="dialog"] form [data-baseweb="select"] > div {
+        dialog[open] form [data-baseweb="select"] > div {
             background: #ffffff !important;
             border-color: #666666 !important;
             color: #191919 !important;
@@ -318,19 +307,13 @@ def inject_linkedin_styles() -> None:
             min-height: 40px !important;
         }
 
-        [data-testid="stDialog"] form input:focus,
-        [data-testid="stDialog"] form textarea:focus,
         dialog[open] form input:focus,
-        dialog[open] form textarea:focus,
-        [role="dialog"] form input:focus,
-        [role="dialog"] form textarea:focus {
+        dialog[open] form textarea:focus {
             border-color: #0a66c2 !important;
             box-shadow: 0 0 0 1px #0a66c2 inset !important;
         }
 
-        [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
-        dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
-        [role="dialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
+        dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
             position: fixed !important;
             bottom: 16px !important;
             left: 50% !important;
@@ -346,9 +329,7 @@ def inject_linkedin_styles() -> None:
             box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
         }
 
-        [data-testid="stDialog"] div[data-testid="column"]:last-child button,
-        dialog[open] div[data-testid="column"]:last-child button,
-        [role="dialog"] div[data-testid="column"]:last-child button {
+        dialog[open] div[data-testid="column"]:last-child button {
             min-height: 36px;
             border-radius: 999px !important;
         }
