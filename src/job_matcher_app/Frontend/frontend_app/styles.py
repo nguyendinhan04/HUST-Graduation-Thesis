@@ -220,8 +220,8 @@ def inject_linkedin_styles() -> None:
             transform: translate(-50%, -50%) !important;
             width: min(760px, calc(100vw - 32px)) !important;
             max-width: min(760px, calc(100vw - 32px)) !important;
-            height: calc(100dvh - 32px) !important;
-            max-height: calc(100dvh - 32px) !important;
+            height: min(760px, calc(100dvh - 32px)) !important;
+            max-height: min(760px, calc(100dvh - 32px)) !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
@@ -239,12 +239,22 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] > div {
             background: #ffffff !important;
             border-radius: 10px !important;
-            height: calc(100dvh - 34px) !important;
-            max-height: calc(100dvh - 34px) !important;
+            height: 100% !important;
+            max-height: 100% !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
             padding: 0 28px 92px !important;
             overscroll-behavior: contain;
+        }
+
+        [data-testid="stDialog"] > div > div,
+        dialog[open] > div > div,
+        [role="dialog"] > div > div {
+            min-height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            align-items: stretch !important;
         }
 
         [data-testid="stDialog"] div[data-testid="stHorizontalBlock"]:has(.dialog-title),
@@ -284,13 +294,16 @@ def inject_linkedin_styles() -> None:
         [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
         dialog[open] div[data-testid="stVerticalBlock"],
         [role="dialog"] div[data-testid="stVerticalBlock"] {
+            justify-content: flex-start !important;
+            align-items: stretch !important;
             gap: 0.75rem;
         }
 
         [data-testid="stDialog"] form,
         dialog[open] form,
         [role="dialog"] form {
-            margin-bottom: 0 !important;
+            width: min(100%, 680px) !important;
+            margin: 0 auto !important;
             padding-bottom: 0 !important;
         }
 
@@ -367,8 +380,8 @@ def inject_linkedin_styles() -> None:
             [data-testid="stDialog"] > div,
             dialog[open] > div,
             [role="dialog"] > div {
-                height: calc(100dvh - 18px) !important;
-                max-height: calc(100dvh - 18px) !important;
+                height: 100% !important;
+                max-height: 100% !important;
                 padding: 0 16px 88px !important;
             }
 
