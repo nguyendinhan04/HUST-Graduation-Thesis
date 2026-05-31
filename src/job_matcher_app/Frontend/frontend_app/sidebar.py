@@ -5,6 +5,7 @@ import streamlit as st
 from frontend_app.api_client import ApiError, refresh_profile
 from frontend_app.config import DEFAULT_API_BASE_URL
 from frontend_app.formatting import show_api_error
+from frontend_app.loading import form_loading
 from frontend_app.state import api_base_url, logout
 
 
@@ -24,7 +25,8 @@ def sidebar() -> None:
             st.write(profile.get("email", "Employee"))
             if st.button("Refresh profile", use_container_width=True):
                 try:
-                    refresh_profile()
+                    with form_loading("Refreshing profile..."):
+                        refresh_profile()
                     st.success("Profile refreshed.")
                 except ApiError as exc:
                     show_api_error("Could not load profile", exc)

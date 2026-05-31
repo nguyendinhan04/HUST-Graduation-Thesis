@@ -186,6 +186,40 @@ def inject_linkedin_styles() -> None:
             color: #ffffff !important;
         }
 
+        .form-loading,
+        dialog[open] .form-loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: min(100%, 680px);
+            box-sizing: border-box;
+            margin: 8px auto 10px;
+            padding: 11px 14px;
+            color: #191919;
+            background: #eef3f8;
+            border: 1px solid #c7d7e8;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .form-loading-spinner,
+        dialog[open] .form-loading-spinner {
+            width: 18px;
+            height: 18px;
+            min-width: 18px;
+            border: 3px solid #b7c9db;
+            border-top-color: #0a66c2;
+            border-radius: 50%;
+            animation: form-loading-spin 0.8s linear infinite;
+        }
+
+        @keyframes form-loading-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         div[data-testid="stExpander"] {
             background: #ffffff;
             border: 1px solid #d7d3cc;

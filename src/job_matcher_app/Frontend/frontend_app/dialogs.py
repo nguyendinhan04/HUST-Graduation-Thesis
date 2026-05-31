@@ -25,6 +25,7 @@ from frontend_app.forms import (
     render_dialog_header,
     render_discard_confirmation,
 )
+from frontend_app.loading import form_loading
 from frontend_app.state import close_dialog
 
 
@@ -39,8 +40,9 @@ def profile_dialog(profile: dict[str, Any]) -> None:
     payload, action = profile_payload_form("profile_edit_form", profile)
     if action == "save":
         try:
-            update_profile(payload)
-            refresh_profile()
+            with form_loading("Saving profile..."):
+                update_profile(payload)
+                refresh_profile()
             close_dialog()
             st.success("Profile updated.")
             st.rerun()
@@ -57,8 +59,9 @@ def add_experience_dialog() -> None:
     payload, action = experience_payload_form("create_experience_form")
     if action == "save":
         try:
-            create_experience(payload)
-            refresh_profile()
+            with form_loading("Saving experience..."):
+                create_experience(payload)
+                refresh_profile()
             close_dialog()
             st.success("Experience added.")
             st.rerun()
@@ -93,8 +96,9 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
     )
     if action == "delete":
         try:
-            delete_experience(item["experience_id"])
-            refresh_profile()
+            with form_loading("Deleting experience..."):
+                delete_experience(item["experience_id"])
+                refresh_profile()
             close_dialog()
             st.success("Experience deleted.")
             st.rerun()
@@ -102,8 +106,9 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
             show_api_error("Could not delete experience", exc)
     elif action == "save":
         try:
-            update_experience(item["experience_id"], payload)
-            refresh_profile()
+            with form_loading("Saving experience..."):
+                update_experience(item["experience_id"], payload)
+                refresh_profile()
             close_dialog()
             st.success("Experience updated.")
             st.rerun()
@@ -120,8 +125,9 @@ def add_education_dialog() -> None:
     payload, action = education_payload_form("create_education_form")
     if action == "save":
         try:
-            create_education(payload)
-            refresh_profile()
+            with form_loading("Saving education..."):
+                create_education(payload)
+                refresh_profile()
             close_dialog()
             st.success("Education added.")
             st.rerun()
@@ -156,8 +162,9 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
     )
     if action == "delete":
         try:
-            delete_education(item["education_id"])
-            refresh_profile()
+            with form_loading("Deleting education..."):
+                delete_education(item["education_id"])
+                refresh_profile()
             close_dialog()
             st.success("Education deleted.")
             st.rerun()
@@ -165,8 +172,9 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
             show_api_error("Could not delete education", exc)
     elif action == "save":
         try:
-            update_education(item["education_id"], payload)
-            refresh_profile()
+            with form_loading("Saving education..."):
+                update_education(item["education_id"], payload)
+                refresh_profile()
             close_dialog()
             st.success("Education updated.")
             st.rerun()
@@ -193,8 +201,9 @@ def add_skill_dialog() -> None:
             st.warning("Please enter a skill name.")
             return
         try:
-            add_skill(skill_name.strip())
-            refresh_profile()
+            with form_loading("Saving skill..."):
+                add_skill(skill_name.strip())
+                refresh_profile()
             close_dialog()
             st.success("Skill added.")
             st.rerun()
@@ -223,8 +232,9 @@ def manage_skills_dialog(profile: dict[str, Any]) -> None:
             use_container_width=True,
         ):
             try:
-                delete_skill(skill["skill_id"])
-                refresh_profile()
+                with form_loading("Deleting skill..."):
+                    delete_skill(skill["skill_id"])
+                    refresh_profile()
                 close_dialog()
                 st.success("Skill deleted.")
                 st.rerun()

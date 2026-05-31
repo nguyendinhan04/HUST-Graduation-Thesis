@@ -8,6 +8,7 @@ from frontend_app.api_client import ApiError, refresh_profile
 from frontend_app.auth_views import render_auth_page
 from frontend_app.dialogs import render_active_dialog
 from frontend_app.formatting import show_api_error
+from frontend_app.loading import form_loading
 from frontend_app.management_views import (
     render_education_management_page,
     render_experience_management_page,
@@ -28,7 +29,8 @@ from frontend_app.styles import inject_linkedin_styles
 def render_profile_page() -> None:
     if st.session_state.get("profile") is None:
         try:
-            refresh_profile()
+            with form_loading("Loading profile..."):
+                refresh_profile()
         except ApiError as exc:
             show_api_error("Could not load profile", exc)
             return

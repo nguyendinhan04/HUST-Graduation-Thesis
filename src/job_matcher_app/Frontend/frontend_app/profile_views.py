@@ -14,6 +14,7 @@ from frontend_app.formatting import (
     show_api_error,
     summarize_skills,
 )
+from frontend_app.loading import form_loading
 from frontend_app.state import navigate_to, open_dialog
 
 
@@ -67,7 +68,8 @@ def render_profile_actions() -> None:
         open_dialog("profile")
     if refresh_col.button("↻", key="refresh_profile_top", help="Refresh profile"):
         try:
-            refresh_profile()
+            with form_loading("Refreshing profile..."):
+                refresh_profile()
             st.success("Profile refreshed.")
             st.rerun()
         except ApiError as exc:

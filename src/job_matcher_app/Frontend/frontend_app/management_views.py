@@ -13,6 +13,7 @@ from frontend_app.formatting import (
     show_api_error,
     summarize_skills,
 )
+from frontend_app.loading import form_loading
 from frontend_app.state import navigate_to, open_dialog
 
 
@@ -121,8 +122,9 @@ def render_skill_management_page(profile: dict[str, Any]) -> None:
             )
             if delete_col.button("×", key=f"delete_skill_page_{skill['skill_id']}", help="Delete skill"):
                 try:
-                    delete_skill(skill["skill_id"])
-                    refresh_profile()
+                    with form_loading("Deleting skill..."):
+                        delete_skill(skill["skill_id"])
+                        refresh_profile()
                     st.success("Skill deleted.")
                     st.rerun()
                 except ApiError as exc:

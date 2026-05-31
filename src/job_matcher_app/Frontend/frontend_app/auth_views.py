@@ -4,6 +4,7 @@ import streamlit as st
 
 from frontend_app.api_client import ApiError, create_employee, login
 from frontend_app.formatting import clean_payload, show_api_error
+from frontend_app.loading import form_loading
 
 
 def render_login_tab() -> None:
@@ -17,7 +18,8 @@ def render_login_tab() -> None:
             st.warning("Please enter email and password.")
             return
         try:
-            login(email.strip(), password)
+            with form_loading("Signing in..."):
+                login(email.strip(), password)
             st.success("Signed in successfully.")
             st.rerun()
         except ApiError as exc:
@@ -74,8 +76,9 @@ def render_register_tab() -> None:
         )
 
         try:
-            create_employee(payload)
-            login(email.strip(), password)
+            with form_loading("Creating account..."):
+                create_employee(payload)
+                login(email.strip(), password)
             st.success("Account created and signed in.")
             st.rerun()
         except ApiError as exc:
