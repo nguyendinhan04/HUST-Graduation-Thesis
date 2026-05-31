@@ -371,10 +371,11 @@ def inject_linkedin_styles() -> None:
         .discard-confirm,
         dialog[open] .discard-confirm {
             position: fixed !important;
-            top: 33vh !important;
+            top: calc(33vh - 82px) !important;
             left: 50% !important;
-            transform: translate(-50%, -50%) !important;
+            transform: translateX(-50%) !important;
             width: min(400px, calc(100vw - 48px)) !important;
+            min-height: 164px !important;
             z-index: 1000020 !important;
             box-sizing: border-box !important;
             padding: 24px 28px 16px !important;
@@ -417,7 +418,7 @@ def inject_linkedin_styles() -> None:
         div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker),
         dialog[open] div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker) {
             position: fixed !important;
-            top: calc(33vh + 107px) !important;
+            top: calc(33vh + 82px) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
             width: min(400px, calc(100vw - 48px)) !important;
