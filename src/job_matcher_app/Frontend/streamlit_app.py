@@ -429,32 +429,57 @@ def inject_linkedin_styles() -> None:
             gap: 4px;
         }
 
-        div[data-testid="stDialog"] {
+        dialog[open]::backdrop {
+            background: rgba(0, 0, 0, 0.58) !important;
+            backdrop-filter: blur(1px);
+        }
+
+        .stApp:has([data-testid="stDialog"])::before,
+        .stApp:has(dialog[open])::before,
+        .stApp:has([role="dialog"])::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.58);
+            backdrop-filter: blur(1px);
+            z-index: 999998;
+            pointer-events: none;
+        }
+
+        [data-testid="stDialog"],
+        dialog[open],
+        [role="dialog"] {
             position: fixed !important;
             top: 50% !important;
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
             width: min(720px, calc(100vw - 40px)) !important;
             max-width: min(720px, calc(100vw - 40px)) !important;
+            max-height: min(86vh, 900px) !important;
             margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            border: 1px solid #c8c2b8 !important;
+            border-radius: 16px !important;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42) !important;
+            outline: none !important;
+            overflow: hidden !important;
+            z-index: 999999 !important;
         }
 
-        div[data-testid="stDialog"] > div {
-            border-radius: 14px !important;
+        [data-testid="stDialog"] > div,
+        dialog[open] > div,
+        [role="dialog"] > div {
+            background: #ffffff !important;
+            border-radius: 16px !important;
+            max-height: min(86vh, 900px) !important;
+            overflow-y: auto !important;
         }
 
-        div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
+        [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
+        dialog[open] div[data-testid="stVerticalBlock"],
+        [role="dialog"] div[data-testid="stVerticalBlock"] {
             gap: 0.75rem;
-        }
-
-        div[role="dialog"] {
-            position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: min(720px, calc(100vw - 40px)) !important;
-            max-width: min(720px, calc(100vw - 40px)) !important;
-            margin: 0 !important;
         }
         </style>
         """,
