@@ -266,6 +266,16 @@ def inject_linkedin_styles() -> None:
             display: none !important;
         }
 
+        dialog[open] div[style*="padding: 1.5rem 1.5rem 0.75rem"][style*="font-size: 1.5rem"][style*="display: flex"] {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+
         dialog[open] [data-testid="stDialog"] > div:first-child:not(:has(.custom-dialog-title)),
         dialog[open] [role="dialog"] > div:first-child:not(:has(.custom-dialog-title)),
         dialog[open] div:has(> h1):not(:has(.custom-dialog-title)),
