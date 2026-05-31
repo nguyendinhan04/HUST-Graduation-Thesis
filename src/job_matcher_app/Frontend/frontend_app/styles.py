@@ -218,14 +218,14 @@ def inject_linkedin_styles() -> None:
             top: 50% !important;
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: min(720px, calc(100vw - 32px)) !important;
-            max-width: min(720px, calc(100vw - 32px)) !important;
-            max-height: calc(100dvh - 32px) !important;
+            width: min(760px, calc(100vw - 32px)) !important;
+            max-width: min(760px, calc(100vw - 32px)) !important;
+            max-height: calc(100dvh - 24px) !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             border: 1px solid #c8c2b8 !important;
-            border-radius: 16px !important;
+            border-radius: 10px !important;
             box-sizing: border-box !important;
             box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42) !important;
             outline: none !important;
@@ -237,12 +237,50 @@ def inject_linkedin_styles() -> None:
         dialog[open] > div,
         [role="dialog"] > div {
             background: #ffffff !important;
-            border-radius: 16px !important;
-            max-height: calc(100dvh - 34px) !important;
+            border-radius: 10px !important;
+            max-height: calc(100dvh - 26px) !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
-            padding: 18px 24px 24px !important;
+            padding: 22px 28px 0 !important;
             overscroll-behavior: contain;
+        }
+
+        [data-testid="stDialog"] h1,
+        [data-testid="stDialog"] h2,
+        [data-testid="stDialog"] h3,
+        dialog[open] h1,
+        dialog[open] h2,
+        dialog[open] h3,
+        [role="dialog"] h1,
+        [role="dialog"] h2,
+        [role="dialog"] h3 {
+            font-size: 24px !important;
+            font-weight: 650 !important;
+            line-height: 1.25 !important;
+            margin: 0 0 18px !important;
+            padding-bottom: 18px !important;
+            border-bottom: 1px solid #e8e4de !important;
+        }
+
+        [data-testid="stDialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"],
+        dialog[open] .dialog-close-row + div[data-testid="stHorizontalBlock"],
+        [role="dialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"] {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            width: 40px;
+            z-index: 3;
+        }
+
+        [data-testid="stDialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"] button,
+        dialog[open] .dialog-close-row + div[data-testid="stHorizontalBlock"] button,
+        [role="dialog"] .dialog-close-row + div[data-testid="stHorizontalBlock"] button {
+            width: 36px !important;
+            min-height: 36px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            font-size: 24px !important;
+            line-height: 1 !important;
         }
 
         [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
@@ -255,13 +293,61 @@ def inject_linkedin_styles() -> None:
         dialog[open] form,
         [role="dialog"] form {
             margin-bottom: 0 !important;
-            padding-bottom: 8px !important;
+            padding-bottom: 0 !important;
+        }
+
+        [data-testid="stDialog"] form label,
+        dialog[open] form label,
+        [role="dialog"] form label {
+            font-size: 15px !important;
+            color: #191919 !important;
+            font-weight: 400 !important;
+        }
+
+        [data-testid="stDialog"] form input,
+        [data-testid="stDialog"] form textarea,
+        [data-testid="stDialog"] form [data-baseweb="select"] > div,
+        dialog[open] form input,
+        dialog[open] form textarea,
+        dialog[open] form [data-baseweb="select"] > div,
+        [role="dialog"] form input,
+        [role="dialog"] form textarea,
+        [role="dialog"] form [data-baseweb="select"] > div {
+            background: #ffffff !important;
+            border-color: #666666 !important;
+            color: #191919 !important;
+            border-radius: 4px !important;
+            min-height: 40px !important;
+        }
+
+        [data-testid="stDialog"] form input:focus,
+        [data-testid="stDialog"] form textarea:focus,
+        dialog[open] form input:focus,
+        dialog[open] form textarea:focus,
+        [role="dialog"] form input:focus,
+        [role="dialog"] form textarea:focus {
+            border-color: #0a66c2 !important;
+            box-shadow: 0 0 0 1px #0a66c2 inset !important;
+        }
+
+        [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
+        dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
+        [role="dialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            align-items: center;
+            margin: 18px -28px 0 !important;
+            padding: 14px 20px 16px !important;
+            background: #ffffff;
+            border-top: 1px solid #e8e4de;
         }
 
         [data-testid="stDialog"] div[data-testid="column"]:last-child button,
         dialog[open] div[data-testid="column"]:last-child button,
         [role="dialog"] div[data-testid="column"]:last-child button {
-            min-height: 34px;
+            min-height: 36px;
+            border-radius: 999px !important;
         }
 
         @media (max-width: 640px) {
@@ -271,14 +357,21 @@ def inject_linkedin_styles() -> None:
                 width: calc(100vw - 16px) !important;
                 max-width: calc(100vw - 16px) !important;
                 max-height: calc(100dvh - 16px) !important;
-                border-radius: 12px !important;
+                border-radius: 10px !important;
             }
 
             [data-testid="stDialog"] > div,
             dialog[open] > div,
             [role="dialog"] > div {
                 max-height: calc(100dvh - 18px) !important;
-                padding: 14px 16px 18px !important;
+                padding: 18px 16px 0 !important;
+            }
+
+            [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
+            dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
+            [role="dialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
+                margin: 18px -16px 0 !important;
+                padding: 12px 14px 14px !important;
             }
         }
         </style>

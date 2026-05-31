@@ -16,36 +16,35 @@ from frontend_app.state import close_dialog
 
 
 def render_dialog_close(key: str) -> None:
+    st.markdown('<div class="dialog-close-row">', unsafe_allow_html=True)
     _, close_col = st.columns([10, 0.55], gap="small")
     if close_col.button("×", key=key, help="Discard changes"):
         close_dialog()
         st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 
 def profile_payload_form(form_key: str, profile: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
     employee = profile.get("employee_profile") or {}
     with st.form(form_key):
-        col1, col2 = st.columns(2)
-        with col1:
-            full_name = st.text_input("Full name", value=nullable_text(profile.get("full_name")))
-            phone = st.text_input("Phone", value=nullable_text(profile.get("phone")))
-            avatar_url = st.text_input(
-                "Avatar URL",
-                value=nullable_text(profile.get("avatar_url")),
-            )
-        with col2:
-            headline = st.text_input("Headline", value=nullable_text(employee.get("headline")))
-            years_of_experience = st.number_input(
-                "Years of experience",
-                min_value=0,
-                step=1,
-                value=int(employee.get("years_of_experience") or 0),
-            )
-            current_location = st.text_input(
-                "Current location",
-                value=nullable_text(employee.get("current_location")),
-            )
+        full_name = st.text_input("Full name", value=nullable_text(profile.get("full_name")))
+        headline = st.text_input("Headline", value=nullable_text(employee.get("headline")))
+        current_location = st.text_input(
+            "Current location",
+            value=nullable_text(employee.get("current_location")),
+        )
+        phone = st.text_input("Phone", value=nullable_text(profile.get("phone")))
+        avatar_url = st.text_input(
+            "Avatar URL",
+            value=nullable_text(profile.get("avatar_url")),
+        )
+        years_of_experience = st.number_input(
+            "Years of experience",
+            min_value=0,
+            step=1,
+            value=int(employee.get("years_of_experience") or 0),
+        )
         summary = st.text_area(
             "Summary",
             value=nullable_text(employee.get("summary")),
@@ -82,34 +81,31 @@ def experience_payload_form(
 ) -> tuple[dict[str, Any], str | None]:
     item = item or {}
     with st.form(form_key):
-        col1, col2 = st.columns(2)
-        with col1:
-            title = st.text_input("Title", value=nullable_text(item.get("title")))
-            company_name = st.text_input(
-                "Company",
-                value=nullable_text(item.get("company_name")),
-            )
-            employment_type = st.text_input(
-                "Employment type",
-                value=nullable_text(item.get("employment_type")),
-            )
-            location = st.text_input("Location", value=nullable_text(item.get("location")))
-        with col2:
-            location_type = st.text_input(
-                "Location type",
-                value=nullable_text(item.get("location_type")),
-            )
-            start_date = optional_date_input(
-                "Start date",
-                f"{form_key}_start",
-                item.get("start_date"),
-            )
-            end_date = optional_date_input(
-                "End date",
-                f"{form_key}_end",
-                item.get("end_date"),
-            )
-            skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
+        title = st.text_input("Title", value=nullable_text(item.get("title")))
+        employment_type = st.text_input(
+            "Employment type",
+            value=nullable_text(item.get("employment_type")),
+        )
+        company_name = st.text_input(
+            "Company",
+            value=nullable_text(item.get("company_name")),
+        )
+        location = st.text_input("Location", value=nullable_text(item.get("location")))
+        location_type = st.text_input(
+            "Location type",
+            value=nullable_text(item.get("location_type")),
+        )
+        start_date = optional_date_input(
+            "Start date",
+            f"{form_key}_start",
+            item.get("start_date"),
+        )
+        end_date = optional_date_input(
+            "End date",
+            f"{form_key}_end",
+            item.get("end_date"),
+        )
+        skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
         description = st.text_area(
             "Description",
             value=nullable_text(item.get("description")),
@@ -161,26 +157,23 @@ def education_payload_form(
 ) -> tuple[dict[str, Any], str | None]:
     item = item or {}
     with st.form(form_key):
-        col1, col2 = st.columns(2)
-        with col1:
-            school = st.text_input("School", value=nullable_text(item.get("school")))
-            degree = st.text_input("Degree", value=nullable_text(item.get("degree")))
-            field_of_study = st.text_input(
-                "Field of study",
-                value=nullable_text(item.get("field_of_study")),
-            )
-        with col2:
-            start_date = optional_date_input(
-                "Start date",
-                f"{form_key}_start",
-                item.get("start_date"),
-            )
-            end_date = optional_date_input(
-                "End date",
-                f"{form_key}_end",
-                item.get("end_date"),
-            )
-            skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
+        school = st.text_input("School", value=nullable_text(item.get("school")))
+        degree = st.text_input("Degree", value=nullable_text(item.get("degree")))
+        field_of_study = st.text_input(
+            "Field of study",
+            value=nullable_text(item.get("field_of_study")),
+        )
+        start_date = optional_date_input(
+            "Start date",
+            f"{form_key}_start",
+            item.get("start_date"),
+        )
+        end_date = optional_date_input(
+            "End date",
+            f"{form_key}_end",
+            item.get("end_date"),
+        )
+        skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
         description = st.text_area(
             "Description",
             value=nullable_text(item.get("description")),
