@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from html import escape
 from datetime import date, datetime
 from typing import Any
 
@@ -24,6 +25,12 @@ def init_session_state() -> None:
     st.session_state.setdefault("token_type", "bearer")
     st.session_state.setdefault("profile", None)
     st.session_state.setdefault("editing_profile", False)
+    st.session_state.setdefault("show_add_experience", False)
+    st.session_state.setdefault("show_edit_experiences", False)
+    st.session_state.setdefault("show_add_education", False)
+    st.session_state.setdefault("show_edit_educations", False)
+    st.session_state.setdefault("show_add_skill", False)
+    st.session_state.setdefault("show_edit_skills", False)
 
 
 def api_base_url() -> str:
@@ -230,6 +237,226 @@ def show_api_error(message: str, exc: ApiError) -> None:
     st.error(f"{message}: {exc}")
 
 
+def inject_linkedin_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background: #f3f2ef;
+            color: #191919;
+        }
+
+        .block-container {
+            max-width: 980px;
+            padding-top: 1.25rem;
+            padding-bottom: 3rem;
+        }
+
+        div[data-testid="stSidebar"] {
+            background: #ffffff;
+            border-right: 1px solid #d7d3cc;
+        }
+
+        .linkedin-card {
+            background: #ffffff;
+            border: 1px solid #d7d3cc;
+            border-radius: 8px;
+            margin: 0 0 8px 0;
+            overflow: hidden;
+        }
+
+        .profile-cover {
+            height: 96px;
+            background: linear-gradient(135deg, #0a66c2 0%, #378fe9 56%, #dce6f1 100%);
+        }
+
+        .profile-body {
+            padding: 0 24px 22px;
+        }
+
+        .profile-avatar {
+            width: 128px;
+            height: 128px;
+            border-radius: 50%;
+            border: 4px solid #ffffff;
+            margin-top: -64px;
+            background: #eef3f8;
+            object-fit: cover;
+            display: block;
+        }
+
+        .profile-avatar-placeholder {
+            width: 128px;
+            height: 128px;
+            border-radius: 50%;
+            border: 4px solid #ffffff;
+            margin-top: -64px;
+            background: #eef3f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #56687a;
+            font-size: 42px;
+            font-weight: 700;
+        }
+
+        .profile-name {
+            margin: 12px 0 0;
+            font-size: 26px;
+            font-weight: 650;
+            line-height: 1.2;
+        }
+
+        .profile-headline {
+            margin-top: 4px;
+            font-size: 16px;
+            color: #191919;
+        }
+
+        .muted {
+            color: #666666;
+            font-size: 14px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 650;
+            margin: 0 0 14px;
+        }
+
+        .entity-row {
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr);
+            gap: 12px;
+            padding: 12px 0 14px;
+            border-bottom: 1px solid #e8e4de;
+        }
+
+        .entity-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            background: #eef3f8;
+            color: #56687a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .entity-title {
+            font-weight: 650;
+            line-height: 1.25;
+            margin-bottom: 2px;
+        }
+
+        .entity-subtitle {
+            color: #191919;
+            line-height: 1.35;
+            font-size: 14px;
+        }
+
+        .entity-meta {
+            color: #666666;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .entity-desc {
+            margin-top: 8px;
+            color: #191919;
+            font-size: 14px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        .skill-line {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .skill-row {
+            padding: 13px 0;
+            border-bottom: 1px solid #e8e4de;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            color: #666666;
+            padding: 4px 0 18px;
+        }
+
+        div.stButton > button {
+            border-radius: 999px;
+            border: 0;
+            background: transparent;
+            color: #191919;
+            min-height: 36px;
+            font-weight: 600;
+        }
+
+        div.stButton > button:hover {
+            background: #ebebeb;
+            color: #191919;
+            border: 0;
+        }
+
+        div[data-testid="stExpander"] {
+            background: #ffffff;
+            border: 1px solid #d7d3cc;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def initials(value: str | None, fallback: str = "IN") -> str:
+    words = [word for word in nullable_text(value).replace(",", " ").split() if word]
+    if not words:
+        return fallback
+    return "".join(word[0].upper() for word in words[:2])
+
+
+def format_month_year(value: str | None) -> str:
+    parsed = parse_iso_date(value)
+    if not parsed:
+        return ""
+    return parsed.strftime("%b %Y")
+
+
+def format_date_range(start: str | None, end: str | None) -> str:
+    start_label = format_month_year(start)
+    end_label = format_month_year(end) or "Present"
+    if start_label:
+        return f"{start_label} - {end_label}"
+    return end_label
+
+
+def summarize_skills(skills: list[dict[str, Any]] | None, visible_count: int = 2) -> str:
+    names = [skill.get("skill_name", "") for skill in skills or [] if skill.get("skill_name")]
+    if not names:
+        return ""
+    visible = ", ".join(names[:visible_count])
+    hidden_count = len(names) - visible_count
+    if hidden_count > 0:
+        return f"{visible} and +{hidden_count} skills"
+    return visible
+
+
+def html_or_empty(value: Any, fallback: str = "") -> str:
+    return escape(nullable_text(value) or fallback)
+
+
 def sidebar() -> None:
     with st.sidebar:
         st.header("Cấu hình")
@@ -352,39 +579,51 @@ def render_skill_chips(skills: list[dict[str, Any]] | None) -> None:
 
 def render_profile_summary(profile: dict[str, Any]) -> None:
     employee = profile.get("employee_profile") or {}
+    avatar_url = nullable_text(profile.get("avatar_url")).strip()
+    if avatar_url:
+        avatar_markup = (
+            f'<img class="profile-avatar" src="{escape(avatar_url)}" '
+            f'alt="{html_or_empty(profile.get("full_name"), "Employee")}">'
+        )
+    else:
+        avatar_markup = (
+            f'<div class="profile-avatar-placeholder">'
+            f'{escape(initials(profile.get("full_name"), "E"))}</div>'
+        )
 
-    top_left, top_right = st.columns([1, 3])
-    with top_left:
-        avatar_url = nullable_text(profile.get("avatar_url")).strip()
-        if avatar_url:
-            st.image(avatar_url, width=120)
-        else:
-            st.info("Chưa có avatar")
-    with top_right:
-        st.subheader(profile.get("full_name") or "Chưa cập nhật họ tên")
-        st.caption(profile.get("email") or "")
-        st.write(employee.get("headline") or "Chưa cập nhật headline")
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Kinh nghiệm", employee.get("years_of_experience") or 0)
-        c2.metric("Địa điểm", employee.get("current_location") or "N/A")
-        c3.metric("Role", profile.get("role") or "employee")
-
-    with st.container(border=True):
-        st.write("**Thông tin chung**")
-        col1, col2 = st.columns(2)
-        col1.write(f"**Số điện thoại:** {profile.get('phone') or 'Chưa cập nhật'}")
-        col2.write(f"**Cập nhật:** {profile.get('updated_at') or 'Chưa có'}")
-        st.write("**Tóm tắt**")
-        st.write(employee.get("summary") or "Chưa cập nhật tóm tắt hồ sơ.")
+    summary = employee.get("summary") or "Chưa cập nhật tóm tắt hồ sơ."
+    st.markdown(
+        f"""
+        <div class="linkedin-card">
+            <div class="profile-cover"></div>
+            <div class="profile-body">
+                {avatar_markup}
+                <div class="profile-name">{html_or_empty(profile.get("full_name"), "Chưa cập nhật họ tên")}</div>
+                <div class="profile-headline">{html_or_empty(employee.get("headline"), "Chưa cập nhật headline")}</div>
+                <div class="muted">{html_or_empty(employee.get("current_location"), "Chưa cập nhật địa điểm")} · {html_or_empty(profile.get("email"))}</div>
+                <div class="muted">{html_or_empty(profile.get("phone"), "Chưa cập nhật số điện thoại")} · {employee.get("years_of_experience") or 0} năm kinh nghiệm</div>
+                <div class="entity-desc">{html_or_empty(summary)}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_profile_edit(profile: dict[str, Any]) -> None:
-    if st.button("Sửa thông tin chung"):
+    action_cols = st.columns([1, 1, 8])
+    if action_cols[0].button("✎", key="toggle_profile_edit", help="Sửa thông tin chung"):
         st.session_state["editing_profile"] = not st.session_state.get(
             "editing_profile",
             False,
         )
+    if action_cols[1].button("↻", key="refresh_profile_top", help="Làm mới profile"):
+        try:
+            refresh_profile()
+            st.success("Đã tải lại profile.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Không tải được profile", exc)
 
     if not st.session_state.get("editing_profile"):
         return
@@ -535,55 +774,130 @@ def education_payload_form(
     return payload, submitted
 
 
+def render_experience_item(item: dict[str, Any]) -> None:
+    title = item.get("title") or "Chưa cập nhật chức danh"
+    company = item.get("company_name") or "Chưa cập nhật công ty"
+    employment = item.get("employment_type") or "Chưa cập nhật loại công việc"
+    location_bits = [
+        value
+        for value in [item.get("location"), item.get("location_type")]
+        if value
+    ]
+    location = " · ".join(location_bits)
+    date_range = format_date_range(item.get("start_date"), item.get("end_date"))
+    description = item.get("description") or ""
+    skill_summary = summarize_skills(item.get("skills"))
+    skill_markup = (
+        f'<div class="skill-line">{html_or_empty(skill_summary)}</div>'
+        if skill_summary
+        else ""
+    )
+
+    st.markdown(
+        f"""
+        <div class="entity-row">
+            <div class="entity-logo">{escape(initials(company, "CO"))}</div>
+            <div>
+                <div class="entity-title">{html_or_empty(title)}</div>
+                <div class="entity-subtitle">{html_or_empty(company)} · {html_or_empty(employment)}</div>
+                <div class="entity-meta">{html_or_empty(date_range)}{(" · " + html_or_empty(location)) if location else ""}</div>
+                <div class="entity-desc">{html_or_empty(description)}</div>
+                {skill_markup}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_education_item(item: dict[str, Any]) -> None:
+    school = item.get("school") or "Chưa cập nhật trường"
+    degree = item.get("degree") or "Chưa cập nhật bằng cấp"
+    field_of_study = item.get("field_of_study") or "Chưa cập nhật ngành học"
+    date_range = format_date_range(item.get("start_date"), item.get("end_date"))
+    description = item.get("description") or ""
+    skill_summary = summarize_skills(item.get("skills"))
+    skill_markup = (
+        f'<div class="skill-line">{html_or_empty(skill_summary)}</div>'
+        if skill_summary
+        else ""
+    )
+
+    st.markdown(
+        f"""
+        <div class="entity-row">
+            <div class="entity-logo">{escape(initials(school, "ED"))}</div>
+            <div>
+                <div class="entity-title">{html_or_empty(school)}</div>
+                <div class="entity-subtitle">{html_or_empty(degree)}, {html_or_empty(field_of_study)}</div>
+                <div class="entity-meta">{html_or_empty(date_range)}</div>
+                <div class="entity-desc">{html_or_empty(description)}</div>
+                {skill_markup}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_experiences(profile: dict[str, Any]) -> None:
-    st.subheader("Experience")
     experiences = profile.get("experiences") or []
+    with st.container(border=True):
+        header_left, add_col, edit_col = st.columns([8, 1, 1])
+        header_left.markdown('<div class="section-title">Experience</div>', unsafe_allow_html=True)
+        if add_col.button("+", key="toggle_add_experience", help="Thêm experience"):
+            st.session_state["show_add_experience"] = not st.session_state.get(
+                "show_add_experience",
+                False,
+            )
+        if edit_col.button("✎", key="toggle_edit_experiences", help="Sửa experience"):
+            st.session_state["show_edit_experiences"] = not st.session_state.get(
+                "show_edit_experiences",
+                False,
+            )
 
-    with st.expander("Thêm experience"):
-        payload, submitted = experience_payload_form("create_experience_form")
-        if submitted:
-            try:
-                create_experience(payload)
-                refresh_profile()
-                st.success("Đã thêm experience.")
-                st.rerun()
-            except ApiError as exc:
-                show_api_error("Không thêm được experience", exc)
+        if st.session_state.get("show_add_experience"):
+            st.markdown("**Thêm experience**")
+            payload, submitted = experience_payload_form("create_experience_form")
+            if submitted:
+                try:
+                    create_experience(payload)
+                    refresh_profile()
+                    st.session_state["show_add_experience"] = False
+                    st.success("Đã thêm experience.")
+                    st.rerun()
+                except ApiError as exc:
+                    show_api_error("Không thêm được experience", exc)
 
-    if not experiences:
-        st.info("Chưa có experience.")
+        if not experiences:
+            st.markdown('<div class="empty-state">Chưa có experience.</div>', unsafe_allow_html=True)
+            return
+
+        for item in experiences:
+            render_experience_item(item)
+
+    if not st.session_state.get("show_edit_experiences"):
         return
 
+    st.markdown("#### Sửa Experience")
     for index, item in enumerate(experiences, start=1):
         title = item.get("title") or f"Experience #{index}"
         company = item.get("company_name") or "Chưa cập nhật công ty"
         with st.expander(f"{title} - {company}"):
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(f"**Loại công việc:** {item.get('employment_type') or 'N/A'}")
-                st.write(f"**Địa điểm:** {item.get('location') or 'N/A'}")
-                st.write(f"**Hình thức:** {item.get('location_type') or 'N/A'}")
-                st.write(
-                    f"**Thời gian:** {item.get('start_date') or 'N/A'} - "
-                    f"{item.get('end_date') or 'Hiện tại'}"
-                )
-                st.write(item.get("description") or "Chưa có mô tả.")
-                render_skill_chips(item.get("skills"))
-            with col2:
-                if st.button(
-                    "Xóa",
-                    key=f"delete_experience_{item['experience_id']}",
-                    use_container_width=True,
-                ):
-                    try:
-                        delete_experience(item["experience_id"])
-                        refresh_profile()
-                        st.success("Đã xóa experience.")
-                        st.rerun()
-                    except ApiError as exc:
-                        show_api_error("Không xóa được experience", exc)
+            delete_col, _ = st.columns([1, 5])
+            if delete_col.button(
+                "Xóa",
+                key=f"delete_experience_{item['experience_id']}",
+                use_container_width=True,
+            ):
+                try:
+                    delete_experience(item["experience_id"])
+                    refresh_profile()
+                    st.success("Đã xóa experience.")
+                    st.rerun()
+                except ApiError as exc:
+                    show_api_error("Không xóa được experience", exc)
 
-            st.divider()
             payload, submitted = experience_payload_form(
                 f"edit_experience_form_{item['experience_id']}",
                 item,
@@ -599,24 +913,45 @@ def render_experiences(profile: dict[str, Any]) -> None:
 
 
 def render_educations(profile: dict[str, Any]) -> None:
-    st.subheader("Education")
     educations = profile.get("educations") or []
+    with st.container(border=True):
+        header_left, add_col, edit_col = st.columns([8, 1, 1])
+        header_left.markdown('<div class="section-title">Education</div>', unsafe_allow_html=True)
+        if add_col.button("+", key="toggle_add_education", help="Thêm education"):
+            st.session_state["show_add_education"] = not st.session_state.get(
+                "show_add_education",
+                False,
+            )
+        if edit_col.button("✎", key="toggle_edit_educations", help="Sửa education"):
+            st.session_state["show_edit_educations"] = not st.session_state.get(
+                "show_edit_educations",
+                False,
+            )
 
-    with st.expander("Thêm education"):
-        payload, submitted = education_payload_form("create_education_form")
-        if submitted:
-            try:
-                create_education(payload)
-                refresh_profile()
-                st.success("Đã thêm education.")
-                st.rerun()
-            except ApiError as exc:
-                show_api_error("Không thêm được education", exc)
+        if st.session_state.get("show_add_education"):
+            st.markdown("**Thêm education**")
+            payload, submitted = education_payload_form("create_education_form")
+            if submitted:
+                try:
+                    create_education(payload)
+                    refresh_profile()
+                    st.session_state["show_add_education"] = False
+                    st.success("Đã thêm education.")
+                    st.rerun()
+                except ApiError as exc:
+                    show_api_error("Không thêm được education", exc)
 
-    if not educations:
-        st.info("Chưa có education.")
+        if not educations:
+            st.markdown('<div class="empty-state">Chưa có education.</div>', unsafe_allow_html=True)
+            return
+
+        for item in educations:
+            render_education_item(item)
+
+    if not st.session_state.get("show_edit_educations"):
         return
 
+    st.markdown("#### Sửa Education")
     for index, item in enumerate(educations, start=1):
         school = item.get("school") or f"Education #{index}"
         degree = item.get("degree") or "Chưa cập nhật bằng cấp"
@@ -660,31 +995,62 @@ def render_educations(profile: dict[str, Any]) -> None:
 
 
 def render_standalone_skills(profile: dict[str, Any]) -> None:
-    st.subheader("Skill")
     skills = profile.get("skills") or []
+    with st.container(border=True):
+        header_left, add_col, edit_col = st.columns([8, 1, 1])
+        header_left.markdown(
+            f'<div class="section-title">Skills ({len(skills)})</div>',
+            unsafe_allow_html=True,
+        )
+        if add_col.button("+", key="toggle_add_skill", help="Thêm skill"):
+            st.session_state["show_add_skill"] = not st.session_state.get(
+                "show_add_skill",
+                False,
+            )
+        if edit_col.button("✎", key="toggle_edit_skills", help="Sửa skill"):
+            st.session_state["show_edit_skills"] = not st.session_state.get(
+                "show_edit_skills",
+                False,
+            )
 
-    with st.form("add_skill_form"):
-        skill_name = st.text_input("Thêm skill")
-        submitted = st.form_submit_button("Thêm skill", use_container_width=True)
-    if submitted:
-        if not skill_name.strip():
-            st.warning("Vui lòng nhập tên skill.")
-        else:
-            try:
-                add_skill(skill_name.strip())
-                refresh_profile()
-                st.success("Đã thêm skill.")
-                st.rerun()
-            except ApiError as exc:
-                show_api_error("Không thêm được skill", exc)
+        if st.session_state.get("show_add_skill"):
+            with st.form("add_skill_form"):
+                skill_name = st.text_input("Thêm skill")
+                submitted = st.form_submit_button("Thêm skill", use_container_width=True)
+            if submitted:
+                if not skill_name.strip():
+                    st.warning("Vui lòng nhập tên skill.")
+                else:
+                    try:
+                        add_skill(skill_name.strip())
+                        refresh_profile()
+                        st.session_state["show_add_skill"] = False
+                        st.success("Đã thêm skill.")
+                        st.rerun()
+                    except ApiError as exc:
+                        show_api_error("Không thêm được skill", exc)
 
-    if not skills:
-        st.info("Chưa có standalone skill.")
+        if not skills:
+            st.markdown('<div class="empty-state">Chưa có standalone skill.</div>', unsafe_allow_html=True)
+            return
+
+        visible_skills = skills if st.session_state.get("show_edit_skills") else skills[:5]
+        for skill in visible_skills:
+            st.markdown(
+                f'<div class="skill-row">{html_or_empty(skill.get("skill_name"))}</div>',
+                unsafe_allow_html=True,
+            )
+
+        if not st.session_state.get("show_edit_skills") and len(skills) > 5:
+            st.caption(f"Show all {len(skills)} skills")
+
+    if not st.session_state.get("show_edit_skills"):
         return
 
+    st.markdown("#### Sửa Skills")
     for skill in skills:
         col1, col2 = st.columns([4, 1])
-        col1.write(f"`{skill.get('skill_name')}`")
+        col1.write(skill.get("skill_name") or "Unnamed skill")
         if col2.button(
             "Xóa",
             key=f"delete_skill_{skill['skill_id']}",
@@ -700,8 +1066,6 @@ def render_standalone_skills(profile: dict[str, Any]) -> None:
 
 
 def render_profile_page() -> None:
-    st.title("Profile Employee")
-
     if st.session_state.get("profile") is None:
         try:
             refresh_profile()
@@ -712,18 +1076,9 @@ def render_profile_page() -> None:
     profile = st.session_state["profile"]
     render_profile_summary(profile)
     render_profile_edit(profile)
-
-    profile_tab, experience_tab, education_tab, skill_tab = st.tabs(
-        ["Tổng quan", "Experience", "Education", "Skill"],
-    )
-    with profile_tab:
-        render_skill_chips(profile.get("skills"))
-    with experience_tab:
-        render_experiences(profile)
-    with education_tab:
-        render_educations(profile)
-    with skill_tab:
-        render_standalone_skills(profile)
+    render_experiences(profile)
+    render_educations(profile)
+    render_standalone_skills(profile)
 
 
 def main() -> None:
@@ -733,6 +1088,7 @@ def main() -> None:
         layout="wide",
     )
     init_session_state()
+    inject_linkedin_styles()
     sidebar()
 
     if st.session_state.get("access_token"):
