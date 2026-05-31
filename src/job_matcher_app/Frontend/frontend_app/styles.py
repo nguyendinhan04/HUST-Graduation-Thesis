@@ -197,38 +197,36 @@ def inject_linkedin_styles() -> None:
             gap: 4px;
         }
 
-        dialog[open]::backdrop {
-            background: rgba(0, 0, 0, 0.58) !important;
-            backdrop-filter: blur(1px);
-        }
-
-        .stApp:has([data-testid="stDialog"])::before,
-        .stApp:has(dialog[open])::before,
-        .stApp:has([role="dialog"])::before {
-            content: "";
+        .dialog-backdrop {
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.58);
             backdrop-filter: blur(1px);
-            z-index: 999998;
-            pointer-events: none;
+            z-index: 999990;
+            pointer-events: auto;
+        }
+
+        dialog[open]::backdrop {
+            background: rgba(0, 0, 0, 0.58) !important;
+            backdrop-filter: blur(1px);
         }
 
         [data-testid="stDialog"],
         dialog[open],
         [role="dialog"] {
             position: fixed !important;
-            top: 52% !important;
+            top: 50% !important;
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: min(640px, calc(100vw - 56px)) !important;
-            max-width: min(640px, calc(100vw - 56px)) !important;
-            max-height: min(78vh, 760px) !important;
+            width: min(720px, calc(100vw - 32px)) !important;
+            max-width: min(720px, calc(100vw - 32px)) !important;
+            max-height: calc(100dvh - 32px) !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
             border: 1px solid #c8c2b8 !important;
             border-radius: 16px !important;
+            box-sizing: border-box !important;
             box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42) !important;
             outline: none !important;
             overflow: hidden !important;
@@ -240,9 +238,11 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] > div {
             background: #ffffff !important;
             border-radius: 16px !important;
-            max-height: min(78vh, 760px) !important;
+            max-height: calc(100dvh - 34px) !important;
+            box-sizing: border-box !important;
             overflow-y: auto !important;
-            padding: 18px 24px 22px !important;
+            padding: 18px 24px 24px !important;
+            overscroll-behavior: contain;
         }
 
         [data-testid="stDialog"] div[data-testid="stVerticalBlock"],
@@ -251,10 +251,35 @@ def inject_linkedin_styles() -> None:
             gap: 0.75rem;
         }
 
+        [data-testid="stDialog"] form,
+        dialog[open] form,
+        [role="dialog"] form {
+            margin-bottom: 0 !important;
+            padding-bottom: 8px !important;
+        }
+
         [data-testid="stDialog"] div[data-testid="column"]:last-child button,
         dialog[open] div[data-testid="column"]:last-child button,
         [role="dialog"] div[data-testid="column"]:last-child button {
             min-height: 34px;
+        }
+
+        @media (max-width: 640px) {
+            [data-testid="stDialog"],
+            dialog[open],
+            [role="dialog"] {
+                width: calc(100vw - 16px) !important;
+                max-width: calc(100vw - 16px) !important;
+                max-height: calc(100dvh - 16px) !important;
+                border-radius: 12px !important;
+            }
+
+            [data-testid="stDialog"] > div,
+            dialog[open] > div,
+            [role="dialog"] > div {
+                max-height: calc(100dvh - 18px) !important;
+                padding: 14px 16px 18px !important;
+            }
         }
         </style>
         """,
