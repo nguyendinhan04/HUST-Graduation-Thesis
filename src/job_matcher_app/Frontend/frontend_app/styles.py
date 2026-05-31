@@ -255,7 +255,14 @@ def inject_linkedin_styles() -> None:
         dialog[open] button[aria-label="Close"],
         dialog[open] button[aria-label="Close dialog"],
         dialog[open] button[title="Close"],
+        dialog[open] header button,
         dialog[open] [data-testid="stDialogCloseButton"] {
+            display: none !important;
+        }
+
+        dialog[open] header,
+        dialog[open] [data-testid="stDialogHeader"],
+        dialog[open] [data-testid="stDialogTitle"] {
             display: none !important;
         }
 
