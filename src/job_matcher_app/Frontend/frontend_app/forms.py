@@ -50,7 +50,7 @@ def render_discard_confirmation(key_prefix: str) -> bool:
         """,
         unsafe_allow_html=True,
     )
-    marker_col, _, no_col, discard_col = st.columns([0.01, 4.49, 1.35, 1.35], gap="small")
+    marker_col, _, no_col, discard_col = st.columns([0.01, 2.65, 1.8, 1.8], gap="medium")
     marker_col.markdown(
         '<div class="discard-confirm-actions-marker"></div>',
         unsafe_allow_html=True,

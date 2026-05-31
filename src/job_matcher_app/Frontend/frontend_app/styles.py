@@ -377,7 +377,7 @@ def inject_linkedin_styles() -> None:
             width: min(400px, calc(100vw - 48px)) !important;
             z-index: 1000020 !important;
             box-sizing: border-box !important;
-            padding: 24px 28px 18px !important;
+            padding: 24px 28px 16px !important;
             background: #ffffff !important;
             border: 1px solid #d7d3cc !important;
             border-bottom: 0 !important;
@@ -417,19 +417,29 @@ def inject_linkedin_styles() -> None:
         div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker),
         dialog[open] div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker) {
             position: fixed !important;
-            top: calc(33vh + 120px) !important;
+            top: calc(33vh + 107px) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
             width: min(400px, calc(100vw - 48px)) !important;
             z-index: 1000030 !important;
             box-sizing: border-box !important;
             margin: 0 !important;
-            padding: 14px 28px 16px !important;
+            padding: 12px 28px 18px !important;
             background: #ffffff !important;
             border: 1px solid #d7d3cc !important;
             border-top: 1px solid #e8e4de !important;
             border-radius: 0 0 8px 8px !important;
             box-shadow: none !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker) div[data-testid="column"] {
+            min-width: 92px !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker) button {
+            min-width: 92px !important;
+            white-space: nowrap !important;
+            padding: 0 18px !important;
         }
 
         dialog[open] > div > div {
