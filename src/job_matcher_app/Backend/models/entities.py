@@ -1,11 +1,13 @@
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -211,3 +213,28 @@ class Application(Base):
 
     employee = relationship("Employee", back_populates="applications")
     job = relationship("Job", back_populates="applications")
+
+
+class TaskOutbox(Base):
+    __tablename__ = "task_outbox"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    task_type = Column(String(100), nullable=False)
+    aggregate_type = Column(String(100), nullable=False)
+    aggregate_id = Column(BigInteger, nullable=False)
+    queue_name = Column(String(255), nullable=False)
+    rq_job_id = Column(String(255))
+    status = Column(String(20), nullable=False, server_default="pending")
+    payload = Column(JSON, nullable=False, server_default="{}")
+    result = Column(JSON)
+    error_message = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    completed_at = Column(DateTime)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'done', 'failed')",
+            name="ck_task_outbox_status",
+        ),
+    )

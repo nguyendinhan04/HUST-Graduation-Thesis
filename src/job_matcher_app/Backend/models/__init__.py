@@ -11,6 +11,7 @@ from .entities import (
     Job,
     JobSkill,
     Skill,
+    TaskOutbox,
     User,
 )
 
@@ -27,5 +28,6 @@ __all__ = [
     "Job",
     "JobSkill",
     "Skill",
+    "TaskOutbox",
     "User",
 ]

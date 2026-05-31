@@ -898,6 +898,7 @@ class UserService:
         normalized_skill_names = UserService._normalize_skill_names(skills or [])
         education_skills: list[Skill] = []
 
+        prepared_embedding_task = None
         try:
             education = Education(
                 employee_id=employee.id,
@@ -928,6 +929,15 @@ class UserService:
                 education,
                 education_skills,
             )
+            prepared_embedding_task = (
+                await embedding_service.prepare_education_embedding_update_outbox_task(
+                    db,
+                    user_id=user_id,
+                    employee_id=employee.id,
+                    education_id=education.id,
+                    education=education_payload,
+                )
+            )
 
             user.updated_at = datetime.utcnow()
 
@@ -941,12 +951,8 @@ class UserService:
             raise
 
         try:
-            embedding_service.enqueue_education_embedding_update(
-                user_id=user_id,
-                employee_id=employee.id,
-                education_id=education.id,
-                education=education_payload,
-            )
+            if prepared_embedding_task is not None:
+                embedding_service.enqueue_prepared_outbox_task(prepared_embedding_task)
         except Exception:
             logger.exception(
                 "Failed to enqueue education embedding update for user_id=%s, "
@@ -1004,6 +1010,7 @@ class UserService:
         education_skills: list[Skill] = []
         mark("validate_dates_and_normalize_skills", step_started_at)
 
+        prepared_embedding_task = None
         try:
             step_started_at = time.perf_counter()
             education = Education(
@@ -1042,6 +1049,18 @@ class UserService:
             mark("build_embedding_payload", step_started_at)
 
             step_started_at = time.perf_counter()
+            prepared_embedding_task = (
+                await embedding_service.prepare_education_embedding_update_outbox_task(
+                    db,
+                    user_id=user_id,
+                    employee_id=employee.id,
+                    education_id=education.id,
+                    education=education_payload,
+                )
+            )
+            mark("create_outbox_task", step_started_at)
+
+            step_started_at = time.perf_counter()
             user.updated_at = datetime.utcnow()
             await db.commit()
             await db.refresh(education)
@@ -1055,12 +1074,8 @@ class UserService:
 
         step_started_at = time.perf_counter()
         try:
-            embedding_service.enqueue_education_embedding_update(
-                user_id=user_id,
-                employee_id=employee.id,
-                education_id=education.id,
-                education=education_payload,
-            )
+            if prepared_embedding_task is not None:
+                embedding_service.enqueue_prepared_outbox_task(prepared_embedding_task)
         except Exception:
             logger.exception(
                 "Failed to enqueue education embedding update for user_id=%s, "
@@ -1132,6 +1147,7 @@ class UserService:
             for education_skill in education.education_skills
         ]
 
+        prepared_embedding_task = None
         try:
             fields = {
                 "school": school,
@@ -1185,6 +1201,15 @@ class UserService:
                 education,
                 response_skills,
             )
+            prepared_embedding_task = (
+                await embedding_service.prepare_education_embedding_update_outbox_task(
+                    db,
+                    user_id=user_id,
+                    employee_id=education.employee_id,
+                    education_id=education.id,
+                    education=education_payload,
+                )
+            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1198,12 +1223,8 @@ class UserService:
             raise
 
         try:
-            embedding_service.enqueue_education_embedding_update(
-                user_id=user_id,
-                employee_id=education.employee_id,
-                education_id=education.id,
-                education=education_payload,
-            )
+            if prepared_embedding_task is not None:
+                embedding_service.enqueue_prepared_outbox_task(prepared_embedding_task)
         except Exception:
             logger.exception(
                 "Failed to enqueue education embedding update for user_id=%s, "
@@ -1245,6 +1266,7 @@ class UserService:
 
         employee_id = education.employee_id
 
+        prepared_embedding_task = None
         try:
             await db.execute(
                 delete(EducationSkill).where(
@@ -1253,6 +1275,14 @@ class UserService:
             )
             await db.delete(education)
             await db.flush()
+            prepared_embedding_task = (
+                await embedding_service.prepare_education_embedding_delete_outbox_task(
+                    db,
+                    user_id=user_id,
+                    employee_id=employee_id,
+                    education_id=education_id,
+                )
+            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1265,11 +1295,8 @@ class UserService:
             raise
 
         try:
-            embedding_service.enqueue_education_embedding_delete(
-                user_id=user_id,
-                employee_id=employee_id,
-                education_id=education_id,
-            )
+            if prepared_embedding_task is not None:
+                embedding_service.enqueue_prepared_outbox_task(prepared_embedding_task)
         except Exception:
             logger.exception(
                 "Failed to enqueue education embedding delete for user_id=%s, "
@@ -1319,6 +1346,7 @@ class UserService:
         normalized_skill_names = UserService._normalize_skill_names(skills or [])
         experience_skills: list[Skill] = []
 
+        prepared_embedding_task = None
         try:
             experience = Experience(
                 employee_id=employee.id,
@@ -1351,6 +1379,15 @@ class UserService:
                 experience,
                 experience_skills,
             )
+            prepared_embedding_task = (
+                await embedding_service.prepare_experience_embedding_update_outbox_task(
+                    db,
+                    user_id=user_id,
+                    employee_id=employee.id,
+                    experience_id=experience.id,
+                    experience=experience_payload,
+                )
+            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1364,12 +1401,8 @@ class UserService:
             raise
 
         try:
-            embedding_service.enqueue_experience_embedding_update(
-                user_id=user_id,
-                employee_id=employee.id,
-                experience_id=experience.id,
-                experience=experience_payload,
-            )
+            if prepared_embedding_task is not None:
+                embedding_service.enqueue_prepared_outbox_task(prepared_embedding_task)
         except Exception:
             logger.exception(
                 "Failed to enqueue experience embedding update for user_id=%s, "
@@ -1430,6 +1463,7 @@ class UserService:
             for experience_skill in experience.experience_skills
         ]
 
+        prepared_embedding_task = None
         try:
             fields = {
                 "title": title,
@@ -1485,6 +1519,15 @@ class UserService:
                 experience,
                 response_skills,
             )
+            prepared_embedding_task = (
+                await embedding_service.prepare_experience_embedding_update_outbox_task(
+                    db,
+                    user_id=user_id,
+                    employee_id=experience.employee_id,
+                    experience_id=experience.id,
+                    experience=experience_payload,
+                )
+            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1498,12 +1541,8 @@ class UserService:
             raise
 
         try:
-            embedding_service.enqueue_experience_embedding_update(
-                user_id=user_id,
-                employee_id=experience.employee_id,
-                experience_id=experience.id,
-                experience=experience_payload,
-            )
+            if prepared_embedding_task is not None:
+                embedding_service.enqueue_prepared_outbox_task(prepared_embedding_task)
         except Exception:
             logger.exception(
                 "Failed to enqueue experience embedding update for user_id=%s, "
@@ -1545,6 +1584,7 @@ class UserService:
 
         employee_id = experience.employee_id
 
+        prepared_embedding_task = None
         try:
             await db.execute(
                 delete(ExperienceSkill).where(
@@ -1553,6 +1593,14 @@ class UserService:
             )
             await db.delete(experience)
             await db.flush()
+            prepared_embedding_task = (
+                await embedding_service.prepare_experience_embedding_delete_outbox_task(
+                    db,
+                    user_id=user_id,
+                    employee_id=employee_id,
+                    experience_id=experience_id,
+                )
+            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1565,11 +1613,8 @@ class UserService:
             raise
 
         try:
-            embedding_service.enqueue_experience_embedding_delete(
-                user_id=user_id,
-                employee_id=employee_id,
-                experience_id=experience_id,
-            )
+            if prepared_embedding_task is not None:
+                embedding_service.enqueue_prepared_outbox_task(prepared_embedding_task)
         except Exception:
             logger.exception(
                 "Failed to enqueue experience embedding delete for user_id=%s, "

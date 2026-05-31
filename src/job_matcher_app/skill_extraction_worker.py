@@ -12,6 +12,7 @@ from rq import Queue, SimpleWorker
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from job_matcher_app.outbox import run_with_outbox
 from job_matcher_app.skill_extraction.skill_repo_base import SkillRepository
 from job_matcher_app.skill_extraction.skill_repo_factory import create_skill_repository
 from job_matcher_app.skill_extraction.skill_trie import SkillTrie
@@ -498,28 +499,31 @@ def replace_job_skills(job_id: int, skill_names: list[str]) -> dict[str, Any]:
 
 
 def process_job_skill_extraction_task(payload: dict[str, Any]) -> dict[str, Any]:
-    job_id = int(payload.get("job_id") or 0)
-    job = payload.get("job") or {}
-    if not job_id:
-        raise ValueError("job_id is required")
-    if not isinstance(job, dict):
-        raise ValueError("job payload must be an object")
+    def _process() -> dict[str, Any]:
+        job_id = int(payload.get("job_id") or 0)
+        job = payload.get("job") or {}
+        if not job_id:
+            raise ValueError("job_id is required")
+        if not isinstance(job, dict):
+            raise ValueError("job payload must be an object")
 
-    skill_names, extraction_source = extract_job_skills(job)
-    result = replace_job_skills(job_id, skill_names)
-    result.update(
-        {
-            "extraction_source": extraction_source,
-            "extractor_mode": extractor_mode,
-        }
-    )
-    logger.info(
-        "Extracted %s skills for job_id=%s using %s",
-        result["skill_count"],
-        job_id,
-        extraction_source,
-    )
-    return result
+        skill_names, extraction_source = extract_job_skills(job)
+        result = replace_job_skills(job_id, skill_names)
+        result.update(
+            {
+                "extraction_source": extraction_source,
+                "extractor_mode": extractor_mode,
+            }
+        )
+        logger.info(
+            "Extracted %s skills for job_id=%s using %s",
+            result["skill_count"],
+            job_id,
+            extraction_source,
+        )
+        return result
+
+    return run_with_outbox(payload, _process)
 
 
 extractor_mode = os.getenv("SKILL_EXTRACTOR_MODE", "ner_skilltrie").strip().lower()

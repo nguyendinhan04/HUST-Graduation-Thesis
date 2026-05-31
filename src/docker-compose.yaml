@@ -153,6 +153,7 @@ services:
       - "8000:8000"
     volumes:
       - ./job_matcher_app/Backend:/app/src/job_matcher_app/Backend
+      - ./job_matcher_app/outbox.py:/app/src/job_matcher_app/outbox.py
     depends_on:
       redis:
         condition: service_healthy
@@ -181,6 +182,7 @@ services:
       PG_PASSWORD: airflow
     volumes:
       - ./job_matcher_app/skill_worker.py:/app/src/job_matcher_app/skill_worker.py
+      - ./job_matcher_app/outbox.py:/app/src/job_matcher_app/outbox.py
     depends_on:
       redis:
         condition: service_healthy
@@ -215,6 +217,7 @@ services:
       PG_PASSWORD: airflow
     volumes:
       - ./job_matcher_app/skill_worker/skill_worker_tfidf.py:/app/src/job_matcher_app/skill_worker_tfidf.py
+      - ./job_matcher_app/outbox.py:/app/src/job_matcher_app/outbox.py
     depends_on:
       redis:
         condition: service_healthy
@@ -253,6 +256,7 @@ services:
       PG_PASSWORD: airflow
     volumes:
       - ./job_matcher_app/skill_extraction_worker.py:/app/src/job_matcher_app/skill_extraction_worker.py
+      - ./job_matcher_app/outbox.py:/app/src/job_matcher_app/outbox.py
       - ./job_matcher_app/skill_extraction:/app/src/job_matcher_app/skill_extraction
     depends_on:
       redis:

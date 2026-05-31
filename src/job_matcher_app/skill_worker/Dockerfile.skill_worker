@@ -36,4 +36,6 @@ RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 
     && pip install --no-cache-dir -r /app/requirements.skill_worker.txt \
     && mkdir -p /app/src/job_matcher_app
 
+COPY job_matcher_app/outbox.py /app/src/job_matcher_app/outbox.py
+
 CMD ["python", "-m", "job_matcher_app.skill_worker"]

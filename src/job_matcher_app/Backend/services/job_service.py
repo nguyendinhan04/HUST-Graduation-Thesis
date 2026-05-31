@@ -159,9 +159,29 @@ class JobService:
             status=job_status,
         )
 
+        prepared_vector_tasks = []
         try:
             db.add(job)
             await db.flush()
+
+            job_payload = JobService._build_job_embedding_payload(job)
+            prepared_vector_tasks = [
+                await embedding_service.prepare_job_bert_embedding_update_outbox_task(
+                    db,
+                    job_id=job.id,
+                    job_payload=job_payload,
+                ),
+                await embedding_service.prepare_job_tfidf_embedding_update_outbox_task(
+                    db,
+                    job_id=job.id,
+                    job_payload=job_payload,
+                ),
+                await embedding_service.prepare_job_skill_extraction_update_outbox_task(
+                    db,
+                    job_id=job.id,
+                    job_payload=job_payload,
+                ),
+            ]
 
             await db.commit()
             await db.refresh(job)
@@ -172,23 +192,20 @@ class JobService:
             await db.rollback()
             raise
 
-        job_payload = JobService._build_job_embedding_payload(job)
-        bert_job_id = embedding_service.enqueue_job_bert_embedding_update(
-            job_id=job.id,
-            job_payload=job_payload,
+        bert_job_id = embedding_service.enqueue_prepared_outbox_task(
+            prepared_vector_tasks[0]
         )
-        tfidf_job_id = embedding_service.enqueue_job_tfidf_embedding_update(
-            job_id=job.id,
-            job_payload=job_payload,
+        tfidf_job_id = embedding_service.enqueue_prepared_outbox_task(
+            prepared_vector_tasks[1]
         )
-        skill_extraction_job_id = embedding_service.enqueue_job_skill_extraction_update(
-            job_id=job.id,
-            job_payload=job_payload,
+        skill_extraction_job_id = embedding_service.enqueue_prepared_outbox_task(
+            prepared_vector_tasks[2]
         )
         vector_jobs = {
             "bert_job_id": bert_job_id,
             "tfidf_job_id": tfidf_job_id,
             "skill_extraction_job_id": skill_extraction_job_id,
+            "outbox_ids": embedding_service.get_last_outbox_ids(),
             "status": "queued",
         }
 
@@ -308,7 +325,29 @@ class JobService:
             if field_name in fields_set:
                 setattr(job, field_name, value)
 
+        prepared_vector_tasks = []
         try:
+            if vector_source_changed:
+                await db.flush()
+                job_payload = JobService._build_job_embedding_payload(job)
+                prepared_vector_tasks = [
+                    await embedding_service.prepare_job_bert_embedding_update_outbox_task(
+                        db,
+                        job_id=job.id,
+                        job_payload=job_payload,
+                    ),
+                    await embedding_service.prepare_job_tfidf_embedding_update_outbox_task(
+                        db,
+                        job_id=job.id,
+                        job_payload=job_payload,
+                    ),
+                    await embedding_service.prepare_job_skill_extraction_update_outbox_task(
+                        db,
+                        job_id=job.id,
+                        job_payload=job_payload,
+                    ),
+                ]
+
             await db.commit()
             await db.refresh(job)
             job_skills = await JobService._fetch_job_skills(db, job.id)
@@ -320,23 +359,20 @@ class JobService:
             raise
 
         if vector_source_changed:
-            job_payload = JobService._build_job_embedding_payload(job)
-            bert_job_id = embedding_service.enqueue_job_bert_embedding_update(
-                job_id=job.id,
-                job_payload=job_payload,
+            bert_job_id = embedding_service.enqueue_prepared_outbox_task(
+                prepared_vector_tasks[0]
             )
-            tfidf_job_id = embedding_service.enqueue_job_tfidf_embedding_update(
-                job_id=job.id,
-                job_payload=job_payload,
+            tfidf_job_id = embedding_service.enqueue_prepared_outbox_task(
+                prepared_vector_tasks[1]
             )
-            skill_extraction_job_id = embedding_service.enqueue_job_skill_extraction_update(
-                job_id=job.id,
-                job_payload=job_payload,
+            skill_extraction_job_id = embedding_service.enqueue_prepared_outbox_task(
+                prepared_vector_tasks[2]
             )
             vector_jobs = {
                 "bert_job_id": bert_job_id,
                 "tfidf_job_id": tfidf_job_id,
                 "skill_extraction_job_id": skill_extraction_job_id,
+                "outbox_ids": embedding_service.get_last_outbox_ids(),
                 "status": "queued",
             }
         else:

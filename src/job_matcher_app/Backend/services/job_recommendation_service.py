@@ -3,6 +3,9 @@ from __future__ import annotations
 import re
 import os
 import asyncio
+import sys
+from dataclasses import dataclass
+from pathlib import Path
 import numpy as np
 from redis import Redis
 from rq import Queue
@@ -20,6 +23,30 @@ from models import (
     ExperienceSkill,
     Skill,
 )
+
+try:
+    from job_matcher_app.outbox import (
+        create_task_outbox_in_session,
+        mark_task_outbox_enqueued,
+        mark_task_outbox_failed,
+    )
+except ImportError:
+    sys.path.append(str(Path(__file__).resolve().parents[3]))
+    from job_matcher_app.outbox import (
+        create_task_outbox_in_session,
+        mark_task_outbox_enqueued,
+        mark_task_outbox_failed,
+    )
+
+
+@dataclass
+class PreparedOutboxTask:
+    queue: Queue
+    func_name: str
+    payload: dict
+    outbox_id: int
+    outbox_key: str
+    job_timeout: str = "10m"
 
 
 class RecommendationLockedError(RuntimeError):
@@ -51,6 +78,57 @@ class JobRecommendationService:
             os.getenv("SKILL_EXTRACTION_QUEUE_NAME", "job-skill-extraction-queue"),
             connection=self.redis_conn,
         )
+        self._last_outbox_ids: dict[str, int] = {}
+
+    def get_last_outbox_ids(self) -> dict[str, int]:
+        return dict(self._last_outbox_ids)
+
+    async def _prepare_outbox_task(
+        self,
+        db: AsyncSession,
+        *,
+        queue: Queue,
+        func_name: str,
+        payload: dict,
+        task_type: str,
+        aggregate_type: str,
+        aggregate_id: int,
+        outbox_key: str,
+        job_timeout: str = "10m",
+    ) -> PreparedOutboxTask:
+        outbox_id = await create_task_outbox_in_session(
+            db,
+            task_type=task_type,
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            queue_name=queue.name,
+            payload=payload,
+        )
+        self._last_outbox_ids[outbox_key] = outbox_id
+        return PreparedOutboxTask(
+            queue=queue,
+            func_name=func_name,
+            payload=payload,
+            outbox_id=outbox_id,
+            outbox_key=outbox_key,
+            job_timeout=job_timeout,
+        )
+
+    def enqueue_prepared_outbox_task(self, task: PreparedOutboxTask) -> str:
+        task_payload = {**task.payload, "outbox_id": task.outbox_id}
+        try:
+            job = task.queue.enqueue(
+                task.func_name,
+                task_payload,
+                job_timeout=task.job_timeout,
+            )
+        except Exception as exc:
+            mark_task_outbox_failed(task.outbox_id, exc)
+            raise
+
+        mark_task_outbox_enqueued(task.outbox_id, job.id)
+        self._last_outbox_ids[task.outbox_key] = task.outbox_id
+        return job.id
 
     @staticmethod
     def _to_pgvector_literal(vector) -> str:
@@ -120,43 +198,53 @@ class JobRecommendationService:
             "BERT Experience Embedding Job in RQ worker failed",
         )
 
-    def enqueue_experience_embedding_update(
+    async def prepare_experience_embedding_update_outbox_task(
         self,
+        db: AsyncSession,
         *,
         user_id: int,
         employee_id: int,
         experience_id: int,
         experience: dict,
-    ) -> str:
-        job = self.skill_queue.enqueue(
-            "job_matcher_app.skill_worker.process_user_experience_embedding_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.skill_queue,
+            func_name="job_matcher_app.skill_worker.process_user_experience_embedding_task",
+            payload={
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "experience_id": experience_id,
                 "experience": experience,
             },
-            job_timeout="10m",
+            task_type="experience_embedding_update",
+            aggregate_type="experience",
+            aggregate_id=experience_id,
+            outbox_key="experience_embedding_update",
         )
-        return job.id
 
-    def enqueue_experience_embedding_delete(
+    async def prepare_experience_embedding_delete_outbox_task(
         self,
+        db: AsyncSession,
         *,
         user_id: int,
         employee_id: int,
         experience_id: int,
-    ) -> str:
-        job = self.skill_queue.enqueue(
-            "job_matcher_app.skill_worker.process_user_experience_delete_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.skill_queue,
+            func_name="job_matcher_app.skill_worker.process_user_experience_delete_task",
+            payload={
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "experience_id": experience_id,
             },
-            job_timeout="10m",
+            task_type="experience_embedding_delete",
+            aggregate_type="experience",
+            aggregate_id=experience_id,
+            outbox_key="experience_embedding_delete",
         )
-        return job.id
 
     async def embed_bert_education(self, education: dict) -> list[float]:
         job = self.skill_queue.enqueue(
@@ -169,91 +257,116 @@ class JobRecommendationService:
             "BERT Education Embedding Job in RQ worker failed",
         )
 
-    def enqueue_education_embedding_update(
+    async def prepare_education_embedding_update_outbox_task(
         self,
+        db: AsyncSession,
         *,
         user_id: int,
         employee_id: int,
         education_id: int,
         education: dict,
-    ) -> str:
-        job = self.skill_queue.enqueue(
-            "job_matcher_app.skill_worker.process_user_education_embedding_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.skill_queue,
+            func_name="job_matcher_app.skill_worker.process_user_education_embedding_task",
+            payload={
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "education_id": education_id,
                 "education": education,
             },
-            job_timeout="10m",
+            task_type="education_embedding_update",
+            aggregate_type="education",
+            aggregate_id=education_id,
+            outbox_key="education_embedding_update",
         )
-        return job.id
 
-    def enqueue_education_embedding_delete(
+    async def prepare_education_embedding_delete_outbox_task(
         self,
+        db: AsyncSession,
         *,
         user_id: int,
         employee_id: int,
         education_id: int,
-    ) -> str:
-        job = self.skill_queue.enqueue(
-            "job_matcher_app.skill_worker.process_user_education_delete_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.skill_queue,
+            func_name="job_matcher_app.skill_worker.process_user_education_delete_task",
+            payload={
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "education_id": education_id,
             },
-            job_timeout="10m",
+            task_type="education_embedding_delete",
+            aggregate_type="education",
+            aggregate_id=education_id,
+            outbox_key="education_embedding_delete",
         )
-        return job.id
 
-    def enqueue_job_bert_embedding_update(
+    async def prepare_job_bert_embedding_update_outbox_task(
         self,
+        db: AsyncSession,
         *,
         job_id: int,
         job_payload: dict,
-    ) -> str:
-        job = self.skill_queue.enqueue(
-            "job_matcher_app.skill_worker.process_job_bert_embedding_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.skill_queue,
+            func_name="job_matcher_app.skill_worker.process_job_bert_embedding_task",
+            payload={
                 "job_id": job_id,
                 "job": job_payload,
             },
-            job_timeout="10m",
+            task_type="job_bert_embedding_update",
+            aggregate_type="job",
+            aggregate_id=job_id,
+            outbox_key="bert",
         )
-        return job.id
 
-    def enqueue_job_tfidf_embedding_update(
+    async def prepare_job_tfidf_embedding_update_outbox_task(
         self,
+        db: AsyncSession,
         *,
         job_id: int,
         job_payload: dict,
-    ) -> str:
-        job = self.tfidf_queue.enqueue(
-            "job_matcher_app.skill_worker_tfidf.process_job_tfidf_embedding_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.tfidf_queue,
+            func_name="job_matcher_app.skill_worker_tfidf.process_job_tfidf_embedding_task",
+            payload={
                 "job_id": job_id,
                 "job": job_payload,
             },
-            job_timeout="10m",
+            task_type="job_tfidf_embedding_update",
+            aggregate_type="job",
+            aggregate_id=job_id,
+            outbox_key="tfidf",
         )
-        return job.id
 
-    def enqueue_job_skill_extraction_update(
+    async def prepare_job_skill_extraction_update_outbox_task(
         self,
+        db: AsyncSession,
         *,
         job_id: int,
         job_payload: dict,
-    ) -> str:
-        job = self.skill_extraction_queue.enqueue(
-            "job_matcher_app.skill_extraction_worker.process_job_skill_extraction_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.skill_extraction_queue,
+            func_name="job_matcher_app.skill_extraction_worker.process_job_skill_extraction_task",
+            payload={
                 "job_id": job_id,
                 "job": job_payload,
             },
-            job_timeout="10m",
+            task_type="job_skill_extraction_update",
+            aggregate_type="job",
+            aggregate_id=job_id,
+            outbox_key="skill_extraction",
         )
-        return job.id
 
     async def embed_skills(
         self,
@@ -709,23 +822,28 @@ class JobRecommendationService:
             "User Profile TF-IDF Vector Job in RQ worker failed",
         )
 
-    def enqueue_user_profile_tfidf_update(
+    async def prepare_user_profile_tfidf_update_outbox_task(
         self,
+        db: AsyncSession,
         *,
         user_id: int,
         employee_id: int,
         profile: dict,
-    ) -> str:
-        job = self.tfidf_queue.enqueue(
-            "job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_update_task",
-            {
+    ) -> PreparedOutboxTask:
+        return await self._prepare_outbox_task(
+            db,
+            queue=self.tfidf_queue,
+            func_name="job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_update_task",
+            payload={
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "profile": profile,
             },
-            job_timeout="10m",
+            task_type="user_profile_tfidf_update",
+            aggregate_type="employee",
+            aggregate_id=employee_id,
+            outbox_key="user_profile_tfidf_update",
         )
-        return job.id
 
     async def upsert_user_profile_tfidf_embedding(
         self,
@@ -779,11 +897,19 @@ class JobRecommendationService:
                 "reason": "empty_profile",
             }
 
-        self.enqueue_user_profile_tfidf_update(
-            user_id=user_id,
-            employee_id=employee_id,
-            profile=profile,
-        )
+        try:
+            prepared_task = await self.prepare_user_profile_tfidf_update_outbox_task(
+                db,
+                user_id=user_id,
+                employee_id=employee_id,
+                profile=profile,
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+
+        self.enqueue_prepared_outbox_task(prepared_task)
 
         return {
             "user_id": user_id,

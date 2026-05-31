@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 
     && pip install --no-cache-dir -r /app/requirements.skill_extraction_worker.txt \
     && mkdir -p /app/src/job_matcher_app
 
+COPY job_matcher_app/outbox.py /app/src/job_matcher_app/outbox.py
 COPY job_matcher_app/skill_extraction_worker.py /app/src/job_matcher_app/skill_extraction_worker.py
 COPY job_matcher_app/skill_extraction /app/src/job_matcher_app/skill_extraction
 

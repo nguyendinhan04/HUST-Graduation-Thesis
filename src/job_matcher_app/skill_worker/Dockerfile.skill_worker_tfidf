@@ -16,4 +16,6 @@ RUN pip install --no-cache-dir \
     psycopg2-binary \
     && mkdir -p /app/src/job_matcher_app
 
+COPY job_matcher_app/outbox.py /app/src/job_matcher_app/outbox.py
+
 CMD ["python", "-m", "job_matcher_app.skill_worker_tfidf"]

@@ -11,6 +11,8 @@ from sentence_transformers import SentenceTransformer
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from job_matcher_app.outbox import run_with_outbox
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -269,33 +271,36 @@ def upsert_job_bert_embedding(
 
 
 def process_job_bert_embedding_task(payload: dict) -> dict:
-    job_id = int(payload["job_id"])
-    job = payload["job"]
-    lock_key = f"job:{job_id}:bert_embedding_lock"
+    def _process() -> dict:
+        job_id = int(payload["job_id"])
+        job = payload["job"]
+        lock_key = f"job:{job_id}:bert_embedding_lock"
 
-    redis_conn = get_redis_connection()
-    lock = redis_conn.lock(
-        lock_key,
-        timeout=int(os.getenv("JOB_BERT_EMBEDDING_LOCK_TIMEOUT", 600)),
-        blocking_timeout=int(os.getenv("JOB_BERT_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
-    )
-
-    logger.info("Đang xử lý BERT embedding task job_id=%s", job_id)
-    with lock:
-        job_text = build_job_embedding_text(job)
-        job_vector = embed_bert_document(job_text).tolist()
-        upsert_job_bert_embedding(
-            job_id=job_id,
-            job_title=job.get("job_title") or job.get("title") or "",
-            job_vector=job_vector,
+        redis_conn = get_redis_connection()
+        lock = redis_conn.lock(
+            lock_key,
+            timeout=int(os.getenv("JOB_BERT_EMBEDDING_LOCK_TIMEOUT", 600)),
+            blocking_timeout=int(os.getenv("JOB_BERT_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
         )
 
-    logger.info("Đã cập nhật BERT embedding task job_id=%s", job_id)
-    return {
-        "job_id": job_id,
-        "job_bert_embedding_updated": True,
-        "vector_size": len(job_vector),
-    }
+        logger.info("Đang xử lý BERT embedding task job_id=%s", job_id)
+        with lock:
+            job_text = build_job_embedding_text(job)
+            job_vector = embed_bert_document(job_text).tolist()
+            upsert_job_bert_embedding(
+                job_id=job_id,
+                job_title=job.get("job_title") or job.get("title") or "",
+                job_vector=job_vector,
+            )
+
+        logger.info("Đã cập nhật BERT embedding task job_id=%s", job_id)
+        return {
+            "job_id": job_id,
+            "job_bert_embedding_updated": True,
+            "vector_size": len(job_vector),
+        }
+
+    return run_with_outbox(payload, _process)
 
 
 def ensure_and_lock_profile_embedding_row(db, employee_id: int) -> None:
@@ -452,80 +457,86 @@ def delete_education_embedding_and_recompute_profile(
 
 
 def process_user_education_embedding_task(payload: dict) -> dict:
-    user_id = int(payload["user_id"])
-    employee_id = int(payload["employee_id"])
-    education_id = int(payload["education_id"])
-    education = payload["education"]
-    lock_key = f"user:{user_id}:education_embedding_lock"
+    def _process() -> dict:
+        user_id = int(payload["user_id"])
+        employee_id = int(payload["employee_id"])
+        education_id = int(payload["education_id"])
+        education = payload["education"]
+        lock_key = f"user:{user_id}:education_embedding_lock"
 
-    redis_conn = get_redis_connection()
-    lock = redis_conn.lock(
-        lock_key,
-        timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_TIMEOUT", 600)),
-        blocking_timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
-    )
-
-    logger.info(
-        "Đang xử lý education embedding task user_id=%s, education_id=%s",
-        user_id,
-        education_id,
-    )
-    with lock:
-        education_vector = embed_bert_education_task(education)
-        upsert_education_embedding_and_recompute_profile(
-            employee_id=employee_id,
-            education_id=education_id,
-            education_vector=education_vector,
+        redis_conn = get_redis_connection()
+        lock = redis_conn.lock(
+            lock_key,
+            timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_TIMEOUT", 600)),
+            blocking_timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
         )
 
-    logger.info(
-        "Đã lưu education embedding task user_id=%s, education_id=%s",
-        user_id,
-        education_id,
-    )
-    return {
-        "user_id": user_id,
-        "employee_id": employee_id,
-        "education_id": education_id,
-        "education_embedding_updated": True,
-    }
+        logger.info(
+            "Đang xử lý education embedding task user_id=%s, education_id=%s",
+            user_id,
+            education_id,
+        )
+        with lock:
+            education_vector = embed_bert_education_task(education)
+            upsert_education_embedding_and_recompute_profile(
+                employee_id=employee_id,
+                education_id=education_id,
+                education_vector=education_vector,
+            )
+
+        logger.info(
+            "Đã lưu education embedding task user_id=%s, education_id=%s",
+            user_id,
+            education_id,
+        )
+        return {
+            "user_id": user_id,
+            "employee_id": employee_id,
+            "education_id": education_id,
+            "education_embedding_updated": True,
+        }
+
+    return run_with_outbox(payload, _process)
 
 
 def process_user_education_delete_task(payload: dict) -> dict:
-    user_id = int(payload["user_id"])
-    employee_id = int(payload["employee_id"])
-    education_id = int(payload["education_id"])
-    lock_key = f"user:{user_id}:education_embedding_lock"
+    def _process() -> dict:
+        user_id = int(payload["user_id"])
+        employee_id = int(payload["employee_id"])
+        education_id = int(payload["education_id"])
+        lock_key = f"user:{user_id}:education_embedding_lock"
 
-    redis_conn = get_redis_connection()
-    lock = redis_conn.lock(
-        lock_key,
-        timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_TIMEOUT", 600)),
-        blocking_timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
-    )
-
-    logger.info(
-        "Đang xử lý education embedding delete task user_id=%s, education_id=%s",
-        user_id,
-        education_id,
-    )
-    with lock:
-        delete_education_embedding_and_recompute_profile(
-            employee_id=employee_id,
-            education_id=education_id,
+        redis_conn = get_redis_connection()
+        lock = redis_conn.lock(
+            lock_key,
+            timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_TIMEOUT", 600)),
+            blocking_timeout=int(os.getenv("EDUCATION_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
         )
 
-    logger.info(
-        "Đã xóa education embedding task user_id=%s, education_id=%s",
-        user_id,
-        education_id,
-    )
-    return {
-        "user_id": user_id,
-        "employee_id": employee_id,
-        "education_id": education_id,
-        "education_embedding_deleted": True,
-    }
+        logger.info(
+            "Đang xử lý education embedding delete task user_id=%s, education_id=%s",
+            user_id,
+            education_id,
+        )
+        with lock:
+            delete_education_embedding_and_recompute_profile(
+                employee_id=employee_id,
+                education_id=education_id,
+            )
+
+        logger.info(
+            "Đã xóa education embedding task user_id=%s, education_id=%s",
+            user_id,
+            education_id,
+        )
+        return {
+            "user_id": user_id,
+            "employee_id": employee_id,
+            "education_id": education_id,
+            "education_embedding_deleted": True,
+        }
+
+    return run_with_outbox(payload, _process)
 
 
 def recompute_profile_experience_vector(db, employee_id: int) -> None:
@@ -664,80 +675,86 @@ def delete_experience_embedding_and_recompute_profile(
 
 
 def process_user_experience_embedding_task(payload: dict) -> dict:
-    user_id = int(payload["user_id"])
-    employee_id = int(payload["employee_id"])
-    experience_id = int(payload["experience_id"])
-    experience = payload["experience"]
-    lock_key = f"user:{user_id}:experience_embedding_lock"
+    def _process() -> dict:
+        user_id = int(payload["user_id"])
+        employee_id = int(payload["employee_id"])
+        experience_id = int(payload["experience_id"])
+        experience = payload["experience"]
+        lock_key = f"user:{user_id}:experience_embedding_lock"
 
-    redis_conn = get_redis_connection()
-    lock = redis_conn.lock(
-        lock_key,
-        timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_TIMEOUT", 600)),
-        blocking_timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
-    )
-
-    logger.info(
-        "Đang xử lý experience embedding task user_id=%s, experience_id=%s",
-        user_id,
-        experience_id,
-    )
-    with lock:
-        experience_vector = embed_bert_experience_task(experience)
-        upsert_experience_embedding_and_recompute_profile(
-            employee_id=employee_id,
-            experience_id=experience_id,
-            experience_vector=experience_vector,
+        redis_conn = get_redis_connection()
+        lock = redis_conn.lock(
+            lock_key,
+            timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_TIMEOUT", 600)),
+            blocking_timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
         )
 
-    logger.info(
-        "Đã lưu experience embedding task user_id=%s, experience_id=%s",
-        user_id,
-        experience_id,
-    )
-    return {
-        "user_id": user_id,
-        "employee_id": employee_id,
-        "experience_id": experience_id,
-        "experience_embedding_updated": True,
-    }
+        logger.info(
+            "Đang xử lý experience embedding task user_id=%s, experience_id=%s",
+            user_id,
+            experience_id,
+        )
+        with lock:
+            experience_vector = embed_bert_experience_task(experience)
+            upsert_experience_embedding_and_recompute_profile(
+                employee_id=employee_id,
+                experience_id=experience_id,
+                experience_vector=experience_vector,
+            )
+
+        logger.info(
+            "Đã lưu experience embedding task user_id=%s, experience_id=%s",
+            user_id,
+            experience_id,
+        )
+        return {
+            "user_id": user_id,
+            "employee_id": employee_id,
+            "experience_id": experience_id,
+            "experience_embedding_updated": True,
+        }
+
+    return run_with_outbox(payload, _process)
 
 
 def process_user_experience_delete_task(payload: dict) -> dict:
-    user_id = int(payload["user_id"])
-    employee_id = int(payload["employee_id"])
-    experience_id = int(payload["experience_id"])
-    lock_key = f"user:{user_id}:experience_embedding_lock"
+    def _process() -> dict:
+        user_id = int(payload["user_id"])
+        employee_id = int(payload["employee_id"])
+        experience_id = int(payload["experience_id"])
+        lock_key = f"user:{user_id}:experience_embedding_lock"
 
-    redis_conn = get_redis_connection()
-    lock = redis_conn.lock(
-        lock_key,
-        timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_TIMEOUT", 600)),
-        blocking_timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
-    )
-
-    logger.info(
-        "Đang xử lý experience embedding delete task user_id=%s, experience_id=%s",
-        user_id,
-        experience_id,
-    )
-    with lock:
-        delete_experience_embedding_and_recompute_profile(
-            employee_id=employee_id,
-            experience_id=experience_id,
+        redis_conn = get_redis_connection()
+        lock = redis_conn.lock(
+            lock_key,
+            timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_TIMEOUT", 600)),
+            blocking_timeout=int(os.getenv("EXPERIENCE_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
         )
 
-    logger.info(
-        "Đã xóa experience embedding task user_id=%s, experience_id=%s",
-        user_id,
-        experience_id,
-    )
-    return {
-        "user_id": user_id,
-        "employee_id": employee_id,
-        "experience_id": experience_id,
-        "experience_embedding_deleted": True,
-    }
+        logger.info(
+            "Đang xử lý experience embedding delete task user_id=%s, experience_id=%s",
+            user_id,
+            experience_id,
+        )
+        with lock:
+            delete_experience_embedding_and_recompute_profile(
+                employee_id=employee_id,
+                experience_id=experience_id,
+            )
+
+        logger.info(
+            "Đã xóa experience embedding task user_id=%s, experience_id=%s",
+            user_id,
+            experience_id,
+        )
+        return {
+            "user_id": user_id,
+            "employee_id": employee_id,
+            "experience_id": experience_id,
+            "experience_embedding_deleted": True,
+        }
+
+    return run_with_outbox(payload, _process)
 
 
 def process_user_profile_multimodal_task(profile: dict) -> dict:

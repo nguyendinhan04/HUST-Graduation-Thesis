@@ -11,6 +11,8 @@ from rq import Queue, SimpleWorker
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from job_matcher_app.outbox import run_with_outbox
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -279,45 +281,48 @@ def process_user_profile_tfidf_task(profile: dict[str, Any]) -> list[float]:
 
 
 def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str, Any]:
-    user_id = int(payload["user_id"])
-    employee_id = int(payload["employee_id"])
-    profile = payload["profile"]
-    lock_key = f"user:{user_id}:tfidf_embedding_lock"
+    def _process() -> dict[str, Any]:
+        user_id = int(payload["user_id"])
+        employee_id = int(payload["employee_id"])
+        profile = payload["profile"]
+        lock_key = f"user:{user_id}:tfidf_embedding_lock"
 
-    redis_conn = get_redis_connection()
-    lock = redis_conn.lock(
-        lock_key,
-        timeout=int(os.getenv("TFIDF_EMBEDDING_LOCK_TIMEOUT", 600)),
-        blocking_timeout=int(os.getenv("TFIDF_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
-    )
-
-    logger.info("Đang xử lý TF-IDF update task user_id=%s", user_id)
-    with lock:
-        profile_vector = process_user_profile_tfidf_task(profile)
-        vector_size = len(profile_vector)
-        if vector_size == 0:
-            logger.info("Không cập nhật TF-IDF vector user_id=%s vì profile rỗng.", user_id)
-            return {
-                "user_id": user_id,
-                "employee_id": employee_id,
-                "vector_tfidf_updated": False,
-                "vector_size": 0,
-                "status": "skipped",
-                "reason": "empty_profile",
-            }
-
-        upsert_user_profile_tfidf_embedding(
-            employee_id=employee_id,
-            profile_vector=profile_vector,
+        redis_conn = get_redis_connection()
+        lock = redis_conn.lock(
+            lock_key,
+            timeout=int(os.getenv("TFIDF_EMBEDDING_LOCK_TIMEOUT", 600)),
+            blocking_timeout=int(os.getenv("TFIDF_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
         )
 
-    logger.info("Đã cập nhật TF-IDF vector user_id=%s, vector_size=%s", user_id, vector_size)
-    return {
-        "user_id": user_id,
-        "employee_id": employee_id,
-        "vector_tfidf_updated": True,
-        "vector_size": vector_size,
-    }
+        logger.info("Đang xử lý TF-IDF update task user_id=%s", user_id)
+        with lock:
+            profile_vector = process_user_profile_tfidf_task(profile)
+            vector_size = len(profile_vector)
+            if vector_size == 0:
+                logger.info("Không cập nhật TF-IDF vector user_id=%s vì profile rỗng.", user_id)
+                return {
+                    "user_id": user_id,
+                    "employee_id": employee_id,
+                    "vector_tfidf_updated": False,
+                    "vector_size": 0,
+                    "status": "skipped",
+                    "reason": "empty_profile",
+                }
+
+            upsert_user_profile_tfidf_embedding(
+                employee_id=employee_id,
+                profile_vector=profile_vector,
+            )
+
+        logger.info("Đã cập nhật TF-IDF vector user_id=%s, vector_size=%s", user_id, vector_size)
+        return {
+            "user_id": user_id,
+            "employee_id": employee_id,
+            "vector_tfidf_updated": True,
+            "vector_size": vector_size,
+        }
+
+    return run_with_outbox(payload, _process)
 
 
 def build_job_query_text(job: dict[str, Any]) -> str:
@@ -367,33 +372,36 @@ def upsert_job_tfidf_embedding(
 
 
 def process_job_tfidf_embedding_task(payload: dict[str, Any]) -> dict[str, Any]:
-    job_id = int(payload["job_id"])
-    job = payload["job"]
-    lock_key = f"job:{job_id}:tfidf_embedding_lock"
+    def _process() -> dict[str, Any]:
+        job_id = int(payload["job_id"])
+        job = payload["job"]
+        lock_key = f"job:{job_id}:tfidf_embedding_lock"
 
-    redis_conn = get_redis_connection()
-    lock = redis_conn.lock(
-        lock_key,
-        timeout=int(os.getenv("JOB_TFIDF_EMBEDDING_LOCK_TIMEOUT", 600)),
-        blocking_timeout=int(os.getenv("JOB_TFIDF_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
-    )
-
-    logger.info("Đang xử lý TF-IDF embedding task job_id=%s", job_id)
-    with lock:
-        query_text = build_job_query_text(job)
-        job_vector = vectorize_tfidf_text(query_text)
-        upsert_job_tfidf_embedding(
-            job_id=job_id,
-            job_title=job.get("job_title") or job.get("title") or "",
-            job_vector=job_vector,
+        redis_conn = get_redis_connection()
+        lock = redis_conn.lock(
+            lock_key,
+            timeout=int(os.getenv("JOB_TFIDF_EMBEDDING_LOCK_TIMEOUT", 600)),
+            blocking_timeout=int(os.getenv("JOB_TFIDF_EMBEDDING_LOCK_BLOCKING_TIMEOUT", 600)),
         )
 
-    logger.info("Đã cập nhật TF-IDF embedding task job_id=%s", job_id)
-    return {
-        "job_id": job_id,
-        "job_tfidf_embedding_updated": True,
-        "vector_size": len(job_vector),
-    }
+        logger.info("Đang xử lý TF-IDF embedding task job_id=%s", job_id)
+        with lock:
+            query_text = build_job_query_text(job)
+            job_vector = vectorize_tfidf_text(query_text)
+            upsert_job_tfidf_embedding(
+                job_id=job_id,
+                job_title=job.get("job_title") or job.get("title") or "",
+                job_vector=job_vector,
+            )
+
+        logger.info("Đã cập nhật TF-IDF embedding task job_id=%s", job_id)
+        return {
+            "job_id": job_id,
+            "job_tfidf_embedding_updated": True,
+            "vector_size": len(job_vector),
+        }
+
+    return run_with_outbox(payload, _process)
 
 
 def embed_tfidf_texts_task(texts: list[str]) -> list[list[float]]:
