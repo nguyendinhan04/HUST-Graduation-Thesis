@@ -292,7 +292,7 @@ def inject_linkedin_styles() -> None:
         dialog[open] form,
         [role="dialog"] form {
             width: min(100%, 680px) !important;
-            margin: 0 auto 8px !important;
+            margin: clamp(-220px, -24dvh, -120px) auto 8px !important;
             padding-bottom: 0 !important;
         }
 
@@ -361,48 +361,6 @@ def inject_linkedin_styles() -> None:
             border-radius: 999px !important;
         }
 
-        @media (max-width: 640px) {
-            [data-testid="stDialog"],
-            dialog[open],
-            [role="dialog"] {
-                top: 8px !important;
-                width: calc(100vw - 16px) !important;
-                max-width: calc(100vw - 16px) !important;
-                height: calc(100dvh - 16px) !important;
-                max-height: calc(100dvh - 16px) !important;
-                border-radius: 10px !important;
-            }
-
-            [data-testid="stDialog"] > div,
-            dialog[open] > div,
-            [role="dialog"] > div {
-                height: 100% !important;
-                max-height: 100% !important;
-                padding: 0 16px 82px !important;
-            }
-
-            [data-testid="stDialog"] h1,
-            [data-testid="stDialog"] h2,
-            [data-testid="stDialog"] h3,
-            dialog[open] h1,
-            dialog[open] h2,
-            dialog[open] h3,
-            [role="dialog"] h1,
-            [role="dialog"] h2,
-            [role="dialog"] h3 {
-                top: 0 !important;
-                margin: 0 -16px 8px !important;
-                padding: 14px 56px 12px 16px !important;
-            }
-
-            [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
-            dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
-            [role="dialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
-                bottom: 8px !important;
-                width: calc(100vw - 18px) !important;
-                padding: 12px 14px 14px !important;
-            }
-        }
         </style>
         """,
         unsafe_allow_html=True,
