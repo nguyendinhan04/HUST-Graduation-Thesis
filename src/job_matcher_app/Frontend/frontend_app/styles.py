@@ -291,7 +291,8 @@ def inject_linkedin_styles() -> None:
             gap: 0.55rem !important;
         }
 
-        dialog[open] form label {
+        dialog[open] form label,
+        dialog[open] label {
             font-size: 15px !important;
             color: #191919 !important;
             font-weight: 400 !important;
@@ -299,7 +300,10 @@ def inject_linkedin_styles() -> None:
 
         dialog[open] form input,
         dialog[open] form textarea,
-        dialog[open] form [data-baseweb="select"] > div {
+        dialog[open] form [data-baseweb="select"] > div,
+        dialog[open] input,
+        dialog[open] textarea,
+        dialog[open] [data-baseweb="select"] > div {
             background: #ffffff !important;
             border-color: #666666 !important;
             color: #191919 !important;
@@ -308,12 +312,15 @@ def inject_linkedin_styles() -> None:
         }
 
         dialog[open] form input:focus,
-        dialog[open] form textarea:focus {
+        dialog[open] form textarea:focus,
+        dialog[open] input:focus,
+        dialog[open] textarea:focus {
             border-color: #0a66c2 !important;
             box-shadow: 0 0 0 1px #0a66c2 inset !important;
         }
 
-        dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]) {
+        dialog[open] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
+        dialog[open] div[data-testid="stHorizontalBlock"]:has(button[kind="primary"]) {
             position: fixed !important;
             bottom: 16px !important;
             left: 50% !important;

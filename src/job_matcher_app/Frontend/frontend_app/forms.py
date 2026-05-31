@@ -72,65 +72,79 @@ def experience_payload_form(
     allow_delete: bool = False,
 ) -> tuple[dict[str, Any], str | None]:
     item = item or {}
-    with st.form(form_key):
-        title = st.text_input("Title", value=nullable_text(item.get("title")))
-        employment_type = st.text_input(
-            "Employment type",
-            value=nullable_text(item.get("employment_type")),
+    title = st.text_input("Title", value=nullable_text(item.get("title")), key=f"{form_key}_title")
+    employment_type = st.text_input(
+        "Employment type",
+        value=nullable_text(item.get("employment_type")),
+        key=f"{form_key}_employment_type",
+    )
+    company_name = st.text_input(
+        "Company",
+        value=nullable_text(item.get("company_name")),
+        key=f"{form_key}_company_name",
+    )
+    location = st.text_input(
+        "Location",
+        value=nullable_text(item.get("location")),
+        key=f"{form_key}_location",
+    )
+    location_type = st.text_input(
+        "Location type",
+        value=nullable_text(item.get("location_type")),
+        key=f"{form_key}_location_type",
+    )
+    start_date = st.date_input(
+        "Start date",
+        value=parse_iso_date(item.get("start_date")) or date.today(),
+        key=f"{form_key}_start_date",
+    )
+    currently_work_here = st.checkbox(
+        "Currently work here",
+        value=item.get("end_date") is None,
+        key=f"{form_key}_currently_work_here",
+    )
+    if currently_work_here:
+        end_date = None
+        st.caption("End date will be shown as Now.")
+    else:
+        end_date = st.date_input(
+            "End date",
+            value=parse_iso_date(item.get("end_date")) or date.today(),
+            key=f"{form_key}_end_date",
         )
-        company_name = st.text_input(
-            "Company",
-            value=nullable_text(item.get("company_name")),
+    skills = st.text_input(
+        "Skills",
+        value=skills_to_text(item.get("skills")),
+        key=f"{form_key}_skills",
+    )
+    description = st.text_area(
+        "Description",
+        value=nullable_text(item.get("description")),
+        height=120,
+        key=f"{form_key}_description",
+    )
+    if allow_delete:
+        delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
+        delete_submitted = delete_col.button(
+            "Delete",
+            key=f"{form_key}_delete",
+            use_container_width=True,
         )
-        location = st.text_input("Location", value=nullable_text(item.get("location")))
-        location_type = st.text_input(
-            "Location type",
-            value=nullable_text(item.get("location_type")),
+        save_submitted = save_col.button(
+            "Save",
+            key=f"{form_key}_save",
+            type="primary",
+            use_container_width=True,
         )
-        start_date = st.date_input(
-            "Start date",
-            value=parse_iso_date(item.get("start_date")) or date.today(),
-            key=f"{form_key}_start_date",
+    else:
+        delete_submitted = False
+        _, save_col = st.columns([5, 1.25])
+        save_submitted = save_col.button(
+            "Save",
+            key=f"{form_key}_save",
+            type="primary",
+            use_container_width=True,
         )
-        currently_work_here = st.checkbox(
-            "Currently work here",
-            value=item.get("end_date") is None,
-            key=f"{form_key}_currently_work_here",
-        )
-        if currently_work_here:
-            end_date = None
-            st.caption("End date will be shown as Now.")
-        else:
-            end_date = st.date_input(
-                "End date",
-                value=parse_iso_date(item.get("end_date")) or date.today(),
-                key=f"{form_key}_end_date",
-            )
-        skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
-        description = st.text_area(
-            "Description",
-            value=nullable_text(item.get("description")),
-            height=120,
-        )
-        if allow_delete:
-            delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
-            delete_submitted = delete_col.form_submit_button(
-                "Delete",
-                use_container_width=True,
-            )
-            save_submitted = save_col.form_submit_button(
-                "Save",
-                type="primary",
-                use_container_width=True,
-            )
-        else:
-            delete_submitted = False
-            _, save_col = st.columns([5, 1.25])
-            save_submitted = save_col.form_submit_button(
-                "Save",
-                type="primary",
-                use_container_width=True,
-            )
 
     payload = clean_payload(
         {
