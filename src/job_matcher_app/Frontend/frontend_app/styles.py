@@ -266,54 +266,55 @@ def inject_linkedin_styles() -> None:
             display: none !important;
         }
 
-        dialog[open] [data-testid="stDialog"] > div:first-child:not(:has(.custom-dialog-title)):has(button),
-        dialog[open] [role="dialog"] > div:first-child:not(:has(.custom-dialog-title)):has(button) {
+        dialog[open] [data-testid="stDialog"] > div:first-child:not(:has(.custom-dialog-title)),
+        dialog[open] [role="dialog"] > div:first-child:not(:has(.custom-dialog-title)),
+        dialog[open] div[data-testid="stVerticalBlock"] > div:has(h1):not(:has(.custom-dialog-title)),
+        dialog[open] div[data-testid="stVerticalBlock"] > div:has(h2):not(:has(.custom-dialog-title)),
+        dialog[open] div[data-testid="stVerticalBlock"] > div:has(h3):not(:has(.custom-dialog-title)) {
             display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
         }
 
-        dialog[open] h1,
-        dialog[open] h2,
-        dialog[open] h3 {
-            position: sticky !important;
-            top: 0 !important;
-            z-index: 5 !important;
-            margin: 0 -28px 10px !important;
-            padding: 14px 64px 12px 28px !important;
-            background: #ffffff !important;
-            border-bottom: 1px solid #e8e4de !important;
+        dialog[open] div[data-testid="stVerticalBlock"]:has(.custom-dialog-title) {
+            gap: 0.35rem !important;
+            padding-top: 0 !important;
         }
 
-        dialog[open] h1,
-        dialog[open] h2,
-        dialog[open] h3 {
-            display: none !important;
-        }
-
+        div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title),
         dialog[open] div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) {
             position: sticky !important;
             top: 0 !important;
             z-index: 6 !important;
             align-items: center !important;
-            margin: 0 -28px 8px !important;
-            padding: 8px 20px 8px 28px !important;
+            margin: 0 -28px 6px !important;
+            padding: 4px 20px 6px 28px !important;
             background: #ffffff !important;
             border-bottom: 1px solid #e8e4de !important;
         }
 
+        .custom-dialog-title,
         dialog[open] .custom-dialog-title {
             color: #191919;
-            font-size: 28px;
-            font-weight: 750;
-            line-height: 1.15;
+            font-size: 34px !important;
+            font-weight: 800 !important;
+            line-height: 1.1 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
+        div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) button,
         dialog[open] div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) button {
-            width: 36px !important;
-            min-height: 36px !important;
+            width: 42px !important;
+            min-height: 42px !important;
             padding: 0 !important;
             border-radius: 50% !important;
             color: #333333 !important;
-            font-size: 28px !important;
+            font-size: 32px !important;
+            font-weight: 500 !important;
             line-height: 1 !important;
         }
 
