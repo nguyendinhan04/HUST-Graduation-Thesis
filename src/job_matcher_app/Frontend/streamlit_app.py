@@ -418,6 +418,21 @@ def inject_linkedin_styles() -> None:
             border: 0;
         }
 
+        button[kind="primary"],
+        div[data-testid="stFormSubmitButton"] button[kind="primary"] {
+            background: #0a66c2 !important;
+            border: 1px solid #0a66c2 !important;
+            color: #ffffff !important;
+            box-shadow: none !important;
+        }
+
+        button[kind="primary"]:hover,
+        div[data-testid="stFormSubmitButton"] button[kind="primary"]:hover {
+            background: #004182 !important;
+            border: 1px solid #004182 !important;
+            color: #ffffff !important;
+        }
+
         div[data-testid="stExpander"] {
             background: #ffffff;
             border: 1px solid #d7d3cc;
@@ -690,7 +705,14 @@ def render_profile_actions() -> None:
             show_api_error("Could not load profile", exc)
 
 
-def profile_payload_form(form_key: str, profile: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+def render_dialog_close(key: str) -> None:
+    _, close_col = st.columns([9, 0.65], gap="small")
+    if close_col.button("×", key=key, help="Discard changes"):
+        close_dialog()
+        st.rerun()
+
+
+def profile_payload_form(form_key: str, profile: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
     employee = profile.get("employee_profile") or {}
     with st.form(form_key):
         col1, col2 = st.columns(2)
@@ -714,7 +736,12 @@ def profile_payload_form(form_key: str, profile: dict[str, Any]) -> tuple[dict[s
                 value=nullable_text(employee.get("current_location")),
             )
         summary = st.text_area("Summary", value=nullable_text(employee.get("summary")))
-        submitted = st.form_submit_button("Save changes", use_container_width=True)
+        _, save_col = st.columns([5, 1.25])
+        save_submitted = save_col.form_submit_button(
+            "Save",
+            type="primary",
+            use_container_width=True,
+        )
 
     payload = clean_payload(
         {
@@ -727,13 +754,16 @@ def profile_payload_form(form_key: str, profile: dict[str, Any]) -> tuple[dict[s
             "current_location": current_location,
         }
     )
-    return payload, submitted
+    action = "save" if save_submitted else None
+    return payload, action
 
 
 def experience_payload_form(
     form_key: str,
     item: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], bool]:
+    *,
+    allow_delete: bool = False,
+) -> tuple[dict[str, Any], str | None]:
     item = item or {}
     with st.form(form_key):
         col1, col2 = st.columns(2)
@@ -768,7 +798,25 @@ def experience_payload_form(
             "Description",
             value=nullable_text(item.get("description")),
         )
-        submitted = st.form_submit_button("Save", use_container_width=True)
+        if allow_delete:
+            delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
+            delete_submitted = delete_col.form_submit_button(
+                "Delete",
+                use_container_width=True,
+            )
+            save_submitted = save_col.form_submit_button(
+                "Save",
+                type="primary",
+                use_container_width=True,
+            )
+        else:
+            delete_submitted = False
+            _, save_col = st.columns([5, 1.25])
+            save_submitted = save_col.form_submit_button(
+                "Save",
+                type="primary",
+                use_container_width=True,
+            )
 
     payload = clean_payload(
         {
@@ -783,13 +831,16 @@ def experience_payload_form(
             "skills": split_skills(skills),
         }
     )
-    return payload, submitted
+    action = "delete" if delete_submitted else "save" if save_submitted else None
+    return payload, action
 
 
 def education_payload_form(
     form_key: str,
     item: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], bool]:
+    *,
+    allow_delete: bool = False,
+) -> tuple[dict[str, Any], str | None]:
     item = item or {}
     with st.form(form_key):
         col1, col2 = st.columns(2)
@@ -813,7 +864,25 @@ def education_payload_form(
             )
             skills = st.text_input("Skills", value=skills_to_text(item.get("skills")))
         description = st.text_area("Description", value=nullable_text(item.get("description")))
-        submitted = st.form_submit_button("Save", use_container_width=True)
+        if allow_delete:
+            delete_col, _, save_col = st.columns([1.3, 4.4, 1.3])
+            delete_submitted = delete_col.form_submit_button(
+                "Delete",
+                use_container_width=True,
+            )
+            save_submitted = save_col.form_submit_button(
+                "Save",
+                type="primary",
+                use_container_width=True,
+            )
+        else:
+            delete_submitted = False
+            _, save_col = st.columns([5, 1.25])
+            save_submitted = save_col.form_submit_button(
+                "Save",
+                type="primary",
+                use_container_width=True,
+            )
 
     payload = clean_payload(
         {
@@ -826,7 +895,8 @@ def education_payload_form(
             "skills": split_skills(skills),
         }
     )
-    return payload, submitted
+    action = "delete" if delete_submitted else "save" if save_submitted else None
+    return payload, action
 
 
 def render_experience_item(item: dict[str, Any]) -> None:
@@ -964,12 +1034,10 @@ def render_standalone_skills(profile: dict[str, Any]) -> None:
 
 @st.dialog("Edit profile")
 def profile_dialog(profile: dict[str, Any]) -> None:
-    if st.button("Discard", key="discard_profile", use_container_width=True):
-        close_dialog()
-        st.rerun()
+    render_dialog_close("discard_profile")
 
-    payload, submitted = profile_payload_form("profile_edit_form", profile)
-    if submitted:
+    payload, action = profile_payload_form("profile_edit_form", profile)
+    if action == "save":
         try:
             update_profile(payload)
             refresh_profile()
@@ -982,12 +1050,10 @@ def profile_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add experience")
 def add_experience_dialog() -> None:
-    if st.button("Discard", key="discard_add_experience", use_container_width=True):
-        close_dialog()
-        st.rerun()
+    render_dialog_close("discard_add_experience")
 
-    payload, submitted = experience_payload_form("create_experience_form")
-    if submitted:
+    payload, action = experience_payload_form("create_experience_form")
+    if action == "save":
         try:
             create_experience(payload)
             refresh_profile()
@@ -1000,9 +1066,7 @@ def add_experience_dialog() -> None:
 
 @st.dialog("Edit experience")
 def edit_experience_dialog(profile: dict[str, Any]) -> None:
-    if st.button("Discard", key="discard_edit_experience", use_container_width=True):
-        close_dialog()
-        st.rerun()
+    render_dialog_close("discard_edit_experience")
 
     experiences = profile.get("experiences") or []
     experience_id = st.session_state.get("active_item_id")
@@ -1018,12 +1082,12 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
         st.info("Experience not found.")
         return
 
-    delete_col, _ = st.columns([1, 3])
-    if delete_col.button(
-        "Delete",
-        key=f"delete_experience_{item['experience_id']}",
-        use_container_width=True,
-    ):
+    payload, action = experience_payload_form(
+        f"edit_experience_form_{item['experience_id']}",
+        item,
+        allow_delete=True,
+    )
+    if action == "delete":
         try:
             delete_experience(item["experience_id"])
             refresh_profile()
@@ -1032,12 +1096,7 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not delete experience", exc)
-
-    payload, submitted = experience_payload_form(
-        f"edit_experience_form_{item['experience_id']}",
-        item,
-    )
-    if submitted:
+    elif action == "save":
         try:
             update_experience(item["experience_id"], payload)
             refresh_profile()
@@ -1050,12 +1109,10 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add education")
 def add_education_dialog() -> None:
-    if st.button("Discard", key="discard_add_education", use_container_width=True):
-        close_dialog()
-        st.rerun()
+    render_dialog_close("discard_add_education")
 
-    payload, submitted = education_payload_form("create_education_form")
-    if submitted:
+    payload, action = education_payload_form("create_education_form")
+    if action == "save":
         try:
             create_education(payload)
             refresh_profile()
@@ -1068,9 +1125,7 @@ def add_education_dialog() -> None:
 
 @st.dialog("Edit education")
 def edit_education_dialog(profile: dict[str, Any]) -> None:
-    if st.button("Discard", key="discard_edit_education", use_container_width=True):
-        close_dialog()
-        st.rerun()
+    render_dialog_close("discard_edit_education")
 
     educations = profile.get("educations") or []
     education_id = st.session_state.get("active_item_id")
@@ -1086,12 +1141,12 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
         st.info("Education not found.")
         return
 
-    delete_col, _ = st.columns([1, 3])
-    if delete_col.button(
-        "Delete",
-        key=f"delete_education_{item['education_id']}",
-        use_container_width=True,
-    ):
+    payload, action = education_payload_form(
+        f"edit_education_form_{item['education_id']}",
+        item,
+        allow_delete=True,
+    )
+    if action == "delete":
         try:
             delete_education(item["education_id"])
             refresh_profile()
@@ -1100,12 +1155,7 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
             st.rerun()
         except ApiError as exc:
             show_api_error("Could not delete education", exc)
-
-    payload, submitted = education_payload_form(
-        f"edit_education_form_{item['education_id']}",
-        item,
-    )
-    if submitted:
+    elif action == "save":
         try:
             update_education(item["education_id"], payload)
             refresh_profile()
@@ -1118,14 +1168,17 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
 
 @st.dialog("Add skill")
 def add_skill_dialog() -> None:
-    if st.button("Discard", key="discard_add_skill", use_container_width=True):
-        close_dialog()
-        st.rerun()
+    render_dialog_close("discard_add_skill")
 
     with st.form("add_skill_form"):
         skill_name = st.text_input("Skill name")
-        submitted = st.form_submit_button("Save", use_container_width=True)
-    if submitted:
+        _, save_col = st.columns([5, 1.25])
+        action = "save" if save_col.form_submit_button(
+            "Save",
+            type="primary",
+            use_container_width=True,
+        ) else None
+    if action == "save":
         if not skill_name.strip():
             st.warning("Please enter a skill name.")
             return
@@ -1141,9 +1194,7 @@ def add_skill_dialog() -> None:
 
 @st.dialog("Edit skills")
 def manage_skills_dialog(profile: dict[str, Any]) -> None:
-    if st.button("Discard", key="discard_manage_skills", use_container_width=True):
-        close_dialog()
-        st.rerun()
+    render_dialog_close("discard_manage_skills")
 
     skills = profile.get("skills") or []
     if not skills:
