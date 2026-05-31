@@ -17,6 +17,7 @@ from frontend_app.formatting import (
 )
 from frontend_app.state import (
     cancel_discard_confirmation,
+    clear_active_dialog_draft,
     close_dialog,
     request_discard_confirmation,
 )
@@ -58,9 +59,10 @@ def render_discard_confirmation(key_prefix: str) -> bool:
         type="primary",
         use_container_width=True,
     ):
+        clear_active_dialog_draft()
         close_dialog()
         st.rerun()
-    return True
+    return False
 
 
 

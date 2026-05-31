@@ -349,7 +349,19 @@ def inject_linkedin_styles() -> None:
         }
 
         dialog[open] .discard-confirm {
-            padding: 10px 0 12px;
+            position: fixed !important;
+            top: 96px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: min(400px, calc(100vw - 48px)) !important;
+            z-index: 1000002 !important;
+            box-sizing: border-box !important;
+            padding: 24px 28px 18px !important;
+            background: #ffffff !important;
+            border: 1px solid #d7d3cc !important;
+            border-bottom: 0 !important;
+            border-radius: 8px 8px 0 0 !important;
+            box-shadow: 0 18px 56px rgba(0, 0, 0, 0.28) !important;
         }
 
         dialog[open] .discard-title {
@@ -368,12 +380,19 @@ def inject_linkedin_styles() -> None:
         }
 
         dialog[open] .discard-confirm + div[data-testid="stHorizontalBlock"] {
-            position: static !important;
-            transform: none !important;
-            width: auto !important;
-            margin: 14px 0 0 !important;
-            padding: 14px 0 0 !important;
-            border-top: 1px solid #e8e4de;
+            position: fixed !important;
+            top: 231px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: min(400px, calc(100vw - 48px)) !important;
+            z-index: 1000003 !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            padding: 14px 28px 16px !important;
+            background: #ffffff !important;
+            border: 1px solid #d7d3cc !important;
+            border-top: 1px solid #e8e4de !important;
+            border-radius: 0 0 8px 8px !important;
             box-shadow: none !important;
         }
 

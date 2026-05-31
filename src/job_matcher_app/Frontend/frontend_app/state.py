@@ -61,6 +61,32 @@ def close_dialog() -> None:
 
 
 
+def _delete_state_keys_with_prefix(prefix: str) -> None:
+    for key in list(st.session_state.keys()):
+        if key.startswith(prefix):
+            del st.session_state[key]
+
+
+
+def clear_active_dialog_draft() -> None:
+    active_dialog = st.session_state.get("active_dialog")
+    active_item_id = st.session_state.get("active_item_id")
+
+    if active_dialog == "add_experience":
+        _delete_state_keys_with_prefix("create_experience_form_")
+    elif active_dialog == "edit_experience" and active_item_id is not None:
+        _delete_state_keys_with_prefix(f"edit_experience_form_{active_item_id}_")
+    elif active_dialog == "add_education":
+        _delete_state_keys_with_prefix("create_education_form_")
+    elif active_dialog == "edit_education" and active_item_id is not None:
+        _delete_state_keys_with_prefix(f"edit_education_form_{active_item_id}_")
+    elif active_dialog == "profile":
+        _delete_state_keys_with_prefix("profile_edit_form_")
+    elif active_dialog == "add_skill":
+        _delete_state_keys_with_prefix("add_skill_form_")
+
+
+
 def request_discard_confirmation() -> None:
     st.session_state["confirm_discard"] = True
 
