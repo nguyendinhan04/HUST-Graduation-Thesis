@@ -215,12 +215,12 @@ def inject_linkedin_styles() -> None:
         dialog[open],
         [role="dialog"] {
             position: fixed !important;
-            top: 50% !important;
+            top: 16px !important;
             left: 50% !important;
-            transform: translate(-50%, -50%) !important;
+            transform: translateX(-50%) !important;
             width: min(760px, calc(100vw - 32px)) !important;
             max-width: min(760px, calc(100vw - 32px)) !important;
-            height: auto !important;
+            height: calc(100dvh - 32px) !important;
             max-height: calc(100dvh - 32px) !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -239,12 +239,30 @@ def inject_linkedin_styles() -> None:
         [role="dialog"] > div {
             background: #ffffff !important;
             border-radius: 10px !important;
-            height: auto !important;
-            max-height: calc(100dvh - 34px) !important;
+            height: 100% !important;
+            max-height: 100% !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
             padding: 12px 28px 92px !important;
             overscroll-behavior: contain;
+        }
+
+        [data-testid="stDialog"] h1,
+        [data-testid="stDialog"] h2,
+        [data-testid="stDialog"] h3,
+        dialog[open] h1,
+        dialog[open] h2,
+        dialog[open] h3,
+        [role="dialog"] h1,
+        [role="dialog"] h2,
+        [role="dialog"] h3 {
+            position: sticky !important;
+            top: -12px !important;
+            z-index: 5 !important;
+            margin: -12px -28px 12px !important;
+            padding: 18px 64px 16px 28px !important;
+            background: #ffffff !important;
+            border-bottom: 1px solid #e8e4de !important;
         }
 
         [data-testid="stDialog"] > div > div,
@@ -335,9 +353,10 @@ def inject_linkedin_styles() -> None:
             [data-testid="stDialog"],
             dialog[open],
             [role="dialog"] {
+                top: 8px !important;
                 width: calc(100vw - 16px) !important;
                 max-width: calc(100vw - 16px) !important;
-                height: auto !important;
+                height: calc(100dvh - 16px) !important;
                 max-height: calc(100dvh - 16px) !important;
                 border-radius: 10px !important;
             }
@@ -345,9 +364,23 @@ def inject_linkedin_styles() -> None:
             [data-testid="stDialog"] > div,
             dialog[open] > div,
             [role="dialog"] > div {
-                height: auto !important;
-                max-height: calc(100dvh - 18px) !important;
+                height: 100% !important;
+                max-height: 100% !important;
                 padding: 10px 16px 88px !important;
+            }
+
+            [data-testid="stDialog"] h1,
+            [data-testid="stDialog"] h2,
+            [data-testid="stDialog"] h3,
+            dialog[open] h1,
+            dialog[open] h2,
+            dialog[open] h3,
+            [role="dialog"] h1,
+            [role="dialog"] h2,
+            [role="dialog"] h3 {
+                top: -10px !important;
+                margin: -10px -16px 12px !important;
+                padding: 16px 56px 14px 16px !important;
             }
 
             [data-testid="stDialog"] form div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFormSubmitButton"]),
