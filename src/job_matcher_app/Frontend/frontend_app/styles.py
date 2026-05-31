@@ -294,26 +294,26 @@ def inject_linkedin_styles() -> None:
             top: 0 !important;
             z-index: 6 !important;
             align-items: center !important;
-            margin: 0 -28px 10px !important;
-            padding: 14px 20px 12px 28px !important;
+            margin: 0 -28px 8px !important;
+            padding: 8px 20px 8px 28px !important;
             background: #ffffff !important;
             border-bottom: 1px solid #e8e4de !important;
         }
 
         dialog[open] .custom-dialog-title {
             color: #191919;
-            font-size: 24px;
-            font-weight: 650;
-            line-height: 1.25;
+            font-size: 28px;
+            font-weight: 750;
+            line-height: 1.15;
         }
 
         dialog[open] div[data-testid="stHorizontalBlock"]:has(.custom-dialog-title) button {
-            width: 40px !important;
+            width: 36px !important;
             min-height: 36px !important;
             padding: 0 !important;
             border-radius: 50% !important;
             color: #333333 !important;
-            font-size: 24px !important;
+            font-size: 28px !important;
             line-height: 1 !important;
         }
 
