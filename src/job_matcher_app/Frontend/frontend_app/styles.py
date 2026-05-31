@@ -402,11 +402,11 @@ def inject_linkedin_styles() -> None:
             max-width: 460px;
         }
 
+        .discard-confirm-actions-marker,
         div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker),
         div[data-testid="stMarkdownContainer"]:has(.discard-confirm-actions-marker),
         dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker),
         dialog[open] div[data-testid="stMarkdownContainer"]:has(.discard-confirm-actions-marker) {
-            position: fixed !important;
             width: 0 !important;
             height: 0 !important;
             margin: 0 !important;
@@ -414,10 +414,8 @@ def inject_linkedin_styles() -> None:
             overflow: hidden !important;
         }
 
-        div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker) ~ div[data-testid="stHorizontalBlock"],
-        dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker) + div[data-testid="stHorizontalBlock"],
-        dialog[open] div[data-testid="stElementContainer"]:has(.discard-confirm-actions-marker) ~ div[data-testid="stHorizontalBlock"],
-        dialog[open] .discard-confirm + div[data-testid="stHorizontalBlock"] {
+        div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker),
+        dialog[open] div[data-testid="stHorizontalBlock"]:has(.discard-confirm-actions-marker) {
             position: fixed !important;
             top: 50% !important;
             left: 50% !important;
