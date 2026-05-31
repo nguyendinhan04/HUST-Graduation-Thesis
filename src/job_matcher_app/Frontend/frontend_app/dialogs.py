@@ -28,7 +28,7 @@ from frontend_app.forms import (
 from frontend_app.state import close_dialog
 
 
-@st.dialog("")
+@st.dialog("Edit profile")
 def profile_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit profile", "profile_dialog")
     if render_discard_confirmation("profile_dialog"):
@@ -47,7 +47,7 @@ def profile_dialog(profile: dict[str, Any]) -> None:
 
 
 
-@st.dialog("")
+@st.dialog("Add experience")
 def add_experience_dialog() -> None:
     render_dialog_header("Add experience", "add_experience_dialog")
     if render_discard_confirmation("add_experience_dialog"):
@@ -66,7 +66,7 @@ def add_experience_dialog() -> None:
 
 
 
-@st.dialog("")
+@st.dialog("Edit experience")
 def edit_experience_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit experience", "edit_experience_dialog")
     if render_discard_confirmation("edit_experience_dialog"):
@@ -112,7 +112,7 @@ def edit_experience_dialog(profile: dict[str, Any]) -> None:
 
 
 
-@st.dialog("")
+@st.dialog("Add education")
 def add_education_dialog() -> None:
     render_dialog_header("Add education", "add_education_dialog")
     if render_discard_confirmation("add_education_dialog"):
@@ -131,7 +131,7 @@ def add_education_dialog() -> None:
 
 
 
-@st.dialog("")
+@st.dialog("Edit education")
 def edit_education_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit education", "edit_education_dialog")
     if render_discard_confirmation("edit_education_dialog"):
@@ -177,7 +177,7 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
 
 
 
-@st.dialog("")
+@st.dialog("Add skill")
 def add_skill_dialog() -> None:
     render_dialog_header("Add skill", "add_skill_dialog")
     if render_discard_confirmation("add_skill_dialog"):
@@ -206,7 +206,7 @@ def add_skill_dialog() -> None:
 
 
 
-@st.dialog("")
+@st.dialog("Edit skills")
 def manage_skills_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Edit skills", "manage_skills_dialog")
     if render_discard_confirmation("manage_skills_dialog"):
