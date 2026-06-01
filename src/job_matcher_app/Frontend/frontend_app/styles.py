@@ -402,15 +402,16 @@ def inject_linkedin_styles() -> None:
         div[class*="st-key-job-card-wrap-"],
         div[class*="st-key-job_card_wrap_"] {
             position: relative;
+            min-height: 180px;
             margin: 0 0 12px;
-            overflow: visible;
+            overflow: hidden;
         }
 
         .job-card {
             display: grid;
             grid-template-columns: 150px minmax(0, 1fr);
             gap: 14px;
-            min-height: 180px;
+            height: 180px;
             box-sizing: border-box;
             padding: 16px;
             margin: 0;
@@ -437,6 +438,10 @@ def inject_linkedin_styles() -> None:
             z-index: 20 !important;
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
+            height: 180px !important;
+            min-height: 180px !important;
+            max-height: 180px !important;
         }
 
         div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"] > button,
@@ -446,9 +451,9 @@ def inject_linkedin_styles() -> None:
         div[class*="st-key-job_card_click_"] > div,
         div[class*="st-key-job_card_click_"] button {
             width: 100% !important;
-            height: 100% !important;
-            min-height: 100% !important;
-            max-height: none !important;
+            height: 180px !important;
+            min-height: 180px !important;
+            max-height: 180px !important;
             margin: 0 !important;
             padding: 0 !important;
             opacity: 0 !important;
@@ -787,6 +792,7 @@ def inject_linkedin_styles() -> None:
                 grid-template-columns: 88px minmax(0, 1fr);
                 gap: 12px;
                 padding: 12px;
+                height: 180px;
             }
 
             .job-card-logo,
