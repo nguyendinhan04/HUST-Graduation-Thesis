@@ -1473,6 +1473,15 @@ def inject_linkedin_styles() -> None:
             border-radius: 999px !important;
         }
 
+        div[data-testid="stSidebar"] .st-key-sidebar_nav_profile button,
+        div[data-testid="stSidebar"] .st-key-sidebar_nav_recommendations button,
+        div[data-testid="stSidebar"] .st-key-sidebar-nav-profile button,
+        div[data-testid="stSidebar"] .st-key-sidebar-nav-recommendations button {
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            color: #374151 !important;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,

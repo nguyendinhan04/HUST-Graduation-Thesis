@@ -12,21 +12,6 @@ def _nav_item(label: str, icon: str, page: str) -> None:
     is_active = st.session_state.get("current_page", "profile") == page
     rendered_key = f"sidebar-nav-{page.replace('_', '-')}"
     legacy_rendered_key = f"sidebar_nav_{page}"
-    if is_active:
-        st.markdown(
-            f"""
-            <style>
-            .st-key-{legacy_rendered_key} button,
-            .st-key-{rendered_key} button {{
-                color: #075985 !important;
-                background: #e0f2fe !important;
-                border-color: #bae6fd !important;
-                box-shadow: inset 3px 0 0 #0ea5e9 !important;
-            }}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
     if st.button(
         f"{icon}  {label}",
         key=f"sidebar_nav_{page}",
@@ -35,6 +20,26 @@ def _nav_item(label: str, icon: str, page: str) -> None:
     ):
         navigate_to(page)
         st.rerun()
+    if is_active:
+        st.markdown(
+            f"""
+            <style>
+            div[data-testid="stSidebar"] .st-key-{legacy_rendered_key} button,
+            div[data-testid="stSidebar"] .st-key-{rendered_key} button {{
+                color: #075985 !important;
+                background: #e0f2fe !important;
+                background-color: #e0f2fe !important;
+                border-color: #7dd3fc !important;
+                box-shadow: inset 3px 0 0 #0ea5e9 !important;
+            }}
+            div[data-testid="stSidebar"] .st-key-{legacy_rendered_key} button p,
+            div[data-testid="stSidebar"] .st-key-{rendered_key} button p {{
+                color: #075985 !important;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def sidebar() -> None:
