@@ -9,7 +9,15 @@ from frontend_app.state import logout, navigate_to
 
 
 def _nav_item(label: str, icon: str, page: str) -> None:
-    is_active = st.session_state.get("current_page", "profile") == page
+    current_page = st.session_state.get("current_page", "profile")
+    profile_pages = {"profile", "experiences", "educations", "skills"}
+    recommendation_pages = {"recommendations", "job_detail"}
+    is_active = (
+        page == "profile"
+        and current_page in profile_pages
+        or page == "recommendations"
+        and current_page in recommendation_pages
+    )
     rendered_key = f"sidebar-nav-{page.replace('_', '-')}"
     legacy_rendered_key = f"sidebar_nav_{page}"
     if st.button(
