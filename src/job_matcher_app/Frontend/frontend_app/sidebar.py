@@ -18,39 +18,19 @@ def _nav_item(label: str, icon: str, page: str) -> None:
         or page == "recommendations"
         and current_page in recommendation_pages
     )
-    rendered_key = f"sidebar-nav-{page.replace('_', '-')}"
-    legacy_rendered_key = f"sidebar_nav_{page}"
-    if st.button(
-        f"{icon}  {label}",
-        key=f"sidebar_nav_{page}",
-        use_container_width=True,
-        help=label,
-    ):
-        navigate_to(page)
-        st.rerun()
-    if is_active:
-        st.markdown(
-            f"""
-            <style>
-            div[data-testid="stSidebar"] .st-key-{legacy_rendered_key} button,
-            div[data-testid="stSidebar"] .st-key-{rendered_key} button {{
-                min-height: 62px !important;
-                color: #082f49 !important;
-                background: #0ea5e9 !important;
-                background-color: #0ea5e9 !important;
-                border-color: #0ea5e9 !important;
-                border-radius: 8px 24px 24px 8px !important;
-                box-shadow: none !important;
-            }}
-            div[data-testid="stSidebar"] .st-key-{legacy_rendered_key} button p,
-            div[data-testid="stSidebar"] .st-key-{rendered_key} button p {{
-                color: #082f49 !important;
-                font-weight: 760 !important;
-            }}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
+    item_key = f"sidebar-nav-item-{page.replace('_', '-')}"
+    button_key = f"sidebar_nav_{page}"
+    with st.container(key=item_key):
+        if is_active:
+            st.markdown('<div class="sidebar-nav-active-marker"></div>', unsafe_allow_html=True)
+        if st.button(
+            f"{icon}  {label}",
+            key=button_key,
+            use_container_width=True,
+            help=label,
+        ):
+            navigate_to(page)
+            st.rerun()
 
 
 def sidebar() -> None:
