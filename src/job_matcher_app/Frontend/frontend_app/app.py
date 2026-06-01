@@ -28,21 +28,6 @@ from frontend_app.state import init_session_state
 from frontend_app.styles import inject_linkedin_styles
 
 
-def sync_page_from_query_params() -> None:
-    if st.query_params.get("page") != "job_detail":
-        return
-
-    job_id = st.query_params.get("job_id")
-    try:
-        parsed_job_id = int(job_id) if job_id else None
-    except (TypeError, ValueError):
-        parsed_job_id = None
-
-    if parsed_job_id:
-        st.session_state["selected_job_id"] = parsed_job_id
-        st.session_state["current_page"] = "job_detail"
-
-
 def render_profile_page() -> None:
     if st.session_state.get("profile") is None:
         try:
@@ -91,7 +76,6 @@ def main() -> None:
         layout="wide",
     )
     init_session_state()
-    sync_page_from_query_params()
     inject_linkedin_styles()
     sidebar()
 

@@ -402,6 +402,7 @@ def inject_linkedin_styles() -> None:
         div[class*="st-key-job_card_wrap_"] {
             position: relative;
             margin: 0 0 12px;
+            overflow: visible;
         }
 
         .job-card {
@@ -425,23 +426,29 @@ def inject_linkedin_styles() -> None:
             transform: translateY(-1px);
         }
 
+        div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"],
         div[class*="st-key-job_card_click_"] {
             position: absolute !important;
             inset: 0 !important;
-            z-index: 4 !important;
+            z-index: 20 !important;
             margin: 0 !important;
             padding: 0 !important;
         }
 
+        div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"] > button,
         div[class*="st-key-job_card_click_"] > div,
         div[class*="st-key-job_card_click_"] button {
             width: 100% !important;
             height: 100% !important;
             min-height: 100% !important;
+            max-height: none !important;
             margin: 0 !important;
             padding: 0 !important;
             opacity: 0 !important;
             cursor: pointer !important;
+            border: 0 !important;
+            border-radius: 18px !important;
+            background: transparent !important;
         }
 
         .job-card-media {

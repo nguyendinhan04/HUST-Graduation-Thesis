@@ -148,11 +148,12 @@ def render_recommendations_page() -> None:
                 """,
                 unsafe_allow_html=True,
             )
-            if st.button(
+            st.button(
                 "Xem chi tiết",
                 key=f"job_card_click_{job_id or 'missing'}",
                 disabled=job_id is None,
                 help="Xem chi tiết công việc",
-            ):
-                navigate_to_job_detail(int(job_id))
-                st.rerun()
+                use_container_width=True,
+                on_click=navigate_to_job_detail if job_id is not None else None,
+                args=(int(job_id),) if job_id is not None else None,
+            )

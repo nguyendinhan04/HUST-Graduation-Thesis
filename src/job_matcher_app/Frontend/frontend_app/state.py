@@ -46,7 +46,6 @@ def logout() -> None:
     st.session_state["confirm_discard"] = False
     st.session_state["current_page"] = "profile"
     st.session_state["selected_job_id"] = None
-    st.query_params.clear()
 
 
 
@@ -104,7 +103,6 @@ def navigate_to(page: str) -> None:
     st.session_state["current_page"] = page
     if page != "job_detail":
         st.session_state["selected_job_id"] = None
-        st.query_params.clear()
     close_dialog()
 
 
