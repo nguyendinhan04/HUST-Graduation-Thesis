@@ -345,21 +345,21 @@ async def update_user_experience(
     embedding_service = JobRecommendationService()
 
     try:
-        # return await UserService.update_user_experience_async(
-        #     db=db,
-        #     user_id=user_id,
-        #     experience_id=experience_id,
-        #     embedding_service=embedding_service,
-        #     skills=skills,
-        #     skills_provided=skills_provided,
-        #     **data,
-        # )
+        return await UserService.update_user_experience_async(
+            db=db,
+            user_id=user_id,
+            experience_id=experience_id,
+            embedding_service=embedding_service,
+            skills=skills,
+            skills_provided=skills_provided,
+            **data,
+        )
 
         # For debugging: log the input data before calling the service
-        import logging
-        logger = logging.getLogger("uvicorn.error")
-        logger.warning("Updating user experience: user_id=%s, experience_id=%s, data=%s, skills=%s",
-               user_id, experience_id, data, skills)
+        # import logging
+        # logger = logging.getLogger("uvicorn.error")
+        # logger.warning("Updating user experience: user_id=%s, experience_id=%s, data=%s, skills=%s",
+        #        user_id, experience_id, data, skills)
 
     except ValueError as exc:
         message = str(exc)
