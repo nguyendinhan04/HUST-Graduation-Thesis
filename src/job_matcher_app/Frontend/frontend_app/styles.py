@@ -71,18 +71,19 @@ def inject_linkedin_styles() -> None:
             font-size: 15px;
             font-weight: 800;
             line-height: 1;
-            margin: 0 0 14px;
+            margin: 0 0 4px;
             text-transform: none;
             letter-spacing: 0;
         }
 
         .st-key-sidebar-navigator {
-            margin-top: 22px;
+            margin-top: 14px;
         }
 
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-profile),
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-recommendations) {
-            margin: 0 0 8px !important;
+            margin: 0 0 2px !important;
+            padding: 0 !important;
         }
 
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button,
@@ -94,7 +95,7 @@ def inject_linkedin_styles() -> None:
             display: flex !important;
             align-items: center !important;
             justify-content: flex-start !important;
-            padding: 0 16px !important;
+            padding: 0 14px !important;
             color: #4b5563 !important;
             background: transparent !important;
             border: 1px solid transparent !important;
