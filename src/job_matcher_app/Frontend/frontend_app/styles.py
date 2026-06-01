@@ -82,14 +82,6 @@ def inject_linkedin_styles() -> None:
             margin: 0 0 10px !important;
         }
 
-        .sidebar-nav-active-marker {
-            width: 0;
-            height: 0;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
         div[class*="st-key-sidebar-nav-item-"] button,
         .st-key-sidebar-nav-profile button,
         .st-key-sidebar_nav_profile button,
@@ -1495,21 +1487,6 @@ def inject_linkedin_styles() -> None:
             background: transparent !important;
             border: 1px solid transparent !important;
             color: #111827 !important;
-        }
-
-        div[data-testid="stSidebar"] div[class*="st-key-sidebar-nav-item-"]:has(.sidebar-nav-active-marker) button {
-            min-height: 62px !important;
-            color: #082f49 !important;
-            background: #0ea5e9 !important;
-            background-color: #0ea5e9 !important;
-            border-color: #0ea5e9 !important;
-            border-radius: 8px 24px 24px 8px !important;
-            box-shadow: none !important;
-        }
-
-        div[data-testid="stSidebar"] div[class*="st-key-sidebar-nav-item-"]:has(.sidebar-nav-active-marker) button p {
-            color: #082f49 !important;
-            font-weight: 760 !important;
         }
 
         </style>
