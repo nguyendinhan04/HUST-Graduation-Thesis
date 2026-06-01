@@ -355,7 +355,7 @@ async def update_user_experience(
         # )
 
             # For debugging: log the input data before calling the service
-        logger.debug("Updating user experience with data: user_id=%s, experience_id=%s, data=%s, skills_provided=%s, skills=%s",
+        logger.info("Updating user experience with data: user_id=%s, experience_id=%s, data=%s, skills_provided=%s, skills=%s",
                         user_id, experience_id, data, skills_provided, skills)
     except ValueError as exc:
         message = str(exc)
