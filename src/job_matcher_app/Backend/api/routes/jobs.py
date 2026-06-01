@@ -95,7 +95,8 @@ async def search_jobs(
     location: str | None = Query(default=None, max_length=100),
     employment_type: str | None = Query(default=None, max_length=50),
     max_experience: int | None = Query(default=None, ge=0),
-    limit: int = Query(30, ge=1, le=100),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
@@ -106,7 +107,8 @@ async def search_jobs(
             location=location,
             employment_type=employment_type,
             max_experience=max_experience,
-            limit=limit,
+            page=page,
+            page_size=page_size,
         )
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

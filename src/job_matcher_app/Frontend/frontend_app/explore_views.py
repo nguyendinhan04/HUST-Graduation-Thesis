@@ -19,7 +19,7 @@ from frontend_app.state import navigate_to_job_detail
 
 EXPERIENCE_OPTIONS = ["Any", "0 years", "1 year", "2 years", "3 years", "5 years", "7 years", "10 years"]
 EMPLOYMENT_OPTIONS = ["Any type", "Full-time", "Part-time", "Contract", "Internship", "Remote"]
-LIMIT_OPTIONS = [20, 30, 50, 100]
+PAGE_SIZE = 10
 
 
 def _clean_filter(value: str | None) -> str | None:
@@ -38,15 +38,16 @@ def _load_jobs(
     location: str | None,
     employment_type: str | None,
     max_experience: int | None,
-    limit: int,
-) -> list[dict[str, Any]] | None:
+    page: int,
+) -> dict[str, Any] | None:
     cache_key = (
         "explore_jobs",
         query or "",
         location or "",
         employment_type or "",
         max_experience,
-        limit,
+        page,
+        PAGE_SIZE,
     )
     if st.session_state.get("explore_jobs_cache_key") != cache_key:
         st.session_state["explore_jobs_cache_key"] = cache_key
@@ -60,13 +61,20 @@ def _load_jobs(
                     location=location,
                     employment_type=employment_type,
                     max_experience=max_experience,
-                    limit=limit,
+                    page=page,
+                    page_size=PAGE_SIZE,
                 )
         except ApiError as exc:
             show_api_error("Could not load jobs", exc)
             return None
 
-    return st.session_state.get("explore_jobs") or []
+    return st.session_state.get("explore_jobs") or {
+        "items": [],
+        "total": 0,
+        "page": page,
+        "page_size": PAGE_SIZE,
+        "total_pages": 1,
+    }
 
 
 def _render_job_card(job: dict[str, Any]) -> None:
@@ -107,6 +115,40 @@ def _render_job_card(job: dict[str, Any]) -> None:
         )
 
 
+def _sync_filter_page(filter_key: tuple[Any, ...]) -> int:
+    if st.session_state.get("explore_jobs_filter_key") != filter_key:
+        st.session_state["explore_jobs_filter_key"] = filter_key
+        st.session_state["explore_jobs_page"] = 1
+        st.session_state.pop("explore_jobs", None)
+    return int(st.session_state.setdefault("explore_jobs_page", 1))
+
+
+def _render_pagination(page: int, total_pages: int) -> None:
+    prev_col, meta_col, next_col = st.columns([1, 2, 1], gap="small")
+    if prev_col.button(
+        "Previous",
+        key="explore_jobs_prev",
+        use_container_width=True,
+        disabled=page <= 1,
+    ):
+        st.session_state["explore_jobs_page"] = max(page - 1, 1)
+        st.session_state.pop("explore_jobs", None)
+        st.rerun()
+    meta_col.markdown(
+        f'<div class="explore-pagination-meta">Page {page} of {total_pages}</div>',
+        unsafe_allow_html=True,
+    )
+    if next_col.button(
+        "Next",
+        key="explore_jobs_next",
+        use_container_width=True,
+        disabled=page >= total_pages,
+    ):
+        st.session_state["explore_jobs_page"] = page + 1
+        st.session_state.pop("explore_jobs", None)
+        st.rerun()
+
+
 def render_explore_jobs_page() -> None:
     st.markdown('<div class="recommendation-title">Explore jobs</div>', unsafe_allow_html=True)
     st.markdown(
@@ -127,7 +169,7 @@ def render_explore_jobs_page() -> None:
             placeholder="City or remote",
         )
 
-        type_col, exp_col, limit_col, action_col = st.columns([1, 1, 0.8, 0.8], gap="small")
+        type_col, exp_col, action_col = st.columns([1, 1, 0.8], gap="small")
         employment_label = type_col.selectbox(
             "Job type",
             EMPLOYMENT_OPTIONS,
@@ -138,24 +180,45 @@ def render_explore_jobs_page() -> None:
             EXPERIENCE_OPTIONS,
             key="explore_jobs_experience",
         )
-        limit = int(limit_col.selectbox("Limit", LIMIT_OPTIONS, index=1, key="explore_jobs_limit"))
         action_col.write("")
         action_col.write("")
         if action_col.button("Refresh", key="explore_jobs_refresh", use_container_width=True):
             st.session_state.pop("explore_jobs", None)
 
-    jobs = _load_jobs(
-        query=_clean_filter(query),
-        location=_clean_filter(location),
-        employment_type=None if employment_label == "Any type" else employment_label,
-        max_experience=_selected_experience(experience_label),
-        limit=limit,
+    query_filter = _clean_filter(query)
+    location_filter = _clean_filter(location)
+    employment_filter = None if employment_label == "Any type" else employment_label
+    experience_filter = _selected_experience(experience_label)
+    page = _sync_filter_page(
+        (
+            query_filter or "",
+            location_filter or "",
+            employment_filter or "",
+            experience_filter,
+        )
     )
-    if jobs is None:
+
+    result = _load_jobs(
+        query=query_filter,
+        location=location_filter,
+        employment_type=employment_filter,
+        max_experience=experience_filter,
+        page=page,
+    )
+    if result is None:
         return
 
+    jobs = result.get("items") or []
+    total = int(result.get("total") or 0)
+    page = int(result.get("page") or page)
+    total_pages = int(result.get("total_pages") or 1)
+    if st.session_state.get("explore_jobs_page") != page:
+        st.session_state["explore_jobs_page"] = page
+
+    start_index = ((page - 1) * PAGE_SIZE) + 1 if total else 0
+    end_index = min(page * PAGE_SIZE, total)
     st.markdown(
-        f'<div class="explore-result-count">{len(jobs)} jobs found</div>',
+        f'<div class="explore-result-count">Showing {start_index}-{end_index} of {total} jobs</div>',
         unsafe_allow_html=True,
     )
     if not jobs:
@@ -164,3 +227,5 @@ def render_explore_jobs_page() -> None:
 
     for job in jobs:
         _render_job_card(job)
+
+    _render_pagination(page, total_pages)

@@ -165,9 +165,10 @@ def search_jobs(
     location: str | None = None,
     employment_type: str | None = None,
     max_experience: int | None = None,
-    limit: int = 30,
+    page: int = 1,
+    page_size: int = 10,
 ) -> Any:
-    params: dict[str, Any] = {"limit": limit}
+    params: dict[str, Any] = {"page": page, "page_size": page_size}
     if query:
         params["q"] = query
     if location:

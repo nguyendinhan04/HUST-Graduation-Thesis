@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -278,18 +278,19 @@ class JobService:
         location: str | None = None,
         employment_type: str | None = None,
         max_experience: int | None = None,
-        limit: int = 30,
-    ) -> list[dict]:
+        page: int = 1,
+        page_size: int = 10,
+    ) -> dict:
+        filters = [Job.status == "open"]
         stmt = (
             select(Job, Company)
             .join(Company, Job.company_id == Company.id)
-            .where(Job.status == "open")
         )
 
         normalized_query = query.strip() if query else ""
         if normalized_query:
             pattern = f"%{normalized_query}%"
-            stmt = stmt.where(
+            filters.append(
                 or_(
                     Job.title.ilike(pattern),
                     Job.description.ilike(pattern),
@@ -302,7 +303,7 @@ class JobService:
         normalized_location = location.strip() if location else ""
         if normalized_location:
             pattern = f"%{normalized_location}%"
-            stmt = stmt.where(
+            filters.append(
                 or_(
                     Job.address.ilike(pattern),
                     Job.location_type.ilike(pattern),
@@ -312,22 +313,45 @@ class JobService:
 
         normalized_employment_type = employment_type.strip() if employment_type else ""
         if normalized_employment_type:
-            stmt = stmt.where(Job.employment_type.ilike(f"%{normalized_employment_type}%"))
+            filters.append(Job.employment_type.ilike(f"%{normalized_employment_type}%"))
 
         if max_experience is not None:
-            stmt = stmt.where(
+            filters.append(
                 or_(
                     Job.experience_required.is_(None),
                     Job.experience_required <= max_experience,
                 )
             )
 
-        stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit)
+        total = await db.scalar(
+            select(func.count())
+            .select_from(Job)
+            .join(Company, Job.company_id == Company.id)
+            .where(*filters)
+        )
+        total_count = int(total or 0)
+        total_pages = max((total_count + page_size - 1) // page_size, 1)
+        current_page = min(max(page, 1), total_pages)
+        offset = (current_page - 1) * page_size
+
+        stmt = (
+            stmt.where(*filters)
+            .order_by(Job.created_at.desc(), Job.id.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
         rows = (await db.execute(stmt)).all()
-        return [
+        items = [
             JobService._serialize_open_job_summary(job, company)
             for job, company in rows
         ]
+        return {
+            "items": items,
+            "total": total_count,
+            "page": current_page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        }
 
     @staticmethod
     async def apply_job_for_employee_async(

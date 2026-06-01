@@ -613,6 +613,14 @@ def inject_linkedin_styles() -> None:
             margin: 2px 0 10px;
         }
 
+        .explore-pagination-meta {
+            color: #4b5563;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 38px;
+            text-align: center;
+        }
+
         div[class*="st-key-job-card-wrap-"] {
             position: relative;
             min-height: 194px;
