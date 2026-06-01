@@ -70,9 +70,7 @@ def sidebar() -> None:
     with st.sidebar:
         if st.session_state.get("access_token"):
             profile = st.session_state.get("profile") or {}
-            email = profile.get("email") or "Employee"
-            st.divider()
-            
+            email = profile.get("email") or "Employee"         
             st.markdown(
                 f"""
                 <div class="sidebar-brand">
@@ -86,6 +84,7 @@ def sidebar() -> None:
                 unsafe_allow_html=True,
             )
             _render_active_nav_styles()
+            st.divider()
             st.markdown('<div class="sidebar-section-label">Navigation</div>', unsafe_allow_html=True)
             _nav_item("Profile", "👤", "profile")
             _nav_item("Recommendations", "💼", "recommendations")
