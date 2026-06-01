@@ -31,6 +31,17 @@ def inject_linkedin_styles() -> None:
             overflow: hidden;
         }
 
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: #ffffff !important;
+            border-color: #d7d3cc !important;
+            border-radius: 8px !important;
+        }
+
+        div[data-testid="stVerticalBlockBorderWrapper"] > div {
+            background: #ffffff !important;
+            border-radius: 8px !important;
+        }
+
         .profile-cover {
             height: 96px;
             background: linear-gradient(135deg, #0a66c2 0%, #378fe9 56%, #dce6f1 100%);
