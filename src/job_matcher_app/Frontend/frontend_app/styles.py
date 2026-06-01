@@ -25,6 +25,9 @@ def inject_linkedin_styles() -> None:
 
         div[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
             padding: 28px 16px 22px;
+            position: relative;
+            min-height: 100dvh;
+            padding-bottom: 168px;
         }
 
         .sidebar-brand {
@@ -64,17 +67,17 @@ def inject_linkedin_styles() -> None:
         }
 
         .sidebar-section-label {
-            color: #374151;
+            color: #4b5563;
             font-size: 15px;
-            font-weight: 760;
+            font-weight: 800;
             line-height: 1;
-            margin: 0 0 8px;
+            margin: 0 0 14px;
             text-transform: none;
             letter-spacing: 0;
         }
 
         div[class*="st-key-sidebar-nav-item-"] {
-            margin: 0 0 2px !important;
+            margin: 0 0 8px !important;
         }
 
         div[class*="st-key-sidebar-nav-item-"] button,
@@ -85,13 +88,13 @@ def inject_linkedin_styles() -> None:
             display: flex !important;
             align-items: center !important;
             justify-content: flex-start !important;
-            padding: 0 14px !important;
-            color: #111827 !important;
+            padding: 0 16px !important;
+            color: #4b5563 !important;
             background: transparent !important;
             border: 1px solid transparent !important;
             border-radius: 8px !important;
             font-size: 18px !important;
-            font-weight: 620 !important;
+            font-weight: 500 !important;
             text-align: left !important;
         }
 
@@ -113,9 +116,9 @@ def inject_linkedin_styles() -> None:
         div[class*="st-key-sidebar-nav-item-"] button:hover,
         .st-key-sidebar-nav-profile button:hover,
         .st-key-sidebar-nav-recommendations button:hover {
-            color: #082f49 !important;
-            background: #e0f2fe !important;
-            border-color: #bae6fd !important;
+            color: #111827 !important;
+            background: #eef0f5 !important;
+            border-color: #eef0f5 !important;
         }
 
         .sidebar-user {
@@ -123,7 +126,46 @@ def inject_linkedin_styles() -> None:
             grid-template-columns: 40px minmax(0, 1fr);
             gap: 10px;
             align-items: center;
-            margin: 18px 0 14px;
+            margin: 0 0 14px;
+        }
+
+        .sidebar-footer-marker {
+            width: 0;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-footer {
+            position: fixed;
+            left: 16px;
+            bottom: 78px;
+            width: calc(100% - 32px);
+            max-width: 240px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .st-key-sidebar-signout {
+            position: fixed;
+            left: 16px;
+            bottom: 24px;
+            width: calc(100% - 32px);
+            max-width: 240px;
+            z-index: 10;
+        }
+
+        .st-key-sidebar-signout button {
+            min-height: 40px !important;
+            border-radius: 8px !important;
+            color: #111827 !important;
+            background: transparent !important;
+        }
+
+        .st-key-sidebar-signout button:hover {
+            color: #075985 !important;
+            background: #f0f9ff !important;
         }
 
         .sidebar-user-avatar {

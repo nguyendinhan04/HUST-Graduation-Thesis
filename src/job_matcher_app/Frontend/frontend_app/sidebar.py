@@ -28,23 +28,23 @@ def _render_active_nav_styles() -> None:
             background: transparent !important;
             background-color: transparent !important;
             border-color: transparent !important;
-            color: #111827 !important;
+            color: #4b5563 !important;
             box-shadow: none !important;
         }}
 
         div[data-testid="stSidebar"] .st-key-{active_key} button {{
             min-height: 46px !important;
-            color: #082f49 !important;
-            background: #0ea5e9 !important;
-            background-color: #0ea5e9 !important;
-            border-color: #0ea5e9 !important;
+            color: #111827 !important;
+            background: #d9dee8 !important;
+            background-color: #d9dee8 !important;
+            border-color: #d9dee8 !important;
             border-radius: 8px !important;
             box-shadow: none !important;
         }}
 
         div[data-testid="stSidebar"] .st-key-{active_key} button p {{
-            color: #082f49 !important;
-            font-weight: 760 !important;
+            color: #111827 !important;
+            font-weight: 800 !important;
         }}
         </style>
         """,
@@ -88,21 +88,23 @@ def sidebar() -> None:
             st.markdown('<div class="sidebar-section-label">Navigation</div>', unsafe_allow_html=True)
             _nav_item("Profile", "👤", "profile")
             _nav_item("Recommendations", "💼", "recommendations")
-
-            st.divider()
+            
             st.markdown(
                 f"""
-                <div class="sidebar-user">
-                    <div class="sidebar-user-avatar">{escape(initials(email, "EM"))}</div>
-                    <div class="sidebar-user-meta">
-                        <div class="sidebar-user-label">Signed in</div>
-                        <div class="sidebar-user-email">{escape(email)}</div>
+                <div class="sidebar-footer-marker"></div>
+                <div class="sidebar-footer">
+                    <div class="sidebar-user">
+                        <div class="sidebar-user-avatar">{escape(initials(email, "EM"))}</div>
+                        <div class="sidebar-user-meta">
+                            <div class="sidebar-user-label">Signed in</div>
+                            <div class="sidebar-user-email">{escape(email)}</div>
+                        </div>
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-            if st.button("Sign out", use_container_width=True):
-                logout()
-                st.rerun()
-
+            with st.container(key="sidebar-signout"):
+                if st.button("Sign out", use_container_width=True):
+                    logout()
+                    st.rerun()
