@@ -731,26 +731,21 @@ def inject_linkedin_styles() -> None:
             min-height: 0;
         }
 
+        .job-card-main > div {
+            min-width: 0;
+        }
+
         .job-card-title {
             color: #24324a;
             font-size: 20px;
             font-weight: 750;
             line-height: 1.25;
+            max-height: 50px;
+            overflow: hidden;
             overflow-wrap: anywhere;
-        }
-
-        .verified-dot {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 16px;
-            height: 16px;
-            margin-left: 4px;
-            border-radius: 50%;
-            color: #ffffff;
-            background: #4f73c9;
-            font-size: 11px;
-            vertical-align: 2px;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
         }
 
         .job-card-company {
@@ -844,20 +839,6 @@ def inject_linkedin_styles() -> None:
             line-height: 1.35;
             margin-top: 4px;
             overflow-wrap: anywhere;
-        }
-
-        .job-detail-verified {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 16px;
-            height: 16px;
-            margin-left: 4px;
-            border-radius: 50%;
-            color: #ffffff;
-            background: #0ea5e9;
-            font-size: 11px;
-            vertical-align: 2px;
         }
 
         .job-detail-stat-grid {

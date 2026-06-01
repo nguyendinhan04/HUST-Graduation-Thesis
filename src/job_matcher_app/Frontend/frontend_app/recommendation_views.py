@@ -134,7 +134,7 @@ def render_recommendations_page() -> None:
                     <div class="job-card-body">
                         <div class="job-card-main">
                             <div>
-                                <div class="job-card-title">{html_or_empty(job.get("title"), "Untitled job")} <span class="verified-dot">✓</span></div>
+                                <div class="job-card-title">{html_or_empty(job.get("title"), "Untitled job")}</div>
                                 <div class="job-card-company">{html_or_empty(job.get("company_name"), "No company yet")}</div>
                                 <div class="job-tag-row">{_job_tags(job)}</div>
                             </div>

@@ -136,7 +136,7 @@ def _render_job_summary(job: dict[str, Any]) -> None:
         f"""
         <div class="job-detail-hero">
             <div class="job-detail-title-row">
-                <div class="job-detail-title">{html_or_empty(job.get("title"), "Untitled job")} <span class="job-detail-verified">✓</span></div>
+                <div class="job-detail-title">{html_or_empty(job.get("title"), "Untitled job")}</div>
                 <div class="job-detail-company">{html_or_empty(company.get("name"), "No company yet")}</div>
             </div>
             <div class="job-detail-stat-grid">
