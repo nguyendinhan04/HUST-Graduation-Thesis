@@ -90,27 +90,26 @@ def render_experience_item(item: dict[str, Any]) -> None:
     date_range = format_date_range(item.get("start_date"), item.get("end_date"))
     description = item.get("description") or ""
     skill_summary = summarize_skills(item.get("skills"))
-    skill_markup = (
-        f'<div class="skill-line">{html_or_empty(skill_summary)}</div>'
-        if skill_summary
-        else ""
-    )
+    meta = html_or_empty(date_range)
+    if location:
+        meta += f" · {html_or_empty(location)}"
 
-    st.markdown(
+    entity_html = [
         f"""
         <div class="entity-row">
             <div class="entity-logo">{escape(initials(company, "CO"))}</div>
             <div>
                 <div class="entity-title">{html_or_empty(title)}</div>
                 <div class="entity-subtitle">{html_or_empty(company)} · {html_or_empty(employment)}</div>
-                <div class="entity-meta">{html_or_empty(date_range)}{(" · " + html_or_empty(location)) if location else ""}</div>
+                <div class="entity-meta">{meta}</div>
                 <div class="entity-desc">{html_or_empty(description)}</div>
-                {skill_markup}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        """.strip()
+    ]
+    if skill_summary:
+        entity_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+    entity_html.append("</div></div>")
+
+    st.markdown("\n".join(entity_html), unsafe_allow_html=True)
 
 
 
@@ -121,13 +120,8 @@ def render_education_item(item: dict[str, Any]) -> None:
     date_range = format_date_range(item.get("start_date"), item.get("end_date"))
     description = item.get("description") or ""
     skill_summary = summarize_skills(item.get("skills"))
-    skill_markup = (
-        f'<div class="skill-line">{html_or_empty(skill_summary)}</div>'
-        if skill_summary
-        else ""
-    )
 
-    st.markdown(
+    entity_html = [
         f"""
         <div class="entity-row">
             <div class="entity-logo">{escape(initials(school, "ED"))}</div>
@@ -136,12 +130,13 @@ def render_education_item(item: dict[str, Any]) -> None:
                 <div class="entity-subtitle">{html_or_empty(degree)}, {html_or_empty(field_of_study)}</div>
                 <div class="entity-meta">{html_or_empty(date_range)}</div>
                 <div class="entity-desc">{html_or_empty(description)}</div>
-                {skill_markup}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        """.strip()
+    ]
+    if skill_summary:
+        entity_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+    entity_html.append("</div></div>")
+
+    st.markdown("\n".join(entity_html), unsafe_allow_html=True)
 
 
 

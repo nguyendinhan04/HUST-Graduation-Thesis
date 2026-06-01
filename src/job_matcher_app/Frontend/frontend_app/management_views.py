@@ -112,21 +112,25 @@ def render_experience_management_page(profile: dict[str, Any]) -> None:
             ]
             location = " · ".join(location_bits)
             skill_summary = summarize_skills(item.get("skills"))
+            meta = html_or_empty(format_date_range(item.get("start_date"), item.get("end_date")))
+            if location:
+                meta += f" · {html_or_empty(location)}"
             logo_col, body_col, edit_col = st.columns([0.8, 8.6, 0.6], gap="small")
             logo_col.markdown(
                 f'<div class="entity-logo">{escape(initials(company, "CO"))}</div>',
                 unsafe_allow_html=True,
             )
-            body_col.markdown(
+            body_html = [
                 f"""
                 <div class="entity-title">{html_or_empty(title)}</div>
                 <div class="entity-subtitle">{html_or_empty(company)} · {html_or_empty(item.get("employment_type"), "No employment type yet")}</div>
-                <div class="entity-meta">{html_or_empty(format_date_range(item.get("start_date"), item.get("end_date")))}{(" · " + html_or_empty(location)) if location else ""}</div>
+                <div class="entity-meta">{meta}</div>
                 <div class="entity-desc">{html_or_empty(item.get("description"))}</div>
-                {f'<div class="skill-line">{html_or_empty(skill_summary)}</div>' if skill_summary else ""}
-                """,
-                unsafe_allow_html=True,
-            )
+                """.strip()
+            ]
+            if skill_summary:
+                body_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+            body_col.markdown("\n".join(body_html), unsafe_allow_html=True)
             if edit_col.button("✎", key=f"edit_experience_page_{item['experience_id']}", help="Edit experience"):
                 open_dialog("edit_experience", item["experience_id"])
             if index < len(experiences):
@@ -152,16 +156,17 @@ def render_education_management_page(profile: dict[str, Any]) -> None:
                 f'<div class="entity-logo">{escape(initials(school, "ED"))}</div>',
                 unsafe_allow_html=True,
             )
-            body_col.markdown(
+            body_html = [
                 f"""
                 <div class="entity-title">{html_or_empty(school)}</div>
                 <div class="entity-subtitle">{html_or_empty(degree)}, {html_or_empty(item.get("field_of_study"), "No field of study yet")}</div>
                 <div class="entity-meta">{html_or_empty(format_date_range(item.get("start_date"), item.get("end_date")))}</div>
                 <div class="entity-desc">{html_or_empty(item.get("description"))}</div>
-                {f'<div class="skill-line">{html_or_empty(skill_summary)}</div>' if skill_summary else ""}
-                """,
-                unsafe_allow_html=True,
-            )
+                """.strip()
+            ]
+            if skill_summary:
+                body_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+            body_col.markdown("\n".join(body_html), unsafe_allow_html=True)
             if edit_col.button("✎", key=f"edit_education_page_{item['education_id']}", help="Edit education"):
                 open_dialog("edit_education", item["education_id"])
             if index < len(educations):
