@@ -76,11 +76,17 @@ def inject_linkedin_styles() -> None:
             letter-spacing: 0;
         }
 
-        div[class*="st-key-sidebar-nav-item-"] {
+        .st-key-sidebar-navigator {
+            margin-top: 22px;
+        }
+
+        .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-profile),
+        .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-recommendations) {
             margin: 0 0 8px !important;
         }
 
-        div[class*="st-key-sidebar-nav-item-"] button,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-profile button,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button,
         .st-key-sidebar-nav-profile button,
         .st-key-sidebar-nav-recommendations button {
             width: 100% !important;
@@ -98,9 +104,12 @@ def inject_linkedin_styles() -> None:
             text-align: left !important;
         }
 
-        div[class*="st-key-sidebar-nav-item-"] button > div,
-        div[class*="st-key-sidebar-nav-item-"] button span,
-        div[class*="st-key-sidebar-nav-item-"] button p,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-profile button > div,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button > div,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-profile button span,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button span,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-profile button p,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button p,
         .st-key-sidebar-nav-profile button > div,
         .st-key-sidebar-nav-recommendations button > div,
         .st-key-sidebar-nav-profile button span,
@@ -113,7 +122,8 @@ def inject_linkedin_styles() -> None:
             justify-content: flex-start !important;
         }
 
-        div[class*="st-key-sidebar-nav-item-"] button:hover,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-profile button:hover,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button:hover,
         .st-key-sidebar-nav-profile button:hover,
         .st-key-sidebar-nav-recommendations button:hover {
             color: #111827 !important;

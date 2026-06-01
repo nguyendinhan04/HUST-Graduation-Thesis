@@ -53,17 +53,14 @@ def _render_active_nav_styles() -> None:
 
 
 def _nav_item(label: str, icon: str, page: str) -> None:
-    item_key = f"sidebar-nav-item-{page.replace('_', '-')}"
     button_key = f"sidebar-nav-{page.replace('_', '-')}"
-    with st.container(key=item_key):
-        if st.button(
-            f"{icon}  {label}",
-            key=button_key,
-            use_container_width=True,
-            help=label,
-        ):
-            navigate_to(page)
-            st.rerun()
+    if st.button(
+        f"{icon}  {label}",
+        key=button_key,
+        use_container_width=True,
+    ):
+        navigate_to(page)
+        st.rerun()
 
 
 def sidebar() -> None:
@@ -83,11 +80,14 @@ def sidebar() -> None:
                 """,
                 unsafe_allow_html=True,
             )
-            _render_active_nav_styles()
-            st.divider()
-            st.markdown('<div class="sidebar-section-label">Navigation</div>', unsafe_allow_html=True)
-            _nav_item("Profile", "👤", "profile")
-            _nav_item("Recommendations", "💼", "recommendations")
+            with st.container(key="sidebar-navigator"):
+                _render_active_nav_styles()
+                st.markdown(
+                    '<div class="sidebar-section-label">Navigation</div>',
+                    unsafe_allow_html=True,
+                )
+                _nav_item("Profile", "👤", "profile")
+                _nav_item("Recommendations", "💼", "recommendations")
             
             st.markdown(
                 f"""
