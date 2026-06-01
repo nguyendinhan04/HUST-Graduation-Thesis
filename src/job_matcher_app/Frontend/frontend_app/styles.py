@@ -436,7 +436,7 @@ def inject_linkedin_styles() -> None:
 
         .skills-editor-item-name,
         dialog[open] .skills-editor-item-name {
-            min-height: 38px;
+            min-height: 42px;
             display: flex;
             align-items: center;
             color: #191919;
@@ -444,17 +444,6 @@ def inject_linkedin_styles() -> None:
             font-weight: 650;
             line-height: 1.3;
             padding: 4px 0;
-        }
-
-        .skills-editor-handle,
-        dialog[open] .skills-editor-handle {
-            min-height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #404040;
-            font-size: 18px;
-            line-height: 1;
         }
 
         .empty-state {

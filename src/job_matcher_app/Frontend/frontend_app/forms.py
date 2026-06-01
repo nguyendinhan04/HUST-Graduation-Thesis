@@ -107,7 +107,7 @@ def _render_skills_editor(form_key: str, item: dict[str, Any]) -> list[str]:
 
     skill_items = st.session_state[items_key]
     for index, skill_name in enumerate(list(skill_items)):
-        remove_col, name_col, handle_col = st.columns([0.45, 8.7, 0.45], gap="small")
+        remove_col, name_col = st.columns([0.45, 8.95], gap="small")
         if remove_col.button(
             "×",
             key=f"{form_key}_skill_remove_{index}",
@@ -119,10 +119,9 @@ def _render_skills_editor(form_key: str, item: dict[str, Any]) -> list[str]:
             f'<div class="skills-editor-item-name">{html_or_empty(skill_name)}</div>',
             unsafe_allow_html=True,
         )
-        handle_col.markdown('<div class="skills-editor-handle">&#9776;</div>', unsafe_allow_html=True)
 
     if st.session_state[adding_key]:
-        input_col, add_col, cancel_col = st.columns([6.2, 1.3, 1.3], gap="small")
+        input_col, add_col, cancel_col = st.columns([6.1, 1.45, 1.65], gap="small")
         draft_key = f"{form_key}_skill_draft_{st.session_state[draft_counter_key]}"
         new_skill = input_col.text_input(
             "New skill",
@@ -143,7 +142,7 @@ def _render_skills_editor(form_key: str, item: dict[str, Any]) -> list[str]:
             st.session_state[adding_key] = False
             st.rerun()
     else:
-        add_skill_col, _ = st.columns([1.2, 7.8])
+        add_skill_col, _ = st.columns([1.45, 7.55])
         if add_skill_col.button("Add skill", key=f"{form_key}_skill_add", help="Add skill"):
             st.session_state[adding_key] = True
             st.rerun()
