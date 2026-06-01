@@ -740,12 +740,9 @@ def inject_linkedin_styles() -> None:
             font-size: 20px;
             font-weight: 750;
             line-height: 1.25;
-            max-height: 50px;
             overflow: hidden;
-            overflow-wrap: anywhere;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .job-card-company {
