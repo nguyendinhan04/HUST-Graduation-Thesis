@@ -357,9 +357,10 @@ async def update_user_experience(
 
         # For debugging: log the input data before calling the service
         import logging
-        logger = logging.getLogger(__name__)
-        logger.info("Updating user experience with data: user_id=%s, experience_id=%s, data=%s, skills_provided=%s, skills=%s",
-                        user_id, experience_id, data, skills_provided, skills)
+        logger = logging.getLogger("uvicorn.error")
+        logger.warning("Updating user experience: user_id=%s, experience_id=%s, data=%s, skills=%s",
+               user_id, experience_id, data, skills)
+
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
