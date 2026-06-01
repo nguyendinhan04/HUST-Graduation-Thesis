@@ -399,6 +399,15 @@ def inject_linkedin_styles() -> None:
             margin: 0 0 14px;
         }
 
+        .job-card-link,
+        .job-card-link:visited,
+        .job-card-link:hover,
+        .job-card-link:active {
+            display: block;
+            color: inherit;
+            text-decoration: none;
+        }
+
         .job-card {
             display: grid;
             grid-template-columns: 150px minmax(0, 1fr);
@@ -410,6 +419,14 @@ def inject_linkedin_styles() -> None:
             background: #f6fdf8;
             border: 1px solid #63d174;
             border-radius: 18px;
+            cursor: pointer;
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+        }
+
+        .job-card-link:hover .job-card {
+            border-color: #43b657;
+            box-shadow: 0 8px 24px rgba(44, 168, 79, 0.14);
+            transform: translateY(-1px);
         }
 
         .job-card-media {
@@ -712,14 +729,12 @@ def inject_linkedin_styles() -> None:
             border-color: #666666 !important;
         }
 
-        div[class*="st-key-job_detail_open_"] button,
         div[class*="st-key-job_apply_"] button[kind="primary"] {
             background: #58a865 !important;
             border: 1px solid #58a865 !important;
             color: #ffffff !important;
         }
 
-        div[class*="st-key-job_detail_open_"] button:hover,
         div[class*="st-key-job_apply_"] button[kind="primary"]:hover {
             background: #438f50 !important;
             border-color: #438f50 !important;

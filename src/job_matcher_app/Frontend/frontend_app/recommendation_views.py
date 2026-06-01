@@ -10,7 +10,6 @@ import streamlit as st
 from frontend_app.api_client import ApiError, get_recommended_jobs
 from frontend_app.formatting import html_or_empty, initials, show_api_error
 from frontend_app.loading import form_loading
-from frontend_app.state import navigate_to_job_detail
 
 
 def _format_salary(job: dict[str, Any]) -> str:
@@ -122,10 +121,13 @@ def render_recommendations_page() -> None:
         st.markdown('<div class="empty-state">No recommended jobs yet.</div>', unsafe_allow_html=True)
         return
 
-    for index, job in enumerate(jobs):
+    for job in jobs:
         job_id = job.get("id")
+        link_open = f'<a class="job-card-link" href="?page=job_detail&job_id={int(job_id)}">' if job_id else ""
+        link_close = "</a>" if job_id else ""
         st.markdown(
             f"""
+            {link_open}
             <div class="job-card">
                 <div class="job-card-media">{_job_logo_markup(job)}</div>
                 <div class="job-card-body">
@@ -144,16 +146,7 @@ def render_recommendations_page() -> None:
                     </div>
                 </div>
             </div>
+            {link_close}
             """,
             unsafe_allow_html=True,
         )
-        action_col, _ = st.columns([1.8, 6], gap="small")
-        if action_col.button(
-            "Xem chi tiết",
-            key=f"job_detail_open_{job_id or index}",
-            type="primary",
-            use_container_width=True,
-            disabled=job_id is None,
-        ):
-            navigate_to_job_detail(int(job_id))
-            st.rerun()
