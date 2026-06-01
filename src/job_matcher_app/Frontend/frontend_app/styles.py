@@ -779,6 +779,42 @@ def inject_linkedin_styles() -> None:
             color: #ffffff !important;
         }
 
+        div[class*="st-key-job_apply_"] button:disabled,
+        div[class*="st-key-job_apply_"] button[kind="primary"]:disabled {
+            background: #d8dee4 !important;
+            border-color: #c6cdd4 !important;
+            color: #7a8590 !important;
+            cursor: not-allowed !important;
+            opacity: 0.72 !important;
+        }
+
+        .job-apply-error-dialog,
+        dialog[open] .job-apply-error-dialog {
+            margin: 20px 0 18px;
+        }
+
+        .job-apply-error-title,
+        dialog[open] .job-apply-error-title {
+            color: #191919;
+            font-size: 24px;
+            font-weight: 750;
+            line-height: 1.25;
+            margin-bottom: 10px;
+        }
+
+        .job-apply-error-message,
+        dialog[open] .job-apply-error-message {
+            color: #5f1b1b;
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            border-radius: 8px;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 650;
+            line-height: 1.45;
+        }
+
         @media (max-width: 720px) {
             .job-card {
                 grid-template-columns: 88px minmax(0, 1fr);

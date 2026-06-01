@@ -12,6 +12,27 @@ from frontend_app.loading import form_loading
 from frontend_app.state import navigate_to
 
 
+JOB_APPLY_EXPIRED_MESSAGE = "Job đã quá hạn ứng tuyển."
+
+
+@st.dialog("Ứng tuyển không thành công", dismissible=True)
+def job_apply_error_dialog() -> None:
+    message = st.session_state.get("job_apply_error_message") or "Không thể ứng tuyển công việc này."
+    st.markdown(
+        f"""
+        <div class="job-apply-error-dialog">
+            <div class="job-apply-error-title">Không thể ứng tuyển</div>
+            <div class="job-apply-error-message">{html_or_empty(message)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    _, close_col = st.columns([4, 1.4])
+    if close_col.button("Đóng", key="job_apply_error_close", type="primary", use_container_width=True):
+        st.session_state.pop("job_apply_error_message", None)
+        st.rerun()
+
+
 def _to_decimal(value: Any) -> Decimal | None:
     if value in (None, ""):
         return None
@@ -54,6 +75,23 @@ def _format_deadline(value: str | None) -> str:
     except ValueError:
         return value
     return parsed.strftime("%d/%m/%Y")
+
+
+def _parse_deadline(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _is_application_expired(job: dict[str, Any]) -> bool:
+    deadline = _parse_deadline(job.get("deadline"))
+    if deadline is None:
+        return False
+    now = datetime.now(deadline.tzinfo) if deadline.tzinfo else datetime.now()
+    return deadline < now
 
 
 def _format_experience(value: Any) -> str:
@@ -164,6 +202,8 @@ def _handle_apply(job_id: int) -> None:
         message = str(exc)
         if "already applied" in message.lower():
             st.warning("Bạn đã ứng tuyển công việc này.")
+        elif "deadline has passed" in message.lower() or "quá hạn" in message.lower():
+            st.session_state["job_apply_error_message"] = JOB_APPLY_EXPIRED_MESSAGE
         else:
             show_api_error("Could not apply for this job", exc)
 
@@ -188,12 +228,23 @@ def render_job_detail_page() -> None:
 
     _render_job_summary(job)
 
+    is_expired = _is_application_expired(job)
     apply_col, _ = st.columns([3, 5], gap="small")
-    if apply_col.button("Ứng tuyển ngay", key=f"job_apply_{job_id}", type="primary", use_container_width=True):
+    if apply_col.button(
+        "Đã quá hạn ứng tuyển" if is_expired else "Ứng tuyển ngay",
+        key=f"job_apply_{job_id}",
+        type="primary",
+        use_container_width=True,
+        disabled=is_expired,
+    ):
         _handle_apply(int(job_id))
+    if is_expired:
+        st.caption("Job đã quá hạn ứng tuyển.")
 
     if st.session_state.get(f"job_apply_success_{job_id}"):
         st.success("Ứng tuyển thành công. Hồ sơ của bạn đã được gửi tới nhà tuyển dụng.")
+    if st.session_state.get("job_apply_error_message"):
+        job_apply_error_dialog()
 
     _render_section("Mô tả công việc", _text_to_bullets(job.get("description")))
     _render_section("Yêu cầu ứng viên", _text_to_bullets(job.get("requirement")) + _skills_markup(job.get("skills")))
