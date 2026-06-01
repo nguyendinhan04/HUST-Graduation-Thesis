@@ -1,6 +1,4 @@
 from datetime import date
-from typing import Any
-
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,12 +104,6 @@ class UpdateUserExperienceRequest(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     skills: list[str] = Field(default_factory=list)
-
-
-class UserProfileTfidfVectorRequest(BaseModel):
-    Educations: list[dict[str, Any]] = Field(default_factory=list)
-    Experiences: list[dict[str, Any]] = Field(default_factory=list)
-    Skills: list[str] | str = Field(default_factory=list)
 
 
 class EmployeeSkillRequest(BaseModel):
@@ -426,10 +418,12 @@ async def remove_employee_skill(
     db: AsyncSession = Depends(get_async_db),
 ):
     user_id = current_user.id
+    embedding_service = JobRecommendationService()
     try:
         return await UserService.remove_employee_skill_async(
             db=db,
             user_id=user_id,
+            embedding_service=embedding_service,
             skill_id=skill_id,
         )
     except ValueError as exc:
@@ -474,19 +468,16 @@ async def update_user_profile(
 
 @router.patch("/me/tfidf-vector")
 async def update_user_profile_tfidf_vector(
-    payload: UserProfileTfidfVectorRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
     user_id = current_user.id
-    data = _payload_data(payload)
     embedding_service = JobRecommendationService()
 
     try:
         return await embedding_service.update_user_profile_tfidf_vector(
             db=db,
             user_id=user_id,
-            profile=data,
         )
     except ValueError as exc:
         message = str(exc)

@@ -828,7 +828,6 @@ class JobRecommendationService:
         *,
         user_id: int,
         employee_id: int,
-        profile: dict,
     ) -> PreparedOutboxTask:
         return await self._prepare_outbox_task(
             db,
@@ -837,7 +836,6 @@ class JobRecommendationService:
             payload={
                 "user_id": user_id,
                 "employee_id": employee_id,
-                "profile": profile,
             },
             task_type="user_profile_tfidf_update",
             aggregate_type="employee",
@@ -878,7 +876,6 @@ class JobRecommendationService:
         self,
         db: AsyncSession,
         user_id: int,
-        profile: dict,
     ) -> dict:
         result = await db.execute(
             select(Employee.id).where(Employee.user_id == user_id)
@@ -887,22 +884,11 @@ class JobRecommendationService:
         if employee_id is None:
             raise ValueError(f"Employee with user_id {user_id} not found")
 
-        if not self._has_profile_tfidf_text(profile):
-            return {
-                "user_id": user_id,
-                "employee_id": employee_id,
-                "vector_tfidf_enqueued": False,
-                "vector_tfidf_updated": False,
-                "status": "skipped",
-                "reason": "empty_profile",
-            }
-
         try:
             prepared_task = await self.prepare_user_profile_tfidf_update_outbox_task(
                 db,
                 user_id=user_id,
                 employee_id=employee_id,
-                profile=profile,
             )
             await db.commit()
         except Exception:

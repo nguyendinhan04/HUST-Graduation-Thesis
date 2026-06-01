@@ -230,6 +230,134 @@ def get_redis_connection() -> Redis:
     )
 
 
+def load_user_profile_from_db(user_id: int, employee_id: int) -> dict[str, Any]:
+    db = SessionLocal()
+    try:
+        employee = db.execute(
+            text(
+                """
+                SELECT id, user_id
+                FROM employees
+                WHERE id = :employee_id
+                  AND user_id = :user_id
+                """
+            ),
+            {"employee_id": employee_id, "user_id": user_id},
+        ).mappings().first()
+        if employee is None:
+            raise ValueError(
+                f"Employee {employee_id} does not belong to user_id {user_id}"
+            )
+
+        education_rows = db.execute(
+            text(
+                """
+                SELECT
+                    e.id AS education_id,
+                    e.school,
+                    e.degree,
+                    e.field_of_study,
+                    e.description,
+                    s.id AS skill_id,
+                    s.name AS skill_name
+                FROM educations e
+                LEFT JOIN education_skills es ON es.education_id = e.id
+                LEFT JOIN skills s ON s.id = es.skill_id
+                WHERE e.employee_id = :employee_id
+                ORDER BY e.id, s.name
+                """
+            ),
+            {"employee_id": employee_id},
+        ).mappings().all()
+
+        educations_by_id: dict[int, dict[str, Any]] = {}
+        for row in education_rows:
+            education = educations_by_id.setdefault(
+                row["education_id"],
+                {
+                    "education_id": row["education_id"],
+                    "school": row["school"],
+                    "degree": row["degree"],
+                    "field_of_study": row["field_of_study"],
+                    "Field of study": row["field_of_study"],
+                    "description": row["description"],
+                    "Description": row["description"],
+                    "skills": [],
+                    "Skill": "",
+                },
+            )
+            if row["skill_name"]:
+                education["skills"].append(row["skill_name"])
+
+        for education in educations_by_id.values():
+            education["Skill"] = ", ".join(education["skills"])
+
+        experience_rows = db.execute(
+            text(
+                """
+                SELECT
+                    e.id AS experience_id,
+                    e.title,
+                    e.company_name,
+                    e.description,
+                    s.id AS skill_id,
+                    s.name AS skill_name
+                FROM experiences e
+                LEFT JOIN experience_skills es ON es.experience_id = e.id
+                LEFT JOIN skills s ON s.id = es.skill_id
+                WHERE e.employee_id = :employee_id
+                ORDER BY e.id, s.name
+                """
+            ),
+            {"employee_id": employee_id},
+        ).mappings().all()
+
+        experiences_by_id: dict[int, dict[str, Any]] = {}
+        for row in experience_rows:
+            experience = experiences_by_id.setdefault(
+                row["experience_id"],
+                {
+                    "experience_id": row["experience_id"],
+                    "title": row["title"],
+                    "Title": row["title"],
+                    "company_name": row["company_name"],
+                    "Company name": row["company_name"],
+                    "description": row["description"],
+                    "Description": row["description"],
+                    "skills": [],
+                    "Skill": "",
+                },
+            )
+            if row["skill_name"]:
+                experience["skills"].append(row["skill_name"])
+
+        for experience in experiences_by_id.values():
+            experience["Skill"] = ", ".join(experience["skills"])
+
+        skill_rows = db.execute(
+            text(
+                """
+                SELECT s.name AS skill_name
+                FROM employee_skills es
+                JOIN skills s ON s.id = es.skill_id
+                WHERE es.employee_id = :employee_id
+                ORDER BY s.name
+                """
+            ),
+            {"employee_id": employee_id},
+        ).mappings().all()
+
+        return {
+            "user_id": user_id,
+            "employee_id": employee_id,
+            "Educations": list(educations_by_id.values()),
+            "Experiences": list(experiences_by_id.values()),
+            "Skills": [row["skill_name"] for row in skill_rows],
+        }
+    finally:
+        db.close()
+
+
 def upsert_user_profile_tfidf_embedding(
     employee_id: int,
     profile_vector: list[float],
@@ -266,6 +394,28 @@ def upsert_user_profile_tfidf_embedding(
         db.close()
 
 
+def clear_user_profile_tfidf_embedding(employee_id: int) -> None:
+    db = SessionLocal()
+    try:
+        db.execute(
+            text(
+                """
+                INSERT INTO user_profile_embedding (employee_id, vector_tfidf)
+                VALUES (:employee_id, NULL)
+                ON CONFLICT (employee_id) DO UPDATE
+                SET vector_tfidf = NULL
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 def process_user_profile_tfidf_task(profile: dict[str, Any]) -> list[float]:
     """
     Task chạy ngầm trên Worker RQ.
@@ -284,7 +434,6 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
     def _process() -> dict[str, Any]:
         user_id = int(payload["user_id"])
         employee_id = int(payload["employee_id"])
-        profile = payload["profile"]
         lock_key = f"user:{user_id}:tfidf_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -296,14 +445,17 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
 
         logger.info("Đang xử lý TF-IDF update task user_id=%s", user_id)
         with lock:
+            profile = load_user_profile_from_db(user_id=user_id, employee_id=employee_id)
             profile_vector = process_user_profile_tfidf_task(profile)
             vector_size = len(profile_vector)
             if vector_size == 0:
-                logger.info("Không cập nhật TF-IDF vector user_id=%s vì profile rỗng.", user_id)
+                clear_user_profile_tfidf_embedding(employee_id)
+                logger.info("Đã xóa TF-IDF vector user_id=%s vì profile rỗng.", user_id)
                 return {
                     "user_id": user_id,
                     "employee_id": employee_id,
                     "vector_tfidf_updated": False,
+                    "vector_tfidf_cleared": True,
                     "vector_size": 0,
                     "status": "skipped",
                     "reason": "empty_profile",
@@ -319,6 +471,7 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
             "user_id": user_id,
             "employee_id": employee_id,
             "vector_tfidf_updated": True,
+            "vector_tfidf_cleared": False,
             "vector_size": vector_size,
         }
 
