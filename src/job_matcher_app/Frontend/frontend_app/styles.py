@@ -150,7 +150,7 @@ def inject_linkedin_styles() -> None:
         .st-key-management-experiences-list-card > div > div[data-testid="stVerticalBlock"],
         .st-key-management-educations-list-card > div > div[data-testid="stVerticalBlock"],
         .st-key-management-skills-list-card > div > div[data-testid="stVerticalBlock"] {
-            gap: 0.35rem !important;
+            gap: 0 !important;
         }
 
         .st-key-management-experiences-list-card div[data-testid="stDivider"] > div,
@@ -235,7 +235,7 @@ def inject_linkedin_styles() -> None:
 
         .management-entity-row {
             border-bottom: 0;
-            padding: 12px 0;
+            padding: 12px 0 14px;
         }
 
         .entity-logo {
