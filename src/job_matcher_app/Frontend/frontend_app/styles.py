@@ -80,9 +80,18 @@ def inject_linkedin_styles() -> None:
             margin-top: 14px;
         }
 
+        .st-key-sidebar-navigator div[data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .st-key-sidebar-navigator div[data-testid="stLayoutWrapper"] {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-profile),
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-recommendations) {
-            margin: 0 0 2px !important;
+            margin: 0 !important;
             padding: 0 !important;
         }
 
