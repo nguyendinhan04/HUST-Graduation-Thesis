@@ -18,15 +18,12 @@ def _active_nav_page() -> str:
 def _render_active_nav_styles() -> None:
     active_page = _active_nav_page()
     inactive_page = "recommendations" if active_page == "profile" else "profile"
-    active_key = f"sidebar_nav_{active_page}"
-    active_key_hyphen = f"sidebar-nav-{active_page}"
-    inactive_key = f"sidebar_nav_{inactive_page}"
-    inactive_key_hyphen = f"sidebar-nav-{inactive_page}"
+    active_key = f"sidebar-nav-{active_page}"
+    inactive_key = f"sidebar-nav-{inactive_page}"
     st.markdown(
         f"""
         <style>
-        div[data-testid="stSidebar"] .st-key-{inactive_key} button,
-        div[data-testid="stSidebar"] .st-key-{inactive_key_hyphen} button {{
+        div[data-testid="stSidebar"] .st-key-{inactive_key} button {{
             min-height: 46px !important;
             background: transparent !important;
             background-color: transparent !important;
@@ -35,8 +32,7 @@ def _render_active_nav_styles() -> None:
             box-shadow: none !important;
         }}
 
-        div[data-testid="stSidebar"] .st-key-{active_key} button,
-        div[data-testid="stSidebar"] .st-key-{active_key_hyphen} button {{
+        div[data-testid="stSidebar"] .st-key-{active_key} button {{
             min-height: 46px !important;
             color: #082f49 !important;
             background: #0ea5e9 !important;
@@ -46,8 +42,7 @@ def _render_active_nav_styles() -> None:
             box-shadow: none !important;
         }}
 
-        div[data-testid="stSidebar"] .st-key-{active_key} button p,
-        div[data-testid="stSidebar"] .st-key-{active_key_hyphen} button p {{
+        div[data-testid="stSidebar"] .st-key-{active_key} button p {{
             color: #082f49 !important;
             font-weight: 760 !important;
         }}
@@ -59,7 +54,7 @@ def _render_active_nav_styles() -> None:
 
 def _nav_item(label: str, icon: str, page: str) -> None:
     item_key = f"sidebar-nav-item-{page.replace('_', '-')}"
-    button_key = f"sidebar_nav_{page}"
+    button_key = f"sidebar-nav-{page.replace('_', '-')}"
     with st.container(key=item_key):
         if st.button(
             f"{icon}  {label}",

@@ -73,20 +73,13 @@ def inject_linkedin_styles() -> None:
             letter-spacing: 0;
         }
 
-        div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_profile),
-        div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_recommendations) {
-            margin: 0 0 2px !important;
-        }
-
         div[class*="st-key-sidebar-nav-item-"] {
             margin: 0 0 2px !important;
         }
 
         div[class*="st-key-sidebar-nav-item-"] button,
         .st-key-sidebar-nav-profile button,
-        .st-key-sidebar_nav_profile button,
-        .st-key-sidebar-nav-recommendations button,
-        .st-key-sidebar_nav_recommendations button {
+        .st-key-sidebar-nav-recommendations button {
             width: 100% !important;
             min-height: 46px !important;
             display: flex !important;
@@ -106,17 +99,11 @@ def inject_linkedin_styles() -> None:
         div[class*="st-key-sidebar-nav-item-"] button span,
         div[class*="st-key-sidebar-nav-item-"] button p,
         .st-key-sidebar-nav-profile button > div,
-        .st-key-sidebar_nav_profile button > div,
         .st-key-sidebar-nav-recommendations button > div,
-        .st-key-sidebar_nav_recommendations button > div,
         .st-key-sidebar-nav-profile button span,
-        .st-key-sidebar_nav_profile button span,
         .st-key-sidebar-nav-recommendations button span,
-        .st-key-sidebar_nav_recommendations button span,
         .st-key-sidebar-nav-profile button p,
-        .st-key-sidebar_nav_profile button p,
-        .st-key-sidebar-nav-recommendations button p,
-        .st-key-sidebar_nav_recommendations button p {
+        .st-key-sidebar-nav-recommendations button p {
             width: 100% !important;
             margin: 0 !important;
             text-align: left !important;
@@ -125,9 +112,7 @@ def inject_linkedin_styles() -> None:
 
         div[class*="st-key-sidebar-nav-item-"] button:hover,
         .st-key-sidebar-nav-profile button:hover,
-        .st-key-sidebar_nav_profile button:hover,
-        .st-key-sidebar-nav-recommendations button:hover,
-        .st-key-sidebar_nav_recommendations button:hover {
+        .st-key-sidebar-nav-recommendations button:hover {
             color: #082f49 !important;
             background: #e0f2fe !important;
             border-color: #bae6fd !important;
@@ -547,8 +532,7 @@ def inject_linkedin_styles() -> None:
             margin: 0 0 14px;
         }
 
-        div[class*="st-key-job-card-wrap-"],
-        div[class*="st-key-job_card_wrap_"] {
+        div[class*="st-key-job-card-wrap-"] {
             position: relative;
             min-height: 194px;
             margin: 0 0 12px;
@@ -573,17 +557,14 @@ def inject_linkedin_styles() -> None:
             outline-offset: 2px;
         }
 
-        div[class*="st-key-job-card-wrap-"]:hover .job-card,
-        div[class*="st-key-job_card_wrap_"]:hover .job-card {
+        div[class*="st-key-job-card-wrap-"]:hover .job-card {
             border-color: #0ea5e9;
             box-shadow: 0 8px 24px rgba(14, 165, 233, 0.16);
             outline-color: rgba(14, 165, 233, 0.35);
         }
 
         div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"],
-        div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"],
-        div[class*="st-key-job-card-click-"],
-        div[class*="st-key-job_card_click_"] {
+        div[class*="st-key-job-card-click-"] {
             position: absolute !important;
             inset: 0 !important;
             z-index: 20 !important;
@@ -601,11 +582,8 @@ def inject_linkedin_styles() -> None:
         }
 
         div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"] > button,
-        div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"] > button,
         div[class*="st-key-job-card-click-"] > div,
-        div[class*="st-key-job-card-click-"] button,
-        div[class*="st-key-job_card_click_"] > div,
-        div[class*="st-key-job_card_click_"] button {
+        div[class*="st-key-job-card-click-"] button {
             width: 100% !important;
             height: 180px !important;
             min-height: 180px !important;
@@ -1003,21 +981,15 @@ def inject_linkedin_styles() -> None:
                 gap: 14px;
             }
 
-            div[class*="st-key-job-card-wrap-"],
-            div[class*="st-key-job_card_wrap_"] {
+            div[class*="st-key-job-card-wrap-"] {
                 min-height: 194px;
             }
 
             div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"],
-            div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"],
             div[class*="st-key-job-card-click-"],
-            div[class*="st-key-job_card_click_"],
             div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"] > button,
-            div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"] > button,
             div[class*="st-key-job-card-click-"] > div,
-            div[class*="st-key-job-card-click-"] button,
-            div[class*="st-key-job_card_click_"] > div,
-            div[class*="st-key-job_card_click_"] button {
+            div[class*="st-key-job-card-click-"] button {
                 height: 100% !important;
                 min-height: 180px !important;
                 max-height: none !important;
@@ -1489,15 +1461,6 @@ def inject_linkedin_styles() -> None:
         dialog[open] div[data-testid="column"]:last-child button {
             min-height: 36px;
             border-radius: 999px !important;
-        }
-
-        div[data-testid="stSidebar"] .st-key-sidebar_nav_profile button,
-        div[data-testid="stSidebar"] .st-key-sidebar_nav_recommendations button,
-        div[data-testid="stSidebar"] .st-key-sidebar-nav-profile button,
-        div[data-testid="stSidebar"] .st-key-sidebar-nav-recommendations button {
-            background: transparent !important;
-            border: 1px solid transparent !important;
-            color: #111827 !important;
         }
 
         </style>
