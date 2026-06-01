@@ -10,6 +10,7 @@ import streamlit as st
 from frontend_app.api_client import ApiError, get_recommended_jobs
 from frontend_app.formatting import html_or_empty, initials, show_api_error
 from frontend_app.loading import form_loading
+from frontend_app.state import navigate_to_job_detail
 
 
 def _format_salary(job: dict[str, Any]) -> str:
@@ -123,30 +124,35 @@ def render_recommendations_page() -> None:
 
     for job in jobs:
         job_id = job.get("id")
-        link_open = f'<a class="job-card-link" href="?page=job_detail&job_id={int(job_id)}">' if job_id else ""
-        link_close = "</a>" if job_id else ""
-        st.markdown(
-            f"""
-            {link_open}
-            <div class="job-card">
-                <div class="job-card-media">{_job_logo_markup(job)}</div>
-                <div class="job-card-body">
-                    <div class="job-card-main">
-                        <div>
-                            <div class="job-card-title">{html_or_empty(job.get("title"), "Untitled job")} <span class="verified-dot">✓</span></div>
-                            <div class="job-card-company">{html_or_empty(job.get("company_name"), "No company yet")}</div>
-                            <div class="job-tag-row">{_job_tags(job)}</div>
+        with st.container(key=f"job_card_wrap_{job_id or 'missing'}"):
+            st.markdown(
+                f"""
+                <div class="job-card">
+                    <div class="job-card-media">{_job_logo_markup(job)}</div>
+                    <div class="job-card-body">
+                        <div class="job-card-main">
+                            <div>
+                                <div class="job-card-title">{html_or_empty(job.get("title"), "Untitled job")} <span class="verified-dot">✓</span></div>
+                                <div class="job-card-company">{html_or_empty(job.get("company_name"), "No company yet")}</div>
+                                <div class="job-tag-row">{_job_tags(job)}</div>
+                            </div>
+                            <div class="job-card-salary">{html_or_empty(_format_salary(job))}</div>
                         </div>
-                        <div class="job-card-salary">{html_or_empty(_format_salary(job))}</div>
-                    </div>
-                    <div class="job-card-footer">
-                        <div class="job-card-meta">{html_or_empty(_job_meta(job))}</div>
-                        <div class="job-card-posted">{html_or_empty(_posted_label(job.get("created_at")))}</div>
-                        <div class="job-save-button">♡</div>
+                        <div class="job-card-footer">
+                            <div class="job-card-meta">{html_or_empty(_job_meta(job))}</div>
+                            <div class="job-card-posted">{html_or_empty(_posted_label(job.get("created_at")))}</div>
+                            <div class="job-save-button">♡</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            {link_close}
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "Xem chi tiết",
+                key=f"job_card_click_{job_id or 'missing'}",
+                disabled=job_id is None,
+                help="Xem chi tiết công việc",
+            ):
+                navigate_to_job_detail(int(job_id))
+                st.rerun()
