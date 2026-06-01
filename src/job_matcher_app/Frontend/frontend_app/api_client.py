@@ -157,3 +157,11 @@ def get_recommended_jobs(top_k: int = 20) -> Any:
         auth=True,
     )
 
+
+def get_job_detail(job_id: int) -> Any:
+    return request_json("GET", f"/jobs/{job_id}", auth=True)
+
+
+def apply_job(job_id: int) -> Any:
+    return request_json("POST", f"/jobs/{job_id}/apply", auth=True)
+

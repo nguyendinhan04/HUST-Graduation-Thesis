@@ -9,6 +9,7 @@ from frontend_app.auth_views import render_auth_page
 from frontend_app.dialogs import render_active_dialog
 from frontend_app.formatting import show_api_error
 from frontend_app.loading import form_loading
+from frontend_app.job_detail_views import render_job_detail_page
 from frontend_app.management_views import (
     render_education_management_page,
     render_experience_management_page,
@@ -52,6 +53,10 @@ def render_profile_page() -> None:
         return
     if current_page == "recommendations":
         render_recommendations_page()
+        render_active_dialog(profile)
+        return
+    if current_page == "job_detail":
+        render_job_detail_page()
         render_active_dialog(profile)
         return
 

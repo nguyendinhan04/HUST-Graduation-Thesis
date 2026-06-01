@@ -19,6 +19,7 @@ def init_session_state() -> None:
     st.session_state.setdefault("active_item_id", None)
     st.session_state.setdefault("confirm_discard", False)
     st.session_state.setdefault("current_page", "profile")
+    st.session_state.setdefault("selected_job_id", None)
 
 
 
@@ -44,6 +45,7 @@ def logout() -> None:
     st.session_state["active_item_id"] = None
     st.session_state["confirm_discard"] = False
     st.session_state["current_page"] = "profile"
+    st.session_state["selected_job_id"] = None
 
 
 
@@ -100,4 +102,9 @@ def cancel_discard_confirmation() -> None:
 def navigate_to(page: str) -> None:
     st.session_state["current_page"] = page
     close_dialog()
+
+
+def navigate_to_job_detail(job_id: int) -> None:
+    st.session_state["selected_job_id"] = job_id
+    navigate_to("job_detail")
 
