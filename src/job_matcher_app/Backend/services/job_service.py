@@ -290,15 +290,7 @@ class JobService:
         normalized_query = query.strip() if query else ""
         if normalized_query:
             pattern = f"%{normalized_query}%"
-            filters.append(
-                or_(
-                    Job.title.ilike(pattern),
-                    Job.description.ilike(pattern),
-                    Job.requirement.ilike(pattern),
-                    Company.name.ilike(pattern),
-                    Company.industry.ilike(pattern),
-                )
-            )
+            filters.append(Job.title.ilike(pattern))
 
         normalized_location = location.strip() if location else ""
         if normalized_location:
