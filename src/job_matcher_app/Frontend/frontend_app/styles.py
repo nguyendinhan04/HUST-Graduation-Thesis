@@ -402,8 +402,9 @@ def inject_linkedin_styles() -> None:
         div[class*="st-key-job-card-wrap-"],
         div[class*="st-key-job_card_wrap_"] {
             position: relative;
-            min-height: 180px;
+            min-height: 194px;
             margin: 0 0 12px;
+            padding: 7px;
             overflow: hidden;
         }
 
@@ -419,14 +420,16 @@ def inject_linkedin_styles() -> None:
             border: 1px solid #63d174;
             border-radius: 18px;
             cursor: pointer;
-            transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, outline-color 0.16s ease;
+            outline: 1px solid transparent;
+            outline-offset: 2px;
         }
 
         div[class*="st-key-job-card-wrap-"]:hover .job-card,
         div[class*="st-key-job_card_wrap_"]:hover .job-card {
             border-color: #43b657;
             box-shadow: 0 8px 24px rgba(44, 168, 79, 0.14);
-            transform: translateY(-1px);
+            outline-color: rgba(67, 182, 87, 0.35);
         }
 
         div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"],
@@ -442,6 +445,11 @@ def inject_linkedin_styles() -> None:
             height: 180px !important;
             min-height: 180px !important;
             max-height: 180px !important;
+            top: 7px !important;
+            left: 7px !important;
+            right: 7px !important;
+            bottom: auto !important;
+            width: calc(100% - 14px) !important;
         }
 
         div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"] > button,
@@ -840,7 +848,7 @@ def inject_linkedin_styles() -> None:
 
             div[class*="st-key-job-card-wrap-"],
             div[class*="st-key-job_card_wrap_"] {
-                min-height: 180px;
+                min-height: 194px;
             }
 
             div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"],
