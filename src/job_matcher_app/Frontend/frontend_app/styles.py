@@ -466,12 +466,14 @@ def inject_linkedin_styles() -> None:
         .job-card-media {
             display: flex;
             align-items: stretch;
+            min-height: 0;
         }
 
         .job-card-logo,
         .job-card-logo-placeholder {
             width: 100%;
-            min-height: 148px;
+            height: 148px;
+            min-height: 0;
             border: 1px solid #d7d3cc;
             border-radius: 12px;
             background: #ffffff;
@@ -490,24 +492,27 @@ def inject_linkedin_styles() -> None:
 
         .job-card-body {
             min-width: 0;
+            min-height: 0;
+            height: 148px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            gap: 14px;
+            gap: 10px;
         }
 
         .job-card-main {
             display: grid;
             grid-template-columns: minmax(0, 1fr) max-content;
-            gap: 14px;
+            gap: 16px;
             align-items: start;
+            min-height: 0;
         }
 
         .job-card-title {
             color: #24324a;
             font-size: 20px;
             font-weight: 750;
-            line-height: 1.3;
+            line-height: 1.25;
             overflow-wrap: anywhere;
         }
 
@@ -530,7 +535,7 @@ def inject_linkedin_styles() -> None:
             font-size: 15px;
             font-weight: 600;
             line-height: 1.35;
-            margin-top: 12px;
+            margin-top: 10px;
             text-transform: uppercase;
             overflow-wrap: anywhere;
         }
@@ -539,7 +544,7 @@ def inject_linkedin_styles() -> None:
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-top: 12px;
+            margin-top: 10px;
         }
 
         .job-tag {
@@ -566,9 +571,10 @@ def inject_linkedin_styles() -> None:
         .job-card-footer {
             display: grid;
             grid-template-columns: minmax(0, 1fr) max-content 40px;
-            gap: 14px;
+            gap: 12px;
             align-items: center;
-            padding-top: 14px;
+            min-height: 46px;
+            padding-top: 10px;
             border-top: 1px solid #edf2ef;
         }
 
@@ -583,9 +589,14 @@ def inject_linkedin_styles() -> None:
             white-space: nowrap;
         }
 
+        .job-card-posted {
+            text-align: right;
+        }
+
         .job-save-button {
             width: 38px;
             height: 38px;
+            min-width: 38px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -792,12 +803,18 @@ def inject_linkedin_styles() -> None:
                 grid-template-columns: 88px minmax(0, 1fr);
                 gap: 12px;
                 padding: 12px;
-                height: 180px;
+                height: auto;
+                min-height: 180px;
             }
 
             .job-card-logo,
             .job-card-logo-placeholder {
-                min-height: 88px;
+                height: 88px;
+            }
+
+            .job-card-body {
+                height: auto;
+                min-height: 156px;
             }
 
             .job-card-main,
@@ -819,6 +836,26 @@ def inject_linkedin_styles() -> None:
             .job-detail-stat-grid {
                 grid-template-columns: 1fr;
                 gap: 14px;
+            }
+
+            div[class*="st-key-job-card-wrap-"],
+            div[class*="st-key-job_card_wrap_"] {
+                min-height: 180px;
+            }
+
+            div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"],
+            div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"],
+            div[class*="st-key-job-card-click-"],
+            div[class*="st-key-job_card_click_"],
+            div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"] > button,
+            div[class*="st-key-job_card_wrap_"] div[data-testid="stButton"] > button,
+            div[class*="st-key-job-card-click-"] > div,
+            div[class*="st-key-job-card-click-"] button,
+            div[class*="st-key-job_card_click_"] > div,
+            div[class*="st-key-job_card_click_"] button {
+                height: 100% !important;
+                min-height: 180px !important;
+                max-height: none !important;
             }
         }
 
