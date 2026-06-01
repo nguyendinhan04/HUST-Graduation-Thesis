@@ -124,7 +124,9 @@ def render_recommendations_page() -> None:
 
     for job in jobs:
         job_id = job.get("id")
-        with st.container(key=f"job_card_wrap_{job_id or 'missing'}"):
+        card_key = f"job-card-wrap-{job_id or 'missing'}"
+        click_key = f"job-card-click-{job_id or 'missing'}"
+        with st.container(key=card_key):
             st.markdown(
                 f"""
                 <div class="job-card">
@@ -150,7 +152,7 @@ def render_recommendations_page() -> None:
             )
             st.button(
                 "Xem chi tiết",
-                key=f"job_card_click_{job_id or 'missing'}",
+                key=click_key,
                 disabled=job_id is None,
                 help="Xem chi tiết công việc",
                 use_container_width=True,
