@@ -27,7 +27,7 @@ def _render_active_nav_styles() -> None:
         <style>
         div[data-testid="stSidebar"] .st-key-{inactive_key} button,
         div[data-testid="stSidebar"] .st-key-{inactive_key_hyphen} button {{
-            min-height: 44px !important;
+            min-height: 46px !important;
             background: transparent !important;
             background-color: transparent !important;
             border-color: transparent !important;
@@ -37,12 +37,12 @@ def _render_active_nav_styles() -> None:
 
         div[data-testid="stSidebar"] .st-key-{active_key} button,
         div[data-testid="stSidebar"] .st-key-{active_key_hyphen} button {{
-            min-height: 62px !important;
+            min-height: 46px !important;
             color: #082f49 !important;
             background: #0ea5e9 !important;
             background-color: #0ea5e9 !important;
             border-color: #0ea5e9 !important;
-            border-radius: 8px 24px 24px 8px !important;
+            border-radius: 8px !important;
             box-shadow: none !important;
         }}
 

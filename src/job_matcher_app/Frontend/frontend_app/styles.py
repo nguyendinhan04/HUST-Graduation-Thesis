@@ -64,22 +64,22 @@ def inject_linkedin_styles() -> None:
         }
 
         .sidebar-section-label {
-            color: #6b7280;
-            font-size: 11px;
+            color: #374151;
+            font-size: 15px;
             font-weight: 760;
             line-height: 1;
             margin: 0 0 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
+            text-transform: none;
+            letter-spacing: 0;
         }
 
         div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_profile),
         div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_recommendations) {
-            margin: 0 0 10px !important;
+            margin: 0 0 2px !important;
         }
 
         div[class*="st-key-sidebar-nav-item-"] {
-            margin: 0 0 10px !important;
+            margin: 0 0 2px !important;
         }
 
         div[class*="st-key-sidebar-nav-item-"] button,
@@ -88,16 +88,16 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-nav-recommendations button,
         .st-key-sidebar_nav_recommendations button {
             width: 100% !important;
-            min-height: 44px !important;
+            min-height: 46px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: flex-start !important;
-            padding: 0 12px !important;
+            padding: 0 14px !important;
             color: #111827 !important;
             background: transparent !important;
             border: 1px solid transparent !important;
-            border-radius: 8px 24px 24px 8px !important;
-            font-size: 15px !important;
+            border-radius: 8px !important;
+            font-size: 18px !important;
             font-weight: 620 !important;
             text-align: left !important;
         }
