@@ -73,63 +73,29 @@ def inject_linkedin_styles() -> None:
             letter-spacing: 0.04em;
         }
 
-        .sidebar-nav-preview {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-height: 42px;
-            box-sizing: border-box;
-            margin: 0 0 6px;
-            padding: 0 12px;
-            color: #374151;
-            background: transparent;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 680;
+        .st-key-sidebar-nav-profile button,
+        .st-key-sidebar_nav_profile button,
+        .st-key-sidebar-nav-recommendations button,
+        .st-key-sidebar_nav_recommendations button {
+            min-height: 44px !important;
+            justify-content: flex-start !important;
+            padding: 0 14px !important;
+            color: #374151 !important;
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            border-radius: 8px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            text-align: left !important;
         }
 
-        .sidebar-nav-preview.active {
-            color: #075985;
-            background: #e0f2fe;
-            border-color: #bae6fd;
-        }
-
-        .sidebar-nav-icon {
-            width: 22px;
-            min-width: 22px;
-            text-align: center;
-            font-size: 16px;
-            line-height: 1;
-        }
-
-        div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.sidebar-nav-preview) {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.sidebar-nav-preview)
-            + div[data-testid="stElementContainer"]:has(button) {
-            position: relative;
-            height: 0 !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: visible !important;
-        }
-
-        div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.sidebar-nav-preview)
-            + div[data-testid="stElementContainer"]:has(button) button {
-            position: absolute !important;
-            top: -48px !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            opacity: 0 !important;
-            cursor: pointer !important;
+        .st-key-sidebar-nav-profile button:hover,
+        .st-key-sidebar_nav_profile button:hover,
+        .st-key-sidebar-nav-recommendations button:hover,
+        .st-key-sidebar_nav_recommendations button:hover {
+            color: #075985 !important;
+            background: #f0f9ff !important;
+            border-color: #bae6fd !important;
         }
 
         .sidebar-user {
@@ -168,12 +134,6 @@ def inject_linkedin_styles() -> None:
             font-weight: 620;
             line-height: 1.35;
             overflow-wrap: anywhere;
-        }
-
-        .st-key-sidebar_nav_profile button,
-        .st-key-sidebar_nav_recommendations button {
-            min-height: 42px !important;
-            border-radius: 8px !important;
         }
 
         .linkedin-card {

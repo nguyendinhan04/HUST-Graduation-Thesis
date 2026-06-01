@@ -10,17 +10,22 @@ from frontend_app.state import logout, navigate_to
 
 def _nav_item(label: str, icon: str, page: str) -> None:
     is_active = st.session_state.get("current_page", "profile") == page
-    st.markdown(
-        f"""
-        <div class="sidebar-nav-preview {'active' if is_active else ''}">
-            <span class="sidebar-nav-icon">{escape(icon)}</span>
-            <span>{escape(label)}</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    rendered_key = f"sidebar-nav-{page.replace('_', '-')}"
+    if is_active:
+        st.markdown(
+            f"""
+            <style>
+            .st-key-{rendered_key} button {{
+                color: #075985 !important;
+                background: #e0f2fe !important;
+                border-color: #bae6fd !important;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
     if st.button(
-        label,
+        f"{icon}  {label}",
         key=f"sidebar_nav_{page}",
         use_container_width=True,
         help=label,
