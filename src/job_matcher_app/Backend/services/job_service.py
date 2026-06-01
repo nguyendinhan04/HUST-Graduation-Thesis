@@ -2,11 +2,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Application, Employee, Employer, Job, JobSkill, Skill, User
+from models import Application, Company, Employee, Employer, Job, JobSkill, Skill, User
 
 
 class JobService:
@@ -79,6 +79,26 @@ class JobService:
             "address": job.address,
             "deadline": job.deadline.isoformat() if job.deadline else None,
             "created_at": job.created_at.isoformat() if job.created_at else None,
+        }
+
+    @staticmethod
+    def _serialize_open_job_summary(job: Job, company: Company) -> dict:
+        return {
+            "id": job.id,
+            "job_id": job.id,
+            "title": job.title,
+            "salary_min": str(job.salary_min) if job.salary_min is not None else None,
+            "salary_max": str(job.salary_max) if job.salary_max is not None else None,
+            "salary_currency": job.salary_currency,
+            "location": job.address,
+            "location_type": job.location_type,
+            "experience_required": job.experience_required,
+            "employment_type": job.employment_type,
+            "working_time": job.working_time,
+            "deadline": job.deadline.isoformat() if job.deadline else None,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "company_name": company.name,
+            "company_logo_url": company.logo_url,
         }
 
     @staticmethod
@@ -250,6 +270,64 @@ class JobService:
         )
         jobs = jobs_result.scalars().all()
         return [JobService._serialize_job_summary(job) for job in jobs]
+
+    @staticmethod
+    async def search_open_jobs_async(
+        db: AsyncSession,
+        query: str | None = None,
+        location: str | None = None,
+        employment_type: str | None = None,
+        max_experience: int | None = None,
+        limit: int = 30,
+    ) -> list[dict]:
+        stmt = (
+            select(Job, Company)
+            .join(Company, Job.company_id == Company.id)
+            .where(Job.status == "open")
+        )
+
+        normalized_query = query.strip() if query else ""
+        if normalized_query:
+            pattern = f"%{normalized_query}%"
+            stmt = stmt.where(
+                or_(
+                    Job.title.ilike(pattern),
+                    Job.description.ilike(pattern),
+                    Job.requirement.ilike(pattern),
+                    Company.name.ilike(pattern),
+                    Company.industry.ilike(pattern),
+                )
+            )
+
+        normalized_location = location.strip() if location else ""
+        if normalized_location:
+            pattern = f"%{normalized_location}%"
+            stmt = stmt.where(
+                or_(
+                    Job.address.ilike(pattern),
+                    Job.location_type.ilike(pattern),
+                    Company.location.ilike(pattern),
+                )
+            )
+
+        normalized_employment_type = employment_type.strip() if employment_type else ""
+        if normalized_employment_type:
+            stmt = stmt.where(Job.employment_type.ilike(f"%{normalized_employment_type}%"))
+
+        if max_experience is not None:
+            stmt = stmt.where(
+                or_(
+                    Job.experience_required.is_(None),
+                    Job.experience_required <= max_experience,
+                )
+            )
+
+        stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit)
+        rows = (await db.execute(stmt)).all()
+        return [
+            JobService._serialize_open_job_summary(job, company)
+            for job, company in rows
+        ]
 
     @staticmethod
     async def apply_job_for_employee_async(

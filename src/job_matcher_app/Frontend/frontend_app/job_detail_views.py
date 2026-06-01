@@ -210,16 +210,17 @@ def _handle_apply(job_id: int) -> None:
 
 def render_job_detail_page() -> None:
     job_id = st.session_state.get("selected_job_id")
+    return_page = st.session_state.get("selected_job_return_page") or "recommendations"
     if not job_id:
         st.warning("Chưa chọn công việc để xem chi tiết.")
         if st.button("Quay lại danh sách", key="job_detail_missing_back"):
-            navigate_to("recommendations")
+            navigate_to(return_page)
             st.rerun()
         return
 
     back_col, _ = st.columns([1.4, 8])
     if back_col.button("← Quay lại", key="job_detail_back", use_container_width=True):
-        navigate_to("recommendations")
+        navigate_to(return_page)
         st.rerun()
 
     job = _load_job_detail(int(job_id))

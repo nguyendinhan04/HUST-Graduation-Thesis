@@ -10,19 +10,24 @@ from frontend_app.state import logout, navigate_to
 
 def _active_nav_page() -> str:
     current_page = st.session_state.get("current_page", "profile")
-    if current_page in {"recommendations", "job_detail"}:
-        return "recommendations"
+    if current_page == "job_detail":
+        return_page = st.session_state.get("selected_job_return_page") or "recommendations"
+        return return_page if return_page in {"profile", "explore", "recommendations"} else "recommendations"
+    if current_page in {"explore", "recommendations"}:
+        return current_page
     return "profile"
 
 
 def _render_active_nav_styles() -> None:
     active_page = _active_nav_page()
-    inactive_page = "recommendations" if active_page == "profile" else "profile"
     active_key = f"sidebar-nav-{active_page}"
-    inactive_key = f"sidebar-nav-{inactive_page}"
-    st.markdown(
+    inactive_keys = [
+        f"sidebar-nav-{page}"
+        for page in ("profile", "explore", "recommendations")
+        if page != active_page
+    ]
+    inactive_styles = "\n".join(
         f"""
-        <style>
         div[data-testid="stSidebar"] .st-key-{inactive_key} button {{
             min-height: 46px !important;
             background: transparent !important;
@@ -31,6 +36,13 @@ def _render_active_nav_styles() -> None:
             color: #4b5563 !important;
             box-shadow: none !important;
         }}
+        """
+        for inactive_key in inactive_keys
+    )
+    st.markdown(
+        f"""
+        <style>
+        {inactive_styles}
 
         div[data-testid="stSidebar"] .st-key-{active_key} button {{
             min-height: 46px !important;
@@ -87,6 +99,7 @@ def sidebar() -> None:
                     unsafe_allow_html=True,
                 )
                 _nav_item("Profile", "👤", "profile")
+                _nav_item("Explore jobs", "🔎", "explore")
                 _nav_item("Recommendations", "💼", "recommendations")
             
             st.markdown(

@@ -90,14 +90,17 @@ def inject_linkedin_styles() -> None:
         }
 
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-profile),
+        .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-explore),
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-recommendations) {
             margin: 0 !important;
             padding: 0 !important;
         }
 
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-explore button,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button,
         .st-key-sidebar-nav-profile button,
+        .st-key-sidebar-nav-explore button,
         .st-key-sidebar-nav-recommendations button {
             width: 100% !important;
             min-height: 46px !important;
@@ -115,16 +118,22 @@ def inject_linkedin_styles() -> None:
         }
 
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button > div,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-explore button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button span,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-explore button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button p,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-explore button p,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button p,
         .st-key-sidebar-nav-profile button > div,
+        .st-key-sidebar-nav-explore button > div,
         .st-key-sidebar-nav-recommendations button > div,
         .st-key-sidebar-nav-profile button span,
+        .st-key-sidebar-nav-explore button span,
         .st-key-sidebar-nav-recommendations button span,
         .st-key-sidebar-nav-profile button p,
+        .st-key-sidebar-nav-explore button p,
         .st-key-sidebar-nav-recommendations button p {
             width: 100% !important;
             margin: 0 !important;
@@ -133,8 +142,10 @@ def inject_linkedin_styles() -> None:
         }
 
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button:hover,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-explore button:hover,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button:hover,
         .st-key-sidebar-nav-profile button:hover,
+        .st-key-sidebar-nav-explore button:hover,
         .st-key-sidebar-nav-recommendations button:hover {
             color: #111827 !important;
             background: #eef0f5 !important;
@@ -592,6 +603,14 @@ def inject_linkedin_styles() -> None:
             font-size: 14px;
             line-height: 1.4;
             margin: 0 0 14px;
+        }
+
+        .explore-result-count {
+            color: #4b5563;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.35;
+            margin: 2px 0 10px;
         }
 
         div[class*="st-key-job-card-wrap-"] {

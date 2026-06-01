@@ -89,6 +89,29 @@ async def create_job(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@router.get("")
+async def search_jobs(
+    q: str | None = Query(default=None, max_length=100),
+    location: str | None = Query(default=None, max_length=100),
+    employment_type: str | None = Query(default=None, max_length=50),
+    max_experience: int | None = Query(default=None, ge=0),
+    limit: int = Query(30, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    try:
+        return await JobService.search_open_jobs_async(
+            db=db,
+            query=q,
+            location=location,
+            employment_type=employment_type,
+            max_experience=max_experience,
+            limit=limit,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @router.patch("/{job_id}")
 async def update_job(
     payload: UpdateJobRequest,

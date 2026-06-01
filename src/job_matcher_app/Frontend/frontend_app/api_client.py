@@ -40,6 +40,7 @@ def request_json(
     method: str,
     path: str,
     *,
+    params: dict[str, Any] | None = None,
     json: dict[str, Any] | None = None,
     data: dict[str, Any] | None = None,
     auth: bool = False,
@@ -49,6 +50,7 @@ def request_json(
         response = requests.request(
             method,
             f"{api_base_url()}{path}",
+            params=params,
             json=json,
             data=data,
             headers=headers,
@@ -156,6 +158,25 @@ def get_recommended_jobs(top_k: int = 20) -> Any:
         f"/recommendations/me/jobs?top_k={top_k}",
         auth=True,
     )
+
+
+def search_jobs(
+    query: str | None = None,
+    location: str | None = None,
+    employment_type: str | None = None,
+    max_experience: int | None = None,
+    limit: int = 30,
+) -> Any:
+    params: dict[str, Any] = {"limit": limit}
+    if query:
+        params["q"] = query
+    if location:
+        params["location"] = location
+    if employment_type:
+        params["employment_type"] = employment_type
+    if max_experience is not None:
+        params["max_experience"] = max_experience
+    return request_json("GET", "/jobs", params=params, auth=True)
 
 
 def get_job_detail(job_id: int) -> Any:

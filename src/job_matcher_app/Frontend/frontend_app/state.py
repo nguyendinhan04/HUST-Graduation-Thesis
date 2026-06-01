@@ -20,6 +20,7 @@ def init_session_state() -> None:
     st.session_state.setdefault("confirm_discard", False)
     st.session_state.setdefault("current_page", "profile")
     st.session_state.setdefault("selected_job_id", None)
+    st.session_state.setdefault("selected_job_return_page", "recommendations")
 
 
 
@@ -46,6 +47,7 @@ def logout() -> None:
     st.session_state["confirm_discard"] = False
     st.session_state["current_page"] = "profile"
     st.session_state["selected_job_id"] = None
+    st.session_state["selected_job_return_page"] = "recommendations"
 
 
 
@@ -103,10 +105,12 @@ def navigate_to(page: str) -> None:
     st.session_state["current_page"] = page
     if page != "job_detail":
         st.session_state["selected_job_id"] = None
+        st.session_state["selected_job_return_page"] = "recommendations"
     close_dialog()
 
 
-def navigate_to_job_detail(job_id: int) -> None:
+def navigate_to_job_detail(job_id: int, return_page: str = "recommendations") -> None:
     st.session_state["selected_job_id"] = job_id
+    st.session_state["selected_job_return_page"] = return_page
     navigate_to("job_detail")
 

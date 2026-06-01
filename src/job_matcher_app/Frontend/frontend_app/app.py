@@ -7,6 +7,7 @@ import streamlit as st
 from frontend_app.api_client import ApiError, refresh_profile
 from frontend_app.auth_views import render_auth_page
 from frontend_app.dialogs import render_active_dialog
+from frontend_app.explore_views import render_explore_jobs_page
 from frontend_app.formatting import show_api_error
 from frontend_app.loading import form_loading
 from frontend_app.job_detail_views import render_job_detail_page
@@ -53,6 +54,10 @@ def render_profile_page() -> None:
         return
     if current_page == "recommendations":
         render_recommendations_page()
+        render_active_dialog(profile)
+        return
+    if current_page == "explore":
+        render_explore_jobs_page()
         render_active_dialog(profile)
         return
     if current_page == "job_detail":
