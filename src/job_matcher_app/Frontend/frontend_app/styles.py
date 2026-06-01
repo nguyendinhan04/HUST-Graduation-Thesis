@@ -233,6 +233,11 @@ def inject_linkedin_styles() -> None:
             border-bottom: 1px solid #e8e4de;
         }
 
+        .management-entity-row {
+            border-bottom: 0;
+            padding: 12px 0;
+        }
+
         .entity-logo {
             width: 48px;
             height: 48px;
