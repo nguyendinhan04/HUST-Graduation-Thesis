@@ -68,14 +68,14 @@ def inject_linkedin_styles() -> None:
             font-size: 11px;
             font-weight: 760;
             line-height: 1;
-            margin: 0 0 10px;
+            margin: 0 0 8px;
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
 
         div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_profile),
         div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_recommendations) {
-            margin: 0 0 6px !important;
+            margin: 0 0 10px !important;
         }
 
         .st-key-sidebar-nav-profile button,
@@ -83,17 +83,17 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-nav-recommendations button,
         .st-key-sidebar_nav_recommendations button {
             width: 100% !important;
-            min-height: 46px !important;
+            min-height: 44px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: flex-start !important;
-            padding: 0 14px !important;
-            color: #374151 !important;
+            padding: 0 12px !important;
+            color: #111827 !important;
             background: transparent !important;
             border: 1px solid transparent !important;
-            border-radius: 8px !important;
-            font-size: 14px !important;
-            font-weight: 700 !important;
+            border-radius: 8px 24px 24px 8px !important;
+            font-size: 15px !important;
+            font-weight: 620 !important;
             text-align: left !important;
         }
 
@@ -110,8 +110,8 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar_nav_profile button:hover,
         .st-key-sidebar-nav-recommendations button:hover,
         .st-key-sidebar_nav_recommendations button:hover {
-            color: #075985 !important;
-            background: #f0f9ff !important;
+            color: #082f49 !important;
+            background: #e0f2fe !important;
             border-color: #bae6fd !important;
         }
 
@@ -1479,7 +1479,7 @@ def inject_linkedin_styles() -> None:
         div[data-testid="stSidebar"] .st-key-sidebar-nav-recommendations button {
             background: transparent !important;
             border: 1px solid transparent !important;
-            color: #374151 !important;
+            color: #111827 !important;
         }
 
         </style>

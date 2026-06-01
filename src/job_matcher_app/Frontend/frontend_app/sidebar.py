@@ -26,15 +26,18 @@ def _nav_item(label: str, icon: str, page: str) -> None:
             <style>
             div[data-testid="stSidebar"] .st-key-{legacy_rendered_key} button,
             div[data-testid="stSidebar"] .st-key-{rendered_key} button {{
-                color: #075985 !important;
-                background: #e0f2fe !important;
-                background-color: #e0f2fe !important;
-                border-color: #7dd3fc !important;
-                box-shadow: inset 3px 0 0 #0ea5e9 !important;
+                min-height: 62px !important;
+                color: #082f49 !important;
+                background: #0ea5e9 !important;
+                background-color: #0ea5e9 !important;
+                border-color: #0ea5e9 !important;
+                border-radius: 8px 24px 24px 8px !important;
+                box-shadow: none !important;
             }}
             div[data-testid="stSidebar"] .st-key-{legacy_rendered_key} button p,
             div[data-testid="stSidebar"] .st-key-{rendered_key} button p {{
-                color: #075985 !important;
+                color: #082f49 !important;
+                font-weight: 760 !important;
             }}
             </style>
             """,
