@@ -57,7 +57,7 @@ and a Streamlit frontend.
 
 ## Architecture
 
-<!-- ![System pipeline](design/pipeline.svg) -->
+![System pipeline](design/pipeline.svg)
 
 The system has five main layers:
 
