@@ -338,8 +338,8 @@ def inject_linkedin_styles() -> None:
 
         .skill-filter-pill.active {
             color: #ffffff;
-            background: #23583d;
-            border-color: #23583d;
+            background: #0369a1;
+            border-color: #0369a1;
         }
 
         .linkedin-skill-row {
@@ -416,8 +416,8 @@ def inject_linkedin_styles() -> None:
             box-sizing: border-box;
             padding: 16px;
             margin: 0;
-            background: #f6fdf8;
-            border: 1px solid #63d174;
+            background: #f0f9ff;
+            border: 1px solid #38bdf8;
             border-radius: 18px;
             cursor: pointer;
             transition: border-color 0.16s ease, box-shadow 0.16s ease, outline-color 0.16s ease;
@@ -427,9 +427,9 @@ def inject_linkedin_styles() -> None:
 
         div[class*="st-key-job-card-wrap-"]:hover .job-card,
         div[class*="st-key-job_card_wrap_"]:hover .job-card {
-            border-color: #43b657;
-            box-shadow: 0 8px 24px rgba(44, 168, 79, 0.14);
-            outline-color: rgba(67, 182, 87, 0.35);
+            border-color: #0ea5e9;
+            box-shadow: 0 8px 24px rgba(14, 165, 233, 0.16);
+            outline-color: rgba(14, 165, 233, 0.35);
         }
 
         div[class*="st-key-job-card-wrap-"] div[data-testid="stButton"],
@@ -568,7 +568,7 @@ def inject_linkedin_styles() -> None:
         }
 
         .job-card-salary {
-            color: #2ca84f;
+            color: #0284c7;
             font-size: 17px;
             font-weight: 750;
             line-height: 1.3;
@@ -578,7 +578,7 @@ def inject_linkedin_styles() -> None:
 
         .job-card-footer {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) max-content 40px;
+            grid-template-columns: minmax(0, 1fr) max-content;
             gap: 12px;
             align-items: center;
             min-height: 46px;
@@ -599,21 +599,6 @@ def inject_linkedin_styles() -> None:
 
         .job-card-posted {
             text-align: right;
-        }
-
-        .job-save-button {
-            width: 38px;
-            height: 38px;
-            min-width: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #2ca84f;
-            border: 1px solid #4ebc62;
-            border-radius: 50%;
-            background: #ffffff;
-            font-size: 24px;
-            line-height: 1;
         }
 
         .job-detail-hero {
@@ -655,7 +640,7 @@ def inject_linkedin_styles() -> None:
             margin-left: 4px;
             border-radius: 50%;
             color: #ffffff;
-            background: #4caf61;
+            background: #0ea5e9;
             font-size: 11px;
             vertical-align: 2px;
         }
@@ -683,7 +668,7 @@ def inject_linkedin_styles() -> None:
             align-items: center;
             justify-content: center;
             color: #ffffff;
-            background: #58a865;
+            background: #0ea5e9;
             font-size: 18px;
             font-weight: 750;
             line-height: 1;
@@ -764,9 +749,9 @@ def inject_linkedin_styles() -> None:
             min-height: 30px;
             padding: 0 12px;
             border-radius: 999px;
-            color: #23583d;
-            background: #eef8ef;
-            border: 1px solid #b9dfbf;
+            color: #0369a1;
+            background: #e0f2fe;
+            border: 1px solid #7dd3fc;
             font-size: 13px;
             font-weight: 650;
         }
@@ -783,27 +768,15 @@ def inject_linkedin_styles() -> None:
         }
 
         div[class*="st-key-job_apply_"] button[kind="primary"] {
-            background: #58a865 !important;
-            border: 1px solid #58a865 !important;
+            background: #0ea5e9 !important;
+            border: 1px solid #0ea5e9 !important;
             color: #ffffff !important;
         }
 
         div[class*="st-key-job_apply_"] button[kind="primary"]:hover {
-            background: #438f50 !important;
-            border-color: #438f50 !important;
+            background: #0284c7 !important;
+            border-color: #0284c7 !important;
             color: #ffffff !important;
-        }
-
-        div[class*="st-key-job_save_"] button {
-            border: 1px solid #58a865 !important;
-            background: #ffffff !important;
-            color: #23583d !important;
-        }
-
-        div[class*="st-key-job_save_"] button:hover {
-            background: #eef8ef !important;
-            border-color: #438f50 !important;
-            color: #23583d !important;
         }
 
         @media (max-width: 720px) {

@@ -143,7 +143,6 @@ def render_recommendations_page() -> None:
                         <div class="job-card-footer">
                             <div class="job-card-meta">{html_or_empty(_job_meta(job))}</div>
                             <div class="job-card-posted">{html_or_empty(_posted_label(job.get("created_at")))}</div>
-                            <div class="job-save-button">♡</div>
                         </div>
                     </div>
                 </div>

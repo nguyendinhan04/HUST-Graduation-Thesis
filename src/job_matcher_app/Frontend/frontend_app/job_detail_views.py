@@ -188,11 +188,9 @@ def render_job_detail_page() -> None:
 
     _render_job_summary(job)
 
-    apply_col, save_col = st.columns([6.8, 1.6], gap="small")
+    apply_col, _ = st.columns([3, 5], gap="small")
     if apply_col.button("Ứng tuyển ngay", key=f"job_apply_{job_id}", type="primary", use_container_width=True):
         _handle_apply(int(job_id))
-    if save_col.button("♡ Lưu tin", key=f"job_save_{job_id}", use_container_width=True):
-        st.info("Tính năng lưu tin chưa được backend hỗ trợ.")
 
     if st.session_state.get(f"job_apply_success_{job_id}"):
         st.success("Ứng tuyển thành công. Hồ sơ của bạn đã được gửi tới nhà tuyển dụng.")
