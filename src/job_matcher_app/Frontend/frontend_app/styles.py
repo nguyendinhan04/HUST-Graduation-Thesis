@@ -14,7 +14,7 @@ def inject_linkedin_styles() -> None:
 
         .block-container {
             max-width: 980px;
-            padding-top: 1.25rem;
+            padding-top: 3.25rem;
             padding-bottom: 3rem;
         }
 
