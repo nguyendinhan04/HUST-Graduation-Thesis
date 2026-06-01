@@ -254,6 +254,10 @@ def inject_linkedin_styles() -> None:
             font-weight: 600;
         }
 
+        .skill-line-spacer {
+            height: 12px;
+        }
+
         .skill-row {
             padding: 13px 0;
             border-bottom: 1px solid #e8e4de;

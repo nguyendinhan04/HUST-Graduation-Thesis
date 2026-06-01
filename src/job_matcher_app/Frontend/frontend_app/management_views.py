@@ -130,6 +130,8 @@ def render_experience_management_page(profile: dict[str, Any]) -> None:
             ]
             if skill_summary:
                 body_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+            else:
+                body_html.append('<div class="skill-line-spacer"></div>')
             body_col.markdown("\n".join(body_html), unsafe_allow_html=True)
             if edit_col.button("✎", key=f"edit_experience_page_{item['experience_id']}", help="Edit experience"):
                 open_dialog("edit_experience", item["experience_id"])
@@ -166,6 +168,8 @@ def render_education_management_page(profile: dict[str, Any]) -> None:
             ]
             if skill_summary:
                 body_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+            else:
+                body_html.append('<div class="skill-line-spacer"></div>')
             body_col.markdown("\n".join(body_html), unsafe_allow_html=True)
             if edit_col.button("✎", key=f"edit_education_page_{item['education_id']}", help="Edit education"):
                 open_dialog("edit_education", item["education_id"])

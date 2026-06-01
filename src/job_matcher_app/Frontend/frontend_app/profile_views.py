@@ -107,6 +107,8 @@ def render_experience_item(item: dict[str, Any]) -> None:
     ]
     if skill_summary:
         entity_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+    else:
+        entity_html.append('<div class="skill-line-spacer"></div>')
     entity_html.append("</div></div>")
 
     st.markdown("\n".join(entity_html), unsafe_allow_html=True)
@@ -134,6 +136,8 @@ def render_education_item(item: dict[str, Any]) -> None:
     ]
     if skill_summary:
         entity_html.append(f'<div class="skill-line">{html_or_empty(skill_summary)}</div>')
+    else:
+        entity_html.append('<div class="skill-line-spacer"></div>')
     entity_html.append("</div></div>")
 
     st.markdown("\n".join(entity_html), unsafe_allow_html=True)
