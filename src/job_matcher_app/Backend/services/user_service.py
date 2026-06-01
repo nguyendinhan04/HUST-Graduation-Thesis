@@ -1627,6 +1627,7 @@ class UserService:
                     experience=experience_payload,
                 )
             )
+            logger2.warning("Prepared experience embedding update outbox task for user_id=%s, experience_id=%s", user_id, experience.id)
             prepared_tfidf_task = (
                 await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
                     db,
@@ -1634,12 +1635,14 @@ class UserService:
                     employee_id=experience.employee_id,
                 )
             )
+            logger2.warning("Prepared profile TF-IDF update outbox task for user_id=%s, experience_id=%s", user_id, experience.id)
 
             user.updated_at = datetime.utcnow()
             response_data = UserService._serialize_experience(
                 experience,
                 response_skills,
             )
+            logger2.warning("Serialized response data for experience update for user_id=%s, experience_id=%s", user_id, experience.id)
 
             await db.commit()
 
