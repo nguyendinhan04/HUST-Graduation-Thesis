@@ -141,6 +141,31 @@ def inject_linkedin_styles() -> None:
             background-color: transparent !important;
         }
 
+        .st-key-management-experiences-list-card div[data-testid="stDivider"],
+        .st-key-management-educations-list-card div[data-testid="stDivider"],
+        .st-key-management-skills-list-card div[data-testid="stDivider"] {
+            margin: 6px 0 !important;
+        }
+
+        .st-key-management-experiences-list-card > div > div[data-testid="stVerticalBlock"],
+        .st-key-management-educations-list-card > div > div[data-testid="stVerticalBlock"],
+        .st-key-management-skills-list-card > div > div[data-testid="stVerticalBlock"] {
+            gap: 0.35rem !important;
+        }
+
+        .st-key-management-experiences-list-card div[data-testid="stDivider"] > div,
+        .st-key-management-educations-list-card div[data-testid="stDivider"] > div,
+        .st-key-management-skills-list-card div[data-testid="stDivider"] > div {
+            margin: 0 !important;
+        }
+
+        .st-key-management-experiences-list-card div[data-testid="stDivider"] hr,
+        .st-key-management-educations-list-card div[data-testid="stDivider"] hr,
+        .st-key-management-skills-list-card div[data-testid="stDivider"] hr {
+            margin: 0 !important;
+            border-color: #d7d3cc !important;
+        }
+
         .profile-cover {
             height: 96px;
             background: linear-gradient(135deg, #0a66c2 0%, #378fe9 56%, #dce6f1 100%);
