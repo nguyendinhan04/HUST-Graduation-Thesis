@@ -144,7 +144,7 @@ def inject_linkedin_styles() -> None:
         .st-key-management-experiences-list-card div[data-testid="stDivider"],
         .st-key-management-educations-list-card div[data-testid="stDivider"],
         .st-key-management-skills-list-card div[data-testid="stDivider"] {
-            margin: 6px 0 !important;
+            margin: 0 !important;
         }
 
         .st-key-management-experiences-list-card > div > div[data-testid="stVerticalBlock"],
