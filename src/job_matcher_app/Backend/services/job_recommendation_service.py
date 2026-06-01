@@ -1278,16 +1278,23 @@ class JobRecommendationService:
                 text(
                     """
                     SELECT
-                        id,
-                        title,
-                        salary_min,
-                        salary_max,
-                        salary_currency,
-                        address,
-                        location_type
-                    FROM jobs
-                    WHERE id = ANY(:job_ids)
-                      AND status = 'open'
+                        j.id,
+                        j.title,
+                        j.salary_min,
+                        j.salary_max,
+                        j.salary_currency,
+                        j.address,
+                        j.location_type,
+                        j.experience_required,
+                        j.employment_type,
+                        j.working_time,
+                        j.created_at,
+                        c.name AS company_name,
+                        c.logo_url AS company_logo_url
+                    FROM jobs j
+                    JOIN companies c ON c.id = j.company_id
+                    WHERE j.id = ANY(:job_ids)
+                      AND j.status = 'open'
                     """
                 ),
                 {"job_ids": job_ids},
@@ -1309,6 +1316,12 @@ class JobRecommendationService:
                     "salary_currency": job.salary_currency,
                     "location": job.address,
                     "location_type": job.location_type,
+                    "experience_required": job.experience_required,
+                    "employment_type": job.employment_type,
+                    "working_time": job.working_time,
+                    "company_name": job.company_name,
+                    "company_logo_url": job.company_logo_url,
+                    "created_at": job.created_at.isoformat() if job.created_at else None,
                 }
             )
 

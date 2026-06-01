@@ -149,3 +149,11 @@ def add_skill(skill_name: str) -> Any:
 def delete_skill(skill_id: int) -> Any:
     return request_json("DELETE", f"/users/me/skills/{skill_id}", auth=True)
 
+
+def get_recommended_jobs(top_k: int = 20) -> Any:
+    return request_json(
+        "GET",
+        f"/recommendations/me/jobs?top_k={top_k}",
+        auth=True,
+    )
+

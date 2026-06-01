@@ -21,6 +21,7 @@ from frontend_app.profile_views import (
     render_profile_summary,
     render_standalone_skills,
 )
+from frontend_app.recommendation_views import render_recommendations_page
 from frontend_app.sidebar import sidebar
 from frontend_app.state import init_session_state
 from frontend_app.styles import inject_linkedin_styles
@@ -47,6 +48,10 @@ def render_profile_page() -> None:
         return
     if current_page == "skills":
         render_skill_management_page(profile)
+        render_active_dialog(profile)
+        return
+    if current_page == "recommendations":
+        render_recommendations_page()
         render_active_dialog(profile)
         return
 

@@ -6,7 +6,7 @@ from frontend_app.api_client import ApiError, refresh_profile
 from frontend_app.config import DEFAULT_API_BASE_URL
 from frontend_app.formatting import show_api_error
 from frontend_app.loading import form_loading
-from frontend_app.state import api_base_url, logout
+from frontend_app.state import api_base_url, logout, navigate_to
 
 
 def sidebar() -> None:
@@ -20,6 +20,14 @@ def sidebar() -> None:
 
         if st.session_state.get("access_token"):
             profile = st.session_state.get("profile") or {}
+            st.divider()
+            st.caption("Navigation")
+            if st.button("Profile", use_container_width=True):
+                navigate_to("profile")
+                st.rerun()
+            if st.button("Recommendations", use_container_width=True):
+                navigate_to("recommendations")
+                st.rerun()
             st.divider()
             st.caption("Signed in")
             st.write(profile.get("email", "Employee"))
