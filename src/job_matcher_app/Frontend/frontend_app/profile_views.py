@@ -147,7 +147,7 @@ def render_education_item(item: dict[str, Any]) -> None:
 
 def render_experiences(profile: dict[str, Any]) -> None:
     experiences = profile.get("experiences") or []
-    with st.container(border=True):
+    with st.container(border=True, key="profile-experiences-card"):
         header_left, add_col, edit_col = st.columns([9, 0.55, 0.55], gap="small")
         header_left.markdown('<div class="section-title">Experience</div>', unsafe_allow_html=True)
         if add_col.button("+", key="add_experience", help="Add experience"):
@@ -167,7 +167,7 @@ def render_experiences(profile: dict[str, Any]) -> None:
 
 def render_educations(profile: dict[str, Any]) -> None:
     educations = profile.get("educations") or []
-    with st.container(border=True):
+    with st.container(border=True, key="profile-educations-card"):
         header_left, add_col, edit_col = st.columns([9, 0.55, 0.55], gap="small")
         header_left.markdown('<div class="section-title">Education</div>', unsafe_allow_html=True)
         if add_col.button("+", key="add_education", help="Add education"):
@@ -187,7 +187,7 @@ def render_educations(profile: dict[str, Any]) -> None:
 
 def render_standalone_skills(profile: dict[str, Any]) -> None:
     skills = profile.get("skills") or []
-    with st.container(border=True):
+    with st.container(border=True, key="profile-skills-card"):
         header_left, add_col, edit_col = st.columns([9, 0.55, 0.55], gap="small")
         header_left.markdown(
             f'<div class="section-title">Skills ({len(skills)})</div>',

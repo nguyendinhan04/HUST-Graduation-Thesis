@@ -42,6 +42,105 @@ def inject_linkedin_styles() -> None:
             border-radius: 8px !important;
         }
 
+        .st-key-profile-experiences-card,
+        .st-key-profile-educations-card,
+        .st-key-profile-skills-card,
+        .st-key-management-experience-header-card,
+        .st-key-management-education-header-card,
+        .st-key-management-skills-header-card,
+        .st-key-management-experiences-empty-card,
+        .st-key-management-experiences-list-card,
+        .st-key-management-educations-empty-card,
+        .st-key-management-educations-list-card,
+        .st-key-management-skills-empty-card,
+        .st-key-management-skills-list-card {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            border-color: #d7d3cc !important;
+            border-radius: 8px !important;
+        }
+
+        .st-key-profile-experiences-card > div,
+        .st-key-profile-educations-card > div,
+        .st-key-profile-skills-card > div,
+        .st-key-management-experience-header-card > div,
+        .st-key-management-education-header-card > div,
+        .st-key-management-skills-header-card > div,
+        .st-key-management-experiences-empty-card > div,
+        .st-key-management-experiences-list-card > div,
+        .st-key-management-educations-empty-card > div,
+        .st-key-management-educations-list-card > div,
+        .st-key-management-skills-empty-card > div,
+        .st-key-management-skills-list-card > div {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            border-radius: 8px !important;
+        }
+
+        .st-key-profile-experiences-card div[data-testid="stVerticalBlock"],
+        .st-key-profile-experiences-card div[data-testid="stHorizontalBlock"],
+        .st-key-profile-experiences-card div[data-testid="column"],
+        .st-key-profile-experiences-card div[data-testid="stElementContainer"],
+        .st-key-profile-experiences-card div[data-testid="stMarkdownContainer"],
+        .st-key-profile-educations-card div[data-testid="stVerticalBlock"],
+        .st-key-profile-educations-card div[data-testid="stHorizontalBlock"],
+        .st-key-profile-educations-card div[data-testid="column"],
+        .st-key-profile-educations-card div[data-testid="stElementContainer"],
+        .st-key-profile-educations-card div[data-testid="stMarkdownContainer"],
+        .st-key-profile-skills-card div[data-testid="stVerticalBlock"],
+        .st-key-profile-skills-card div[data-testid="stHorizontalBlock"],
+        .st-key-profile-skills-card div[data-testid="column"],
+        .st-key-profile-skills-card div[data-testid="stElementContainer"],
+        .st-key-profile-skills-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-experience-header-card div[data-testid="stVerticalBlock"],
+        .st-key-management-experience-header-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-experience-header-card div[data-testid="column"],
+        .st-key-management-experience-header-card div[data-testid="stElementContainer"],
+        .st-key-management-experience-header-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-education-header-card div[data-testid="stVerticalBlock"],
+        .st-key-management-education-header-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-education-header-card div[data-testid="column"],
+        .st-key-management-education-header-card div[data-testid="stElementContainer"],
+        .st-key-management-education-header-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-skills-header-card div[data-testid="stVerticalBlock"],
+        .st-key-management-skills-header-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-skills-header-card div[data-testid="column"],
+        .st-key-management-skills-header-card div[data-testid="stElementContainer"],
+        .st-key-management-skills-header-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-experiences-empty-card div[data-testid="stVerticalBlock"],
+        .st-key-management-experiences-empty-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-experiences-empty-card div[data-testid="column"],
+        .st-key-management-experiences-empty-card div[data-testid="stElementContainer"],
+        .st-key-management-experiences-empty-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-experiences-list-card div[data-testid="stVerticalBlock"],
+        .st-key-management-experiences-list-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-experiences-list-card div[data-testid="column"],
+        .st-key-management-experiences-list-card div[data-testid="stElementContainer"],
+        .st-key-management-experiences-list-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-educations-empty-card div[data-testid="stVerticalBlock"],
+        .st-key-management-educations-empty-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-educations-empty-card div[data-testid="column"],
+        .st-key-management-educations-empty-card div[data-testid="stElementContainer"],
+        .st-key-management-educations-empty-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-educations-list-card div[data-testid="stVerticalBlock"],
+        .st-key-management-educations-list-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-educations-list-card div[data-testid="column"],
+        .st-key-management-educations-list-card div[data-testid="stElementContainer"],
+        .st-key-management-educations-list-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-skills-empty-card div[data-testid="stVerticalBlock"],
+        .st-key-management-skills-empty-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-skills-empty-card div[data-testid="column"],
+        .st-key-management-skills-empty-card div[data-testid="stElementContainer"],
+        .st-key-management-skills-empty-card div[data-testid="stMarkdownContainer"],
+        .st-key-management-skills-list-card div[data-testid="stVerticalBlock"],
+        .st-key-management-skills-list-card div[data-testid="stHorizontalBlock"],
+        .st-key-management-skills-list-card div[data-testid="column"],
+        .st-key-management-skills-list-card div[data-testid="stElementContainer"],
+        .st-key-management-skills-list-card div[data-testid="stMarkdownContainer"] {
+            background: transparent !important;
+            background-color: transparent !important;
+        }
+
         .profile-cover {
             height: 96px;
             background: linear-gradient(135deg, #0a66c2 0%, #378fe9 56%, #dce6f1 100%);

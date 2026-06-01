@@ -18,7 +18,7 @@ from frontend_app.state import navigate_to, open_dialog
 
 
 def render_management_header(title: str, add_dialog: str) -> None:
-    with st.container(border=True):
+    with st.container(border=True, key=f"management-{title.lower()}-header-card"):
         back_col, title_col, add_col = st.columns([0.65, 8.8, 0.55], gap="small")
         if back_col.button("←", key=f"back_{title}", help="Back to profile"):
             navigate_to("profile")
@@ -33,11 +33,11 @@ def render_experience_management_page(profile: dict[str, Any]) -> None:
     render_management_header("Experience", "add_experience")
     experiences = profile.get("experiences") or []
     if not experiences:
-        with st.container(border=True):
+        with st.container(border=True, key="management-experiences-empty-card"):
             st.markdown('<div class="empty-state">No experience yet.</div>', unsafe_allow_html=True)
         return
 
-    with st.container(border=True):
+    with st.container(border=True, key="management-experiences-list-card"):
         for index, item in enumerate(experiences, start=1):
             title = item.get("title") or f"Experience #{index}"
             company = item.get("company_name") or "No company yet"
@@ -74,11 +74,11 @@ def render_education_management_page(profile: dict[str, Any]) -> None:
     render_management_header("Education", "add_education")
     educations = profile.get("educations") or []
     if not educations:
-        with st.container(border=True):
+        with st.container(border=True, key="management-educations-empty-card"):
             st.markdown('<div class="empty-state">No education yet.</div>', unsafe_allow_html=True)
         return
 
-    with st.container(border=True):
+    with st.container(border=True, key="management-educations-list-card"):
         for index, item in enumerate(educations, start=1):
             school = item.get("school") or f"Education #{index}"
             degree = item.get("degree") or "No degree yet"
@@ -109,11 +109,11 @@ def render_skill_management_page(profile: dict[str, Any]) -> None:
     render_management_header("Skills", "add_skill")
     skills = profile.get("skills") or []
     if not skills:
-        with st.container(border=True):
+        with st.container(border=True, key="management-skills-empty-card"):
             st.markdown('<div class="empty-state">No standalone skills yet.</div>', unsafe_allow_html=True)
         return
 
-    with st.container(border=True):
+    with st.container(border=True, key="management-skills-list-card"):
         for index, skill in enumerate(skills, start=1):
             name_col, delete_col = st.columns([9.3, 0.7], gap="small")
             name_col.markdown(
