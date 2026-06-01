@@ -26,11 +26,37 @@ from frontend_app.forms import (
     render_discard_confirmation,
 )
 from frontend_app.loading import form_loading
-from frontend_app.state import close_dialog
+from frontend_app.state import clear_active_dialog_draft, close_dialog
 
 
 # Streamlit requires a non-empty dialog title even when the native header is hidden.
 DIALOG_NATIVE_TITLE = "\u200b"
+
+
+def _skill_names_with_added(
+    skills: list[dict[str, Any]] | None,
+    skill_name: str,
+) -> tuple[list[str], bool]:
+    names = [
+        str(skill.get("skill_name") or "").strip()
+        for skill in skills or []
+        if str(skill.get("skill_name") or "").strip()
+    ]
+    existing_keys = {name.lower() for name in names}
+    normalized_skill_name = skill_name.strip()
+    if normalized_skill_name.lower() in existing_keys:
+        return names, False
+    return [*names, normalized_skill_name], True
+
+
+def _experience_label(experience: dict[str, Any]) -> str:
+    title = experience.get("title") or "Experience"
+    company = experience.get("company_name") or "Company"
+    return f"{title} at {company}"
+
+
+def _education_label(education: dict[str, Any]) -> str:
+    return education.get("school") or "Education"
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
@@ -185,11 +211,57 @@ def edit_education_dialog(profile: dict[str, Any]) -> None:
 
 
 @st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
-def add_skill_dialog() -> None:
+def add_skill_dialog(profile: dict[str, Any]) -> None:
     render_dialog_header("Add skill", "add_skill_dialog")
 
     with st.form("add_skill_form"):
-        skill_name = st.text_input("Skill name")
+        skill_name = st.text_input("Skill*", key="add_skill_form_skill_name")
+        st.markdown(
+            """
+            <div class="add-skill-context">
+                <div class="add-skill-context-title">Show us where you used this skill</div>
+                <div class="add-skill-context-copy">
+                    Search at least one item to show where you used this skill.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        selected_experience_ids = []
+        experiences = profile.get("experiences") or []
+        st.markdown('<div class="add-skill-group-label">Experience</div>', unsafe_allow_html=True)
+        if experiences:
+            for experience in experiences:
+                experience_id = experience.get("experience_id")
+                if experience_id is None:
+                    continue
+                checked = st.checkbox(
+                    _experience_label(experience),
+                    key=f"add_skill_form_experience_{experience_id}",
+                )
+                if checked:
+                    selected_experience_ids.append(experience_id)
+        else:
+            st.caption("No experience yet.")
+
+        selected_education_ids = []
+        educations = profile.get("educations") or []
+        st.markdown('<div class="add-skill-group-label">Education</div>', unsafe_allow_html=True)
+        if educations:
+            for education in educations:
+                education_id = education.get("education_id")
+                if education_id is None:
+                    continue
+                checked = st.checkbox(
+                    _education_label(education),
+                    key=f"add_skill_form_education_{education_id}",
+                )
+                if checked:
+                    selected_education_ids.append(education_id)
+        else:
+            st.caption("No education yet.")
+
         _, save_col = st.columns([5, 1.25])
         action = "save" if save_col.form_submit_button(
             "Save",
@@ -202,8 +274,42 @@ def add_skill_dialog() -> None:
             return
         try:
             with form_loading("Saving skill..."):
-                add_skill(skill_name.strip())
+                normalized_skill_name = skill_name.strip()
+                if not selected_experience_ids and not selected_education_ids:
+                    add_skill(normalized_skill_name)
+                else:
+                    experiences_by_id = {
+                        experience.get("experience_id"): experience
+                        for experience in profile.get("experiences") or []
+                    }
+                    for experience_id in selected_experience_ids:
+                        experience = experiences_by_id.get(experience_id)
+                        if experience is None:
+                            continue
+                        skill_names, added = _skill_names_with_added(
+                            experience.get("skills"),
+                            normalized_skill_name,
+                        )
+                        if added:
+                            update_experience(experience_id, {"skills": skill_names})
+
+                    educations_by_id = {
+                        education.get("education_id"): education
+                        for education in profile.get("educations") or []
+                    }
+                    for education_id in selected_education_ids:
+                        education = educations_by_id.get(education_id)
+                        if education is None:
+                            continue
+                        skill_names, added = _skill_names_with_added(
+                            education.get("skills"),
+                            normalized_skill_name,
+                        )
+                        if added:
+                            update_education(education_id, {"skills": skill_names})
+
                 refresh_profile()
+            clear_active_dialog_draft()
             close_dialog()
             st.success("Skill added.")
             st.rerun()
@@ -258,7 +364,7 @@ def render_active_dialog(profile: dict[str, Any]) -> None:
     elif active_dialog == "edit_education":
         edit_education_dialog(profile)
     elif active_dialog == "add_skill":
-        add_skill_dialog()
+        add_skill_dialog(profile)
     elif active_dialog == "manage_skills":
         manage_skills_dialog(profile)
 

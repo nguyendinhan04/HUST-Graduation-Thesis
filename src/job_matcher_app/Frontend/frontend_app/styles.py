@@ -331,6 +331,35 @@ def inject_linkedin_styles() -> None:
             overflow-wrap: anywhere;
         }
 
+        .add-skill-context,
+        dialog[open] .add-skill-context {
+            margin: 18px 0 16px;
+        }
+
+        .add-skill-context-title,
+        dialog[open] .add-skill-context-title {
+            color: #191919;
+            font-size: 20px;
+            font-weight: 650;
+            line-height: 1.3;
+            margin-bottom: 2px;
+        }
+
+        .add-skill-context-copy,
+        dialog[open] .add-skill-context-copy {
+            color: #404040;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .add-skill-group-label,
+        dialog[open] .add-skill-group-label {
+            color: #666666;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 16px 0 6px;
+        }
+
         .empty-state {
             color: #666666;
             padding: 4px 0 18px;
