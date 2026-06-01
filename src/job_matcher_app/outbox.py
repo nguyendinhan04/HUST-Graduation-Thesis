@@ -153,7 +153,7 @@ async def create_task_outbox_in_session(
     queue_name: str,
     payload: dict[str, Any],
 ) -> int:
-    ensure_task_outbox_table()
+    # ensure_task_outbox_table()
     outbox_id = (
         await db.execute(
             text(
