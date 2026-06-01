@@ -71,6 +71,8 @@ def sidebar() -> None:
         if st.session_state.get("access_token"):
             profile = st.session_state.get("profile") or {}
             email = profile.get("email") or "Employee"
+            st.divider()
+            
             st.markdown(
                 f"""
                 <div class="sidebar-brand">
