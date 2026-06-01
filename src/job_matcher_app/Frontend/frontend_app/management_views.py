@@ -158,7 +158,7 @@ def render_experience_management_page(profile: dict[str, Any]) -> None:
             if edit_col.button("✎", key=f"edit_experience_page_{item['experience_id']}", help="Edit experience"):
                 open_dialog("edit_experience", item["experience_id"])
             if index < len(experiences):
-                st.divider()
+                st.markdown('<div class="management-divider"></div>', unsafe_allow_html=True)
 
 
 
@@ -190,7 +190,7 @@ def render_education_management_page(profile: dict[str, Any]) -> None:
             if edit_col.button("✎", key=f"edit_education_page_{item['education_id']}", help="Edit education"):
                 open_dialog("edit_education", item["education_id"])
             if index < len(educations):
-                st.divider()
+                st.markdown('<div class="management-divider"></div>', unsafe_allow_html=True)
 
 
 

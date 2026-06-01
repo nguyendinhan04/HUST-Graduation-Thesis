@@ -166,6 +166,25 @@ def inject_linkedin_styles() -> None:
             border-color: #d7d3cc !important;
         }
 
+        .management-divider {
+            height: 1px;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: #e8e4de;
+        }
+
+        .st-key-management-experiences-list-card div[data-testid="stElementContainer"]:has(.management-divider),
+        .st-key-management-educations-list-card div[data-testid="stElementContainer"]:has(.management-divider),
+        .st-key-management-experiences-list-card div[data-testid="stMarkdownContainer"]:has(.management-divider),
+        .st-key-management-educations-list-card div[data-testid="stMarkdownContainer"]:has(.management-divider),
+        .st-key-management-experiences-list-card div[data-testid="stMarkdown"]:has(.management-divider),
+        .st-key-management-educations-list-card div[data-testid="stMarkdown"]:has(.management-divider) {
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: 0 !important;
+        }
+
         .profile-cover {
             height: 96px;
             background: linear-gradient(135deg, #0a66c2 0%, #378fe9 56%, #dce6f1 100%);
