@@ -413,6 +413,50 @@ def inject_linkedin_styles() -> None:
             margin: 16px 0 6px;
         }
 
+        .skills-editor-header,
+        dialog[open] .skills-editor-header {
+            margin: 18px 0 12px;
+        }
+
+        .skills-editor-title,
+        dialog[open] .skills-editor-title {
+            color: #191919;
+            font-size: 20px;
+            font-weight: 650;
+            line-height: 1.3;
+            margin-bottom: 4px;
+        }
+
+        .skills-editor-copy,
+        dialog[open] .skills-editor-copy {
+            color: #404040;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .skills-editor-item-name,
+        dialog[open] .skills-editor-item-name {
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            color: #191919;
+            font-size: 15px;
+            font-weight: 650;
+            line-height: 1.3;
+            padding: 4px 0;
+        }
+
+        .skills-editor-handle,
+        dialog[open] .skills-editor-handle {
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #404040;
+            font-size: 18px;
+            line-height: 1;
+        }
+
         .empty-state {
             color: #666666;
             padding: 4px 0 18px;

@@ -9,10 +9,9 @@ import streamlit as st
 from frontend_app.formatting import (
     clean_payload,
     date_to_api,
+    html_or_empty,
     nullable_text,
     parse_iso_date,
-    skills_to_text,
-    split_skills,
 )
 from frontend_app.state import (
     cancel_discard_confirmation,
@@ -67,6 +66,87 @@ def render_discard_confirmation(key_prefix: str) -> bool:
         close_dialog()
         st.rerun()
     return False
+
+
+def _initial_skill_names(skills: list[dict[str, Any]] | None) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for skill in skills or []:
+        name = nullable_text(skill.get("skill_name")).strip()
+        key = name.lower()
+        if name and key not in seen:
+            names.append(name)
+            seen.add(key)
+    return names
+
+
+def _skill_items_key(form_key: str) -> str:
+    return f"{form_key}_skill_items"
+
+
+def _render_skills_editor(form_key: str, item: dict[str, Any]) -> list[str]:
+    items_key = _skill_items_key(form_key)
+    adding_key = f"{form_key}_skill_adding"
+    draft_key = f"{form_key}_skill_draft"
+    if items_key not in st.session_state:
+        st.session_state[items_key] = _initial_skill_names(item.get("skills"))
+    st.session_state.setdefault(adding_key, False)
+
+    st.markdown(
+        """
+        <div class="skills-editor-header">
+            <div class="skills-editor-title">Skills</div>
+            <div class="skills-editor-copy">
+                We recommend adding your top 5 used in this role. They'll also appear in your Skills section.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    skill_items = st.session_state[items_key]
+    for index, skill_name in enumerate(list(skill_items)):
+        remove_col, name_col, handle_col = st.columns([0.45, 8.7, 0.45], gap="small")
+        if remove_col.button(
+            "×",
+            key=f"{form_key}_skill_remove_{index}",
+            help=f"Remove {skill_name}",
+        ):
+            skill_items.pop(index)
+            st.rerun()
+        name_col.markdown(
+            f'<div class="skills-editor-item-name">{html_or_empty(skill_name)}</div>',
+            unsafe_allow_html=True,
+        )
+        handle_col.markdown('<div class="skills-editor-handle">&#9776;</div>', unsafe_allow_html=True)
+
+    if st.session_state[adding_key]:
+        input_col, add_col, cancel_col = st.columns([6.2, 1.3, 1.3], gap="small")
+        new_skill = input_col.text_input(
+            "New skill",
+            key=draft_key,
+            label_visibility="collapsed",
+            placeholder="Skill",
+        )
+        if add_col.button("Add", key=f"{form_key}_skill_add_confirm", use_container_width=True):
+            normalized_skill = new_skill.strip()
+            existing_keys = {name.lower() for name in skill_items}
+            if normalized_skill and normalized_skill.lower() not in existing_keys:
+                skill_items.append(normalized_skill)
+            st.session_state[draft_key] = ""
+            st.session_state[adding_key] = False
+            st.rerun()
+        if cancel_col.button("Cancel", key=f"{form_key}_skill_add_cancel", use_container_width=True):
+            st.session_state[draft_key] = ""
+            st.session_state[adding_key] = False
+            st.rerun()
+    else:
+        add_skill_col, _ = st.columns([1.2, 7.8])
+        if add_skill_col.button("Add skill", key=f"{form_key}_skill_add", help="Add skill"):
+            st.session_state[adding_key] = True
+            st.rerun()
+
+    return list(skill_items)
 
 
 
@@ -165,11 +245,7 @@ def experience_payload_form(
             value=parse_iso_date(item.get("end_date")) or date.today(),
             key=f"{form_key}_end_date",
         )
-    skills = st.text_input(
-        "Skills",
-        value=skills_to_text(item.get("skills")),
-        key=f"{form_key}_skills",
-    )
+    skills = _render_skills_editor(form_key, item)
     description = st.text_area(
         "Description",
         value=nullable_text(item.get("description")),
@@ -209,7 +285,7 @@ def experience_payload_form(
             "description": description,
             "start_date": date_to_api(start_date),
             "end_date": date_to_api(end_date),
-            "skills": split_skills(skills),
+            "skills": skills,
         }
     )
     action = "delete" if delete_submitted else "save" if save_submitted else None
@@ -258,11 +334,7 @@ def education_payload_form(
             value=parse_iso_date(item.get("end_date")) or date.today(),
             key=f"{form_key}_end_date",
         )
-    skills = st.text_input(
-        "Skills",
-        value=skills_to_text(item.get("skills")),
-        key=f"{form_key}_skills",
-    )
+    skills = _render_skills_editor(form_key, item)
     description = st.text_area(
         "Description",
         value=nullable_text(item.get("description")),
@@ -300,7 +372,7 @@ def education_payload_form(
             "description": description,
             "start_date": date_to_api(start_date),
             "end_date": date_to_api(end_date),
-            "skills": split_skills(skills),
+            "skills": skills,
         }
     )
     action = "delete" if delete_submitted else "save" if save_submitted else None
