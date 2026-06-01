@@ -1559,6 +1559,7 @@ class UserService:
 
         prepared_embedding_task = None
         prepared_tfidf_task = None
+        response_data = None
         try:
             fields = {
                 "title": title,
@@ -1632,9 +1633,12 @@ class UserService:
             )
 
             user.updated_at = datetime.utcnow()
+            response_data = UserService._serialize_experience(
+                experience,
+                response_skills,
+            )
 
             await db.commit()
-            await db.refresh(experience)
         except IntegrityError as exc:
             await db.rollback()
             raise ValueError(f"Failed to update experience: {exc}") from exc
@@ -1661,10 +1665,10 @@ class UserService:
                 "Failed to enqueue profile TF-IDF update for user_id=%s, "
                 "employee_id=%s",
                 user_id,
-                experience.employee_id,
+                response_data["employee_id"] if response_data else experience.employee_id,
             )
 
-        return UserService._serialize_experience(experience, response_skills)
+        return response_data
 
     @staticmethod
     async def delete_user_experience_async(
