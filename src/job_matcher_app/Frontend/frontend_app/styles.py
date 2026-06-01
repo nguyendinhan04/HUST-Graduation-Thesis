@@ -102,7 +102,17 @@ def inject_linkedin_styles() -> None:
             text-align: left !important;
         }
 
+        div[class*="st-key-sidebar-nav-item-"] button > div,
+        div[class*="st-key-sidebar-nav-item-"] button span,
         div[class*="st-key-sidebar-nav-item-"] button p,
+        .st-key-sidebar-nav-profile button > div,
+        .st-key-sidebar_nav_profile button > div,
+        .st-key-sidebar-nav-recommendations button > div,
+        .st-key-sidebar_nav_recommendations button > div,
+        .st-key-sidebar-nav-profile button span,
+        .st-key-sidebar_nav_profile button span,
+        .st-key-sidebar-nav-recommendations button span,
+        .st-key-sidebar_nav_recommendations button span,
         .st-key-sidebar-nav-profile button p,
         .st-key-sidebar_nav_profile button p,
         .st-key-sidebar-nav-recommendations button p,
@@ -110,6 +120,7 @@ def inject_linkedin_styles() -> None:
             width: 100% !important;
             margin: 0 !important;
             text-align: left !important;
+            justify-content: flex-start !important;
         }
 
         div[class*="st-key-sidebar-nav-item-"] button:hover,
