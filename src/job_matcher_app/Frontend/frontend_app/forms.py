@@ -87,10 +87,11 @@ def _skill_items_key(form_key: str) -> str:
 def _render_skills_editor(form_key: str, item: dict[str, Any]) -> list[str]:
     items_key = _skill_items_key(form_key)
     adding_key = f"{form_key}_skill_adding"
-    draft_key = f"{form_key}_skill_draft"
+    draft_counter_key = f"{form_key}_skill_draft_counter"
     if items_key not in st.session_state:
         st.session_state[items_key] = _initial_skill_names(item.get("skills"))
     st.session_state.setdefault(adding_key, False)
+    st.session_state.setdefault(draft_counter_key, 0)
 
     st.markdown(
         """
@@ -122,6 +123,7 @@ def _render_skills_editor(form_key: str, item: dict[str, Any]) -> list[str]:
 
     if st.session_state[adding_key]:
         input_col, add_col, cancel_col = st.columns([6.2, 1.3, 1.3], gap="small")
+        draft_key = f"{form_key}_skill_draft_{st.session_state[draft_counter_key]}"
         new_skill = input_col.text_input(
             "New skill",
             key=draft_key,
@@ -133,11 +135,11 @@ def _render_skills_editor(form_key: str, item: dict[str, Any]) -> list[str]:
             existing_keys = {name.lower() for name in skill_items}
             if normalized_skill and normalized_skill.lower() not in existing_keys:
                 skill_items.append(normalized_skill)
-            st.session_state[draft_key] = ""
+            st.session_state[draft_counter_key] += 1
             st.session_state[adding_key] = False
             st.rerun()
         if cancel_col.button("Cancel", key=f"{form_key}_skill_add_cancel", use_container_width=True):
-            st.session_state[draft_key] = ""
+            st.session_state[draft_counter_key] += 1
             st.session_state[adding_key] = False
             st.rerun()
     else:
