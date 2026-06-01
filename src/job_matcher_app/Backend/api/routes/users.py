@@ -1,5 +1,5 @@
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, logger
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -344,15 +344,19 @@ async def update_user_experience(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.update_user_experience_async(
-            db=db,
-            user_id=user_id,
-            experience_id=experience_id,
-            embedding_service=embedding_service,
-            skills=skills,
-            skills_provided=skills_provided,
-            **data,
-        )
+        # return await UserService.update_user_experience_async(
+        #     db=db,
+        #     user_id=user_id,
+        #     experience_id=experience_id,
+        #     embedding_service=embedding_service,
+        #     skills=skills,
+        #     skills_provided=skills_provided,
+        #     **data,
+        # )
+
+            # For debugging: log the input data before calling the service
+        logger.debug("Updating user experience with data: user_id=%s, experience_id=%s, data=%s, skills_provided=%s, skills=%s",
+                        user_id, experience_id, data, skills_provided, skills)
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
