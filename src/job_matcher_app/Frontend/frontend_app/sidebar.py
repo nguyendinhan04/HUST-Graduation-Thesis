@@ -11,14 +11,17 @@ from frontend_app.state import logout, navigate_to
 def _nav_item(label: str, icon: str, page: str) -> None:
     is_active = st.session_state.get("current_page", "profile") == page
     rendered_key = f"sidebar-nav-{page.replace('_', '-')}"
+    legacy_rendered_key = f"sidebar_nav_{page}"
     if is_active:
         st.markdown(
             f"""
             <style>
+            .st-key-{legacy_rendered_key} button,
             .st-key-{rendered_key} button {{
                 color: #075985 !important;
                 background: #e0f2fe !important;
                 border-color: #bae6fd !important;
+                box-shadow: inset 3px 0 0 #0ea5e9 !important;
             }}
             </style>
             """,

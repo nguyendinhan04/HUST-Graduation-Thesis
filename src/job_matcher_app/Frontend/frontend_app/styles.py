@@ -68,16 +68,24 @@ def inject_linkedin_styles() -> None:
             font-size: 11px;
             font-weight: 760;
             line-height: 1;
-            margin: 0 0 8px;
+            margin: 0 0 10px;
             text-transform: uppercase;
             letter-spacing: 0.04em;
+        }
+
+        div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_profile),
+        div[data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.st-key-sidebar_nav_recommendations) {
+            margin: 0 0 6px !important;
         }
 
         .st-key-sidebar-nav-profile button,
         .st-key-sidebar_nav_profile button,
         .st-key-sidebar-nav-recommendations button,
         .st-key-sidebar_nav_recommendations button {
-            min-height: 44px !important;
+            width: 100% !important;
+            min-height: 46px !important;
+            display: flex !important;
+            align-items: center !important;
             justify-content: flex-start !important;
             padding: 0 14px !important;
             color: #374151 !important;
@@ -86,6 +94,15 @@ def inject_linkedin_styles() -> None:
             border-radius: 8px !important;
             font-size: 14px !important;
             font-weight: 700 !important;
+            text-align: left !important;
+        }
+
+        .st-key-sidebar-nav-profile button p,
+        .st-key-sidebar_nav_profile button p,
+        .st-key-sidebar-nav-recommendations button p,
+        .st-key-sidebar_nav_recommendations button p {
+            width: 100% !important;
+            margin: 0 !important;
             text-align: left !important;
         }
 
