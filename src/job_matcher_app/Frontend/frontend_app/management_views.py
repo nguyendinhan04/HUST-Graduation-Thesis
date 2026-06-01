@@ -17,6 +17,70 @@ from frontend_app.loading import form_loading
 from frontend_app.state import navigate_to, open_dialog
 
 
+def _skill_name(skill: dict[str, Any]) -> str:
+    return skill.get("skill_name") or "Unnamed skill"
+
+
+def _skill_key(skill_name: str) -> str:
+    return skill_name.strip().lower()
+
+
+def _skill_source_markup(source: dict[str, str]) -> str:
+    return (
+        '<div class="linkedin-skill-source">'
+        f'<div class="skill-source-logo">{escape(source["logo"])}</div>'
+        f'<div class="skill-source-text">{html_or_empty(source["label"])}</div>'
+        "</div>"
+    )
+
+
+def _collect_linkedin_skills(profile: dict[str, Any]) -> list[dict[str, Any]]:
+    skill_map: dict[str, dict[str, Any]] = {}
+
+    def ensure_skill(skill: dict[str, Any]) -> dict[str, Any]:
+        name = _skill_name(skill)
+        key = _skill_key(name)
+        if key not in skill_map:
+            skill_map[key] = {
+                "skill_id": skill.get("skill_id"),
+                "skill_name": name,
+                "standalone_skill_id": None,
+                "sources": [],
+            }
+        return skill_map[key]
+
+    def add_source(skill: dict[str, Any], label: str, logo: str) -> None:
+        item = ensure_skill(skill)
+        source = {"label": label, "logo": logo}
+        if source not in item["sources"]:
+            item["sources"].append(source)
+
+    for skill in profile.get("skills") or []:
+        item = ensure_skill(skill)
+        item["standalone_skill_id"] = skill.get("skill_id")
+
+    for experience in profile.get("experiences") or []:
+        title = experience.get("title") or "Experience"
+        company = experience.get("company_name") or "Company"
+        label = f"{title} at {company}"
+        logo = initials(company, "CO")
+        for skill in experience.get("skills") or []:
+            add_source(skill, label, logo)
+
+    for education in profile.get("educations") or []:
+        school = education.get("school") or "Education"
+        label = school
+        logo = initials(school, "ED")
+        for skill in education.get("skills") or []:
+            add_source(skill, label, logo)
+
+    for item in skill_map.values():
+        if item.get("standalone_skill_id") and not item["sources"]:
+            item["sources"].append({"label": "Added to profile", "logo": "IN"})
+
+    return sorted(skill_map.values(), key=lambda item: item["skill_name"].lower())
+
+
 def render_management_header(title: str, add_dialog: str) -> None:
     with st.container(border=True, key=f"management-{title.lower()}-header-card"):
         back_col, title_col, add_col = st.columns([0.65, 8.8, 0.55], gap="small")
@@ -107,28 +171,59 @@ def render_education_management_page(profile: dict[str, Any]) -> None:
 
 def render_skill_management_page(profile: dict[str, Any]) -> None:
     render_management_header("Skills", "add_skill")
-    skills = profile.get("skills") or []
+    skills = _collect_linkedin_skills(profile)
     if not skills:
         with st.container(border=True, key="management-skills-empty-card"):
-            st.markdown('<div class="empty-state">No standalone skills yet.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="empty-state">No skills yet.</div>', unsafe_allow_html=True)
         return
 
     with st.container(border=True, key="management-skills-list-card"):
-        for index, skill in enumerate(skills, start=1):
-            name_col, delete_col = st.columns([9.3, 0.7], gap="small")
+        st.markdown(
+            """
+            <div class="skills-filter-row">
+                <span class="skill-filter-pill active">All</span>
+                <span class="skill-filter-pill">Industry Knowledge</span>
+                <span class="skill-filter-pill">Tools &amp; Technologies</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        for skill in skills:
+            name_col, action_col = st.columns([9.3, 0.7], gap="small")
+            sources = skill.get("sources") or []
+            source_markup = "".join(
+                _skill_source_markup(source) for source in sources[:2]
+            )
+            if len(sources) > 2:
+                source_markup += (
+                    '<div class="linkedin-skill-source">'
+                    '<div class="skill-source-logo">+</div>'
+                    f'<div class="skill-source-text">Also shown in {len(sources) - 2} other sections</div>'
+                    "</div>"
+                )
             name_col.markdown(
-                f'<div class="skill-row">{html_or_empty(skill.get("skill_name"), "Unnamed skill")}</div>',
+                f"""
+                <div class="linkedin-skill-row">
+                    <div class="linkedin-skill-name">{html_or_empty(skill.get("skill_name"), "Unnamed skill")}</div>
+                    {source_markup}
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
-            if delete_col.button("×", key=f"delete_skill_page_{skill['skill_id']}", help="Delete skill"):
+            standalone_skill_id = skill.get("standalone_skill_id")
+            delete_clicked = action_col.button(
+                "×",
+                key=f"delete_skill_page_{skill['skill_id']}",
+                help="Delete standalone skill" if standalone_skill_id else "Skill comes from experience or education",
+                disabled=standalone_skill_id is None,
+            )
+            if delete_clicked and standalone_skill_id is not None:
                 try:
                     with form_loading("Deleting skill..."):
-                        delete_skill(skill["skill_id"])
+                        delete_skill(standalone_skill_id)
                         refresh_profile()
                     st.success("Skill deleted.")
                     st.rerun()
                 except ApiError as exc:
                     show_api_error("Could not delete skill", exc)
-            if index < len(skills):
-                st.divider()
 

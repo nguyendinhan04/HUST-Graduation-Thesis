@@ -260,6 +260,77 @@ def inject_linkedin_styles() -> None:
             font-weight: 600;
         }
 
+        .skills-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin: 2px 0 16px;
+        }
+
+        .skill-filter-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 34px;
+            padding: 0 14px;
+            border: 1px solid #a8a8a8;
+            border-radius: 999px;
+            color: #404040;
+            background: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .skill-filter-pill.active {
+            color: #ffffff;
+            background: #23583d;
+            border-color: #23583d;
+        }
+
+        .linkedin-skill-row {
+            padding: 18px 0 16px;
+            border-bottom: 1px solid #e8e4de;
+        }
+
+        .linkedin-skill-name {
+            color: #191919;
+            font-size: 18px;
+            font-weight: 650;
+            line-height: 1.3;
+        }
+
+        .linkedin-skill-source {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 14px;
+            color: #404040;
+            font-size: 15px;
+            line-height: 1.35;
+        }
+
+        .skill-source-logo {
+            width: 28px;
+            min-width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            background: #eef3f8;
+            color: #56687a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .skill-source-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
         .empty-state {
             color: #666666;
             padding: 4px 0 18px;
