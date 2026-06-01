@@ -11,6 +11,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -206,13 +207,23 @@ class Application(Base):
     id = Column(BigInteger, primary_key=True)
     employee_id = Column(BigInteger, ForeignKey("employees.id"), nullable=False)
     job_id = Column(BigInteger, ForeignKey("jobs.id"), nullable=False)
-    status = Column(String(50), server_default="pending")
-    resume_url = Column(Text)
-    cover_letter = Column(Text)
+    status = Column(String(50), nullable=False, server_default="pending")
     applied_at = Column(DateTime, server_default=func.now())
 
     employee = relationship("Employee", back_populates="applications")
     job = relationship("Job", back_populates="applications")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "employee_id",
+            "job_id",
+            name="uq_applications_employee_job",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'reviewing', 'accepted', 'rejected', 'withdrawn')",
+            name="ck_applications_status",
+        ),
+    )
 
 
 class TaskOutbox(Base):

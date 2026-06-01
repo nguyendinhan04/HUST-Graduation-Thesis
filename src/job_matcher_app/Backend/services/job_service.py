@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Employer, Job, JobSkill, Skill, User
+from models import Application, Employee, Employer, Job, JobSkill, Skill, User
 
 
 class JobService:
@@ -79,6 +79,20 @@ class JobService:
             "address": job.address,
             "deadline": job.deadline.isoformat() if job.deadline else None,
             "created_at": job.created_at.isoformat() if job.created_at else None,
+        }
+
+    @staticmethod
+    def _serialize_application(application: Application) -> dict:
+        return {
+            "application_id": application.id,
+            "employee_id": application.employee_id,
+            "job_id": application.job_id,
+            "status": application.status,
+            "applied_at": (
+                application.applied_at.isoformat()
+                if application.applied_at
+                else None
+            ),
         }
 
     @staticmethod
@@ -236,6 +250,67 @@ class JobService:
         )
         jobs = jobs_result.scalars().all()
         return [JobService._serialize_job_summary(job) for job in jobs]
+
+    @staticmethod
+    async def apply_job_for_employee_async(
+        db: AsyncSession,
+        current_user: User,
+        job_id: int,
+    ) -> dict:
+        if current_user.role != "employee":
+            raise PermissionError("Only employees can apply for jobs")
+
+        employee_result = await db.execute(
+            select(Employee).where(Employee.user_id == current_user.id)
+        )
+        employee = employee_result.scalars().first()
+        if employee is None:
+            raise ValueError(f"Employee profile not found for user_id {current_user.id}")
+
+        job = await db.get(Job, job_id)
+        if job is None:
+            raise ValueError(f"Job with id {job_id} not found")
+
+        if job.status != "open":
+            raise ValueError("Only open jobs can be applied to")
+
+        if job.deadline:
+            now = (
+                datetime.now(job.deadline.tzinfo)
+                if job.deadline.tzinfo
+                else datetime.now()
+            )
+            if job.deadline < now:
+                raise ValueError("Job application deadline has passed")
+
+        existing_application_result = await db.execute(
+            select(Application).where(
+                Application.employee_id == employee.id,
+                Application.job_id == job.id,
+            )
+        )
+        existing_application = existing_application_result.scalars().first()
+        if existing_application is not None:
+            raise ValueError("Employee already applied to this job")
+
+        application = Application(
+            employee_id=employee.id,
+            job_id=job.id,
+            status="pending",
+        )
+
+        try:
+            db.add(application)
+            await db.commit()
+            await db.refresh(application)
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to apply for job: {exc}") from exc
+        except Exception:
+            await db.rollback()
+            raise
+
+        return JobService._serialize_application(application)
 
     @staticmethod
     async def update_job_for_employer_async(
