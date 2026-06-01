@@ -1574,7 +1574,7 @@ class UserService:
             for field_name, value in fields.items():
                 if value is not None:
                     setattr(experience, field_name, value)
-
+            logger.info("Updated experience fields for user_id=%s, experience_id=%s", user_id, experience.id)
             if skills_provided:
                 if skills is None:
                     raise ValueError("skills must be a list when provided")
@@ -1610,6 +1610,7 @@ class UserService:
                     )
 
             await db.flush()
+            logger.info("Flushed experience updates to the database for user_id=%s, experience_id=%s", user_id, experience.id)
 
             experience_payload = UserService._build_experience_embedding_payload(
                 experience,
@@ -1639,6 +1640,8 @@ class UserService:
             )
 
             await db.commit()
+
+            logger.info("Committed experience updates to the database for user_id=%s, experience_id=%s", user_id, experience.id)
         except IntegrityError as exc:
             await db.rollback()
             raise ValueError(f"Failed to update experience: {exc}") from exc
