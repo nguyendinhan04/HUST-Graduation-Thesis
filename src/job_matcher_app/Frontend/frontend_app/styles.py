@@ -91,7 +91,8 @@ def inject_linkedin_styles() -> None:
 
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-profile),
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-explore),
-        .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-recommendations) {
+        .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-recommendations),
+        .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-dashboard) {
             margin: 0 !important;
             padding: 0 !important;
         }
@@ -99,9 +100,11 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button,
         .st-key-sidebar-nav-profile button,
         .st-key-sidebar-nav-explore button,
-        .st-key-sidebar-nav-recommendations button {
+        .st-key-sidebar-nav-recommendations button,
+        .st-key-sidebar-nav-dashboard button {
             width: 100% !important;
             min-height: 46px !important;
             display: flex !important;
@@ -120,21 +123,27 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button > div,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button span,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button p,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button p,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button p,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button p,
         .st-key-sidebar-nav-profile button > div,
         .st-key-sidebar-nav-explore button > div,
         .st-key-sidebar-nav-recommendations button > div,
+        .st-key-sidebar-nav-dashboard button > div,
         .st-key-sidebar-nav-profile button span,
         .st-key-sidebar-nav-explore button span,
         .st-key-sidebar-nav-recommendations button span,
+        .st-key-sidebar-nav-dashboard button span,
         .st-key-sidebar-nav-profile button p,
         .st-key-sidebar-nav-explore button p,
-        .st-key-sidebar-nav-recommendations button p {
+        .st-key-sidebar-nav-recommendations button p,
+        .st-key-sidebar-nav-dashboard button p {
             width: 100% !important;
             margin: 0 !important;
             text-align: left !important;
@@ -144,9 +153,11 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button:hover,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button:hover,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button:hover,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button:hover,
         .st-key-sidebar-nav-profile button:hover,
         .st-key-sidebar-nav-explore button:hover,
-        .st-key-sidebar-nav-recommendations button:hover {
+        .st-key-sidebar-nav-recommendations button:hover,
+        .st-key-sidebar-nav-dashboard button:hover {
             color: #111827 !important;
             background: #eef0f5 !important;
             border-color: #eef0f5 !important;
@@ -1243,6 +1254,239 @@ def inject_linkedin_styles() -> None:
             font-weight: 650;
             line-height: 1.3;
             padding: 4px 0;
+        }
+
+        .auth-form-section-title {
+            color: #111827;
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.25;
+            margin: 12px 0 8px;
+        }
+
+        .employer-summary {
+            background: #ffffff;
+            border: 1px solid #d7d3cc;
+            border-radius: 8px;
+            margin: 14px 0 14px;
+            padding: 18px;
+        }
+
+        .employer-summary-header {
+            display: grid;
+            grid-template-columns: 72px minmax(0, 1fr);
+            gap: 14px;
+            align-items: center;
+        }
+
+        .employer-company-logo,
+        .employer-company-logo-placeholder {
+            width: 72px;
+            height: 72px;
+            border-radius: 8px;
+            border: 1px solid #d7d3cc;
+            background: #f8fafc;
+        }
+
+        .employer-company-logo {
+            object-fit: cover;
+            display: block;
+        }
+
+        .employer-company-logo-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #075985;
+            background: #e0f2fe;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .employer-title-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 0;
+        }
+
+        .employer-company-name {
+            min-width: 0;
+            color: #111827;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .employer-company-link {
+            flex: 0 0 auto;
+            color: #0a66c2 !important;
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none !important;
+        }
+
+        .employer-profile-line {
+            color: #4b5563;
+            font-size: 14px;
+            line-height: 1.35;
+            margin-top: 4px;
+        }
+
+        .employer-fact-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .employer-fact {
+            color: #374151;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 7px 10px;
+        }
+
+        .employer-description {
+            color: #374151;
+            font-size: 14px;
+            line-height: 1.55;
+            margin-top: 16px;
+        }
+
+        .employer-section-title {
+            color: #111827;
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.25;
+            margin: 8px 0 10px;
+        }
+
+        .employer-section-title span {
+            color: #6b7280;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .employer-job-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .employer-job-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 210px;
+            gap: 18px;
+            align-items: start;
+            background: #ffffff;
+            border: 1px solid #d7d3cc;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            padding: 15px 16px;
+        }
+
+        .employer-job-main {
+            min-width: 0;
+        }
+
+        .employer-job-title {
+            color: #111827;
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.35;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .employer-job-meta {
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-top: 7px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .employer-job-side {
+            display: grid;
+            justify-items: end;
+            gap: 5px;
+            text-align: right;
+        }
+
+        .employer-job-status {
+            border-radius: 999px;
+            color: #374151;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1;
+            padding: 6px 9px;
+        }
+
+        .employer-job-status-open {
+            color: #065f46;
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+        }
+
+        .employer-job-status-draft {
+            color: #92400e;
+            background: #fffbeb;
+            border-color: #fde68a;
+        }
+
+        .employer-job-status-closed {
+            color: #991b1b;
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .employer-job-salary {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.3;
+        }
+
+        .employer-job-date {
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        @media (max-width: 720px) {
+            .employer-summary-header,
+            .employer-job-row {
+                grid-template-columns: 1fr;
+            }
+
+            .employer-title-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .employer-company-name,
+            .employer-job-title,
+            .employer-job-meta {
+                white-space: normal;
+            }
+
+            .employer-job-side {
+                justify-items: start;
+                text-align: left;
+            }
         }
 
         .empty-state {

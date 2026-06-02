@@ -14,6 +14,7 @@ def init_session_state() -> None:
     )
     st.session_state.setdefault("access_token", None)
     st.session_state.setdefault("token_type", "bearer")
+    st.session_state.setdefault("user_role", None)
     st.session_state.setdefault("profile", None)
     st.session_state.setdefault("active_dialog", None)
     st.session_state.setdefault("active_item_id", None)
@@ -41,6 +42,7 @@ def auth_headers() -> dict[str, str]:
 def logout() -> None:
     st.session_state["access_token"] = None
     st.session_state["token_type"] = "bearer"
+    st.session_state["user_role"] = None
     st.session_state["profile"] = None
     st.session_state["active_dialog"] = None
     st.session_state["active_item_id"] = None
@@ -48,6 +50,7 @@ def logout() -> None:
     st.session_state["current_page"] = "profile"
     st.session_state["selected_job_id"] = None
     st.session_state["selected_job_return_page"] = "recommendations"
+    _delete_state_keys_with_prefix("employer_jobs")
 
 
 

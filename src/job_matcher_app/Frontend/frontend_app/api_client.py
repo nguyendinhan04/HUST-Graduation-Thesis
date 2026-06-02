@@ -75,7 +75,34 @@ def login(email: str, password: str) -> None:
     )
     st.session_state["access_token"] = payload["access_token"]
     st.session_state["token_type"] = payload.get("token_type", "bearer")
-    refresh_profile()
+    st.session_state["user_role"] = "employee"
+    try:
+        refresh_profile()
+    except ApiError:
+        st.session_state["access_token"] = None
+        st.session_state["token_type"] = "bearer"
+        st.session_state["user_role"] = None
+        st.session_state["profile"] = None
+        raise
+
+
+def login_employer(email: str, password: str) -> None:
+    payload = request_json(
+        "POST",
+        "/auth/employer/login",
+        data={"username": email, "password": password},
+    )
+    st.session_state["access_token"] = payload["access_token"]
+    st.session_state["token_type"] = payload.get("token_type", "bearer")
+    st.session_state["user_role"] = "employer"
+    try:
+        refresh_employer_profile()
+    except ApiError:
+        st.session_state["access_token"] = None
+        st.session_state["token_type"] = "bearer"
+        st.session_state["user_role"] = None
+        st.session_state["profile"] = None
+        raise
 
 
 
@@ -87,9 +114,25 @@ def refresh_profile() -> None:
     )
 
 
+def refresh_employer_profile() -> None:
+    st.session_state["profile"] = request_json(
+        "GET",
+        "/users/me/employer_profile",
+        auth=True,
+    )
+
+
 
 def create_employee(payload: dict[str, Any]) -> Any:
     return request_json("POST", "/users/employees", json=payload)
+
+
+def create_employer(payload: dict[str, Any]) -> Any:
+    return request_json("POST", "/users/employers", json=payload)
+
+
+def get_my_employer_jobs() -> Any:
+    return request_json("GET", "/jobs/me/employer", auth=True)
 
 
 

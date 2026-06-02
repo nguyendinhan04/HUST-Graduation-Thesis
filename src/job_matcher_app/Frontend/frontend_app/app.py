@@ -7,6 +7,7 @@ import streamlit as st
 from frontend_app.api_client import ApiError, refresh_profile
 from frontend_app.auth_views import render_auth_page
 from frontend_app.dialogs import render_active_dialog
+from frontend_app.employer_views import render_employer_workspace
 from frontend_app.explore_views import render_explore_jobs_page
 from frontend_app.formatting import show_api_error
 from frontend_app.loading import form_loading
@@ -76,7 +77,7 @@ def render_profile_page() -> None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="Employee Profile",
+        page_title="Job Matcher",
         page_icon="E",
         layout="wide",
     )
@@ -85,7 +86,10 @@ def main() -> None:
     sidebar()
 
     if st.session_state.get("access_token"):
-        render_profile_page()
+        if st.session_state.get("user_role") == "employer":
+            render_employer_workspace()
+        else:
+            render_profile_page()
     else:
         render_auth_page()
 
