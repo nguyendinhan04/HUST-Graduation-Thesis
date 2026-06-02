@@ -103,6 +103,7 @@ async def search_jobs(
     try:
         return await JobService.search_open_jobs_async(
             db=db,
+            current_user=current_user,
             query=q,
             location=location,
             employment_type=employment_type,

@@ -274,6 +274,7 @@ class JobService:
     @staticmethod
     async def search_open_jobs_async(
         db: AsyncSession,
+        current_user: User,
         query: str | None = None,
         location: str | None = None,
         employment_type: str | None = None,
@@ -281,7 +282,10 @@ class JobService:
         page: int = 1,
         page_size: int = 10,
     ) -> dict:
-        filters = [Job.status == "open"]
+        if current_user.role == "employer":
+            filters = [Job.status.in_(("open", "closed"))]
+        else:
+            filters = [Job.status == "open"]
         stmt = (
             select(Job, Company)
             .join(Company, Job.company_id == Company.id)
