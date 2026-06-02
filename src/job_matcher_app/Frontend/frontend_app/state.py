@@ -21,6 +21,7 @@ def init_session_state() -> None:
     st.session_state.setdefault("confirm_discard", False)
     st.session_state.setdefault("current_page", "profile")
     st.session_state.setdefault("selected_job_id", None)
+    st.session_state.setdefault("selected_employer_job_id", None)
     st.session_state.setdefault("selected_job_return_page", "recommendations")
 
 
@@ -49,6 +50,7 @@ def logout() -> None:
     st.session_state["confirm_discard"] = False
     st.session_state["current_page"] = "profile"
     st.session_state["selected_job_id"] = None
+    st.session_state["selected_employer_job_id"] = None
     st.session_state["selected_job_return_page"] = "recommendations"
     _delete_state_keys_with_prefix("employer_jobs")
     _delete_state_keys_with_prefix("employer_job")
@@ -114,6 +116,8 @@ def navigate_to(page: str) -> None:
     if page != "job_detail":
         st.session_state["selected_job_id"] = None
         st.session_state["selected_job_return_page"] = "recommendations"
+    if page != "employer_job_detail":
+        st.session_state["selected_employer_job_id"] = None
     close_dialog()
 
 
@@ -121,4 +125,9 @@ def navigate_to_job_detail(job_id: int, return_page: str = "recommendations") ->
     st.session_state["selected_job_id"] = job_id
     st.session_state["selected_job_return_page"] = return_page
     navigate_to("job_detail")
+
+
+def navigate_to_employer_job_detail(job_id: int) -> None:
+    st.session_state["selected_employer_job_id"] = job_id
+    navigate_to("employer_job_detail")
 

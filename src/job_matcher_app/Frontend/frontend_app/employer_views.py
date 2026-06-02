@@ -26,7 +26,7 @@ from frontend_app.formatting import (
 )
 from frontend_app.loading import form_loading
 from frontend_app.recommendation_views import _format_salary, _posted_label
-from frontend_app.state import close_dialog, open_dialog
+from frontend_app.state import close_dialog, navigate_to, navigate_to_employer_job_detail, open_dialog
 
 
 DIALOG_NATIVE_TITLE = "\u200b"
@@ -227,23 +227,27 @@ def _open_candidate_dialog(application: dict[str, Any]) -> None:
 
 
 def _render_applications_section(job_id: int) -> None:
-    applications = _load_job_applications(job_id)
-    if applications is None:
-        return
-
     title_col, refresh_col = st.columns([4, 1], gap="small")
     title_col.markdown(
-        f'<div class="applications-section-title">Applications <span>{len(applications)}</span></div>',
+        '<div class="applications-section-title">Applications</div>',
         unsafe_allow_html=True,
     )
     if refresh_col.button(
-        "Refresh",
+        "Reload",
         key=f"refresh_job_applications_{job_id}",
         use_container_width=True,
     ):
         st.session_state.pop(f"employer_job_applications_{job_id}", None)
         st.rerun()
 
+    applications = _load_job_applications(job_id)
+    if applications is None:
+        return
+
+    st.markdown(
+        f'<div class="applications-count">{len(applications)} applications</div>',
+        unsafe_allow_html=True,
+    )
     if not applications:
         st.markdown(
             '<div class="empty-state">No applications for this job yet.</div>',
@@ -430,6 +434,84 @@ def _render_company_summary(profile: dict[str, Any]) -> None:
     )
 
     st.markdown(summary_markup, unsafe_allow_html=True)
+
+
+def _render_job_detail_text_section(title: str, value: Any) -> None:
+    body = _clean_text(value)
+    st.markdown(
+        f"""
+        <section class="employer-job-detail-section">
+            <div class="employer-job-detail-section-title">{html_or_empty(title)}</div>
+            <div class="employer-job-detail-section-body">{html_or_empty(body, "No information yet.")}</div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_employer_job_detail_page(job_id: int) -> None:
+    job = _load_job_detail(job_id)
+    if job is None:
+        if st.button("Back to dashboard", key="employer_job_detail_back_error"):
+            navigate_to("dashboard")
+            st.rerun()
+        return
+
+    back_col, edit_col = st.columns([4, 1], gap="small")
+    if back_col.button("Back to dashboard", key="employer_job_detail_back"):
+        navigate_to("dashboard")
+        st.rerun()
+    if edit_col.button(
+        "Edit",
+        key=f"employer_job_detail_edit_{job_id}",
+        use_container_width=True,
+        on_click=_open_edit_job_dialog,
+        args=(job_id,),
+    ):
+        pass
+
+    status = _status_label(job.get("status"))
+    status_class = "employer-job-status-" + "".join(
+        char for char in status if char.isalnum()
+    )
+    company = job.get("company") or {}
+    st.markdown(
+        f"""
+        <section class="employer-job-detail-hero">
+            <div class="employer-job-detail-title-row">
+                <div>
+                    <div class="employer-job-detail-title">{html_or_empty(job.get("title"), "Untitled job")}</div>
+                    <div class="employer-job-detail-company">{html_or_empty(company.get("name"), "Company")}</div>
+                </div>
+                <span class="employer-job-status {status_class}">{html_or_empty(status.title())}</span>
+            </div>
+            <div class="employer-job-detail-stat-grid">
+                <div class="employer-job-detail-stat">
+                    <div class="employer-job-detail-stat-label">Salary</div>
+                    <div class="employer-job-detail-stat-value">{html_or_empty(_format_salary(job))}</div>
+                </div>
+                <div class="employer-job-detail-stat">
+                    <div class="employer-job-detail-stat-label">Location</div>
+                    <div class="employer-job-detail-stat-value">{html_or_empty(job.get("location") or job.get("address") or job.get("location_type"), "Not set")}</div>
+                </div>
+                <div class="employer-job-detail-stat">
+                    <div class="employer-job-detail-stat-label">Type</div>
+                    <div class="employer-job-detail-stat-value">{html_or_empty(job.get("employment_type"), "Not set")}</div>
+                </div>
+                <div class="employer-job-detail-stat">
+                    <div class="employer-job-detail-stat-label">Deadline</div>
+                    <div class="employer-job-detail-stat-value">{html_or_empty(_format_datetime(job.get("deadline")))}</div>
+                </div>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+    _render_job_detail_text_section("Description", job.get("description"))
+    _render_job_detail_text_section("Requirement", job.get("requirement"))
+    _render_job_detail_text_section("Benefit", job.get("benefit"))
+    _render_applications_section(job_id)
+    _render_active_employer_dialog()
 
 
 def _build_job_payload(
@@ -670,7 +752,6 @@ def edit_job_dialog() -> None:
     job_detail = _load_job_detail(int(job_id))
     if job_detail is not None:
         _render_job_form("edit", job_detail)
-        _render_applications_section(int(job_id))
     render_discard_confirmation("edit_job_dialog")
 
 
@@ -692,6 +773,10 @@ def _open_create_job_dialog() -> None:
 def _open_edit_job_dialog(job_id: int) -> None:
     _clear_job_form_state()
     open_dialog("edit_job", job_id)
+
+
+def _open_employer_job_detail(job_id: int) -> None:
+    navigate_to_employer_job_detail(job_id)
 
 
 def _render_job_row(job: dict[str, Any]) -> None:
@@ -721,12 +806,12 @@ def _render_job_row(job: dict[str, Any]) -> None:
             unsafe_allow_html=True,
         )
         st.button(
-            "Edit job",
+            "View job",
             key=button_key,
             disabled=job_id is None,
-            help="Edit job",
+            help="View job detail",
             use_container_width=True,
-            on_click=_open_edit_job_dialog if job_id is not None else None,
+            on_click=_open_employer_job_detail if job_id is not None else None,
             args=(int(job_id),) if job_id is not None else None,
         )
 
@@ -766,6 +851,15 @@ def render_employer_workspace() -> None:
         except ApiError as exc:
             show_api_error("Could not load employer profile", exc)
             return
+
+    if st.session_state.get("current_page") == "employer_job_detail":
+        job_id = st.session_state.get("selected_employer_job_id")
+        if job_id is None:
+            navigate_to("dashboard")
+            st.rerun()
+            return
+        _render_employer_job_detail_page(int(job_id))
+        return
 
     profile = st.session_state["profile"]
     st.markdown('<div class="recommendation-title">Employer dashboard</div>', unsafe_allow_html=True)
