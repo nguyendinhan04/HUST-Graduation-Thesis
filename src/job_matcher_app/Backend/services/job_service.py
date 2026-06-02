@@ -5,8 +5,23 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from models import Application, Company, Employee, Employer, Job, JobSkill, Skill, User
+from models import (
+    Application,
+    Company,
+    Education,
+    EducationSkill,
+    Employee,
+    EmployeeSkill,
+    Employer,
+    Experience,
+    ExperienceSkill,
+    Job,
+    JobSkill,
+    Skill,
+    User,
+)
 
 
 class JobService:
@@ -113,6 +128,98 @@ class JobService:
                 if application.applied_at
                 else None
             ),
+        }
+
+    @staticmethod
+    def _serialize_application_with_employee(application: Application) -> dict:
+        employee = application.employee
+        user = employee.user
+        return {
+            **JobService._serialize_application(application),
+            "employee": {
+                "employee_id": employee.id,
+                "user_id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "phone": user.phone,
+                "avatar_url": user.avatar_url,
+                "employee_profile": {
+                    "headline": employee.headline,
+                    "summary": employee.summary,
+                    "years_of_experience": employee.years_of_experience,
+                    "current_location": employee.current_location,
+                    "created_at": employee.created_at.isoformat() if employee.created_at else None,
+                },
+                "skills": [
+                    {
+                        "skill_id": employee_skill.skill.id,
+                        "skill_name": employee_skill.skill.name,
+                    }
+                    for employee_skill in sorted(
+                        employee.employee_skills,
+                        key=lambda item: (item.skill.name or "").lower(),
+                    )
+                    if employee_skill.skill is not None
+                ],
+                "experiences": [
+                    {
+                        "experience_id": experience.id,
+                        "employee_id": experience.employee_id,
+                        "title": experience.title,
+                        "company_name": experience.company_name,
+                        "employment_type": experience.employment_type,
+                        "location": experience.location,
+                        "location_type": experience.location_type,
+                        "description": experience.description,
+                        "start_date": experience.start_date.isoformat() if experience.start_date else None,
+                        "end_date": experience.end_date.isoformat() if experience.end_date else None,
+                        "skills": [
+                            {
+                                "skill_id": experience_skill.skill.id,
+                                "skill_name": experience_skill.skill.name,
+                            }
+                            for experience_skill in sorted(
+                                experience.experience_skills,
+                                key=lambda item: (item.skill.name or "").lower(),
+                            )
+                            if experience_skill.skill is not None
+                        ],
+                    }
+                    for experience in sorted(
+                        employee.experiences,
+                        key=lambda item: (item.start_date is None, item.start_date),
+                        reverse=True,
+                    )
+                ],
+                "educations": [
+                    {
+                        "education_id": education.id,
+                        "employee_id": education.employee_id,
+                        "school": education.school,
+                        "degree": education.degree,
+                        "field_of_study": education.field_of_study,
+                        "description": education.description,
+                        "start_date": education.start_date.isoformat() if education.start_date else None,
+                        "end_date": education.end_date.isoformat() if education.end_date else None,
+                        "skills": [
+                            {
+                                "skill_id": education_skill.skill.id,
+                                "skill_name": education_skill.skill.name,
+                            }
+                            for education_skill in sorted(
+                                education.education_skills,
+                                key=lambda item: (item.skill.name or "").lower(),
+                            )
+                            if education_skill.skill is not None
+                        ],
+                    }
+                    for education in sorted(
+                        employee.educations,
+                        key=lambda item: (item.start_date is None, item.start_date),
+                        reverse=True,
+                    )
+                ],
+            },
         }
 
     @staticmethod
@@ -409,6 +516,53 @@ class JobService:
             raise
 
         return JobService._serialize_application(application)
+
+    @staticmethod
+    async def list_applications_for_employer_job_async(
+        db: AsyncSession,
+        current_user: User,
+        job_id: int,
+    ) -> list[dict]:
+        if current_user.role != "employer":
+            raise PermissionError("Only employers can view job applications")
+
+        employer_result = await db.execute(
+            select(Employer).where(Employer.user_id == current_user.id)
+        )
+        employer = employer_result.scalars().first()
+        if employer is None:
+            raise ValueError(f"Employer profile not found for user_id {current_user.id}")
+
+        job = await db.get(Job, job_id)
+        if job is None or job.status == "deleted":
+            raise ValueError(f"Job with id {job_id} not found")
+        if job.employer_id != employer.id:
+            raise PermissionError("You do not have permission to view applications for this job")
+
+        applications_result = await db.execute(
+            select(Application)
+            .options(
+                selectinload(Application.employee).selectinload(Employee.user),
+                selectinload(Application.employee)
+                .selectinload(Employee.employee_skills)
+                .selectinload(EmployeeSkill.skill),
+                selectinload(Application.employee)
+                .selectinload(Employee.experiences)
+                .selectinload(Experience.experience_skills)
+                .selectinload(ExperienceSkill.skill),
+                selectinload(Application.employee)
+                .selectinload(Employee.educations)
+                .selectinload(Education.education_skills)
+                .selectinload(EducationSkill.skill),
+            )
+            .where(Application.job_id == job.id)
+            .order_by(Application.applied_at.desc(), Application.id.desc())
+        )
+        applications = applications_result.scalars().all()
+        return [
+            JobService._serialize_application_with_employee(application)
+            for application in applications
+        ]
 
     @staticmethod
     async def update_job_for_employer_async(

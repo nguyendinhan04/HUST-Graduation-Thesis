@@ -1535,9 +1535,160 @@ def inject_linkedin_styles() -> None:
             line-height: 1.3;
         }
 
+        .applications-section-title,
+        .candidate-section-title {
+            color: #111827;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.25;
+            margin: 18px 0 10px;
+        }
+
+        .applications-section-title span {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .application-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 130px;
+            gap: 12px;
+            align-items: start;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            padding: 12px 14px;
+        }
+
+        .application-main {
+            min-width: 0;
+        }
+
+        .application-name {
+            color: #111827;
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .application-meta,
+        .application-date,
+        .candidate-contact,
+        .candidate-application-meta,
+        .candidate-item-meta,
+        .candidate-muted {
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .application-side {
+            display: grid;
+            justify-items: end;
+            gap: 5px;
+            text-align: right;
+        }
+
+        .application-status {
+            color: #075985;
+            background: #e0f2fe;
+            border: 1px solid #bae6fd;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1;
+            padding: 6px 9px;
+        }
+
+        .candidate-hero {
+            display: grid;
+            grid-template-columns: 56px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            margin: 12px 0 14px;
+        }
+
+        .candidate-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #075985;
+            background: #e0f2fe;
+            border: 1px solid #bae6fd;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .candidate-headline {
+            color: #111827;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .candidate-summary {
+            color: #374151;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 12px 14px;
+        }
+
+        .candidate-skill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0 4px;
+        }
+
+        .candidate-skill-chip {
+            color: #374151;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 7px 10px;
+        }
+
+        .candidate-timeline-item {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            padding: 12px 14px;
+        }
+
+        .candidate-item-title {
+            color: #111827;
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.3;
+        }
+
+        .candidate-item-description {
+            color: #374151;
+            font-size: 13px;
+            line-height: 1.45;
+            margin-top: 7px;
+        }
+
         @media (max-width: 720px) {
             .employer-summary-header,
-            .employer-job-row {
+            .employer-job-row,
+            .application-row,
+            .candidate-hero {
                 grid-template-columns: 1fr;
             }
 
@@ -1552,7 +1703,8 @@ def inject_linkedin_styles() -> None:
                 white-space: normal;
             }
 
-            .employer-job-side {
+            .employer-job-side,
+            .application-side {
                 justify-items: start;
                 text-align: left;
             }

@@ -15,6 +15,7 @@ from services import JobRecommendationService, JobService
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 settings = get_settings()
+JobStatus = Literal["open", "closed", "draft", "deleted"]
 
 
 class CreateJobRequest(BaseModel):
@@ -31,7 +32,7 @@ class CreateJobRequest(BaseModel):
     location_type: str | None = None
     address: str | None = None
     deadline: datetime | None = None
-    status: Literal["open", "closed", "draft"] = "open"
+    status: JobStatus = "open"
 
 
 class UpdateJobRequest(BaseModel):
@@ -48,7 +49,7 @@ class UpdateJobRequest(BaseModel):
     location_type: str | None = None
     address: str | None = None
     deadline: datetime | None = None
-    status: Literal["open", "closed", "draft", "deleted"] | None = None
+    status: JobStatus | None = None
 
 
 def _fields_set(payload: BaseModel) -> set[str]:
@@ -190,6 +191,28 @@ async def apply_job(
             status_code = 404
         else:
             status_code = 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/{job_id}/applications")
+async def list_job_applications(
+    job_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    try:
+        return await JobService.list_applications_for_employer_job_async(
+            db=db,
+            current_user=current_user,
+            job_id=job_id,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
         raise HTTPException(status_code=status_code, detail=message) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

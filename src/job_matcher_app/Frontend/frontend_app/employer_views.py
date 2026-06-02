@@ -10,13 +10,20 @@ import streamlit as st
 from frontend_app.api_client import (
     ApiError,
     create_job_posting,
+    get_job_applications,
     get_job_detail,
     get_my_employer_jobs,
     refresh_employer_profile,
     update_job_posting,
 )
 from frontend_app.forms import render_dialog_header, render_discard_confirmation
-from frontend_app.formatting import clean_payload, html_or_empty, initials, show_api_error
+from frontend_app.formatting import (
+    clean_payload,
+    format_date_range,
+    html_or_empty,
+    initials,
+    show_api_error,
+)
 from frontend_app.loading import form_loading
 from frontend_app.recommendation_views import _format_salary, _posted_label
 from frontend_app.state import close_dialog, open_dialog
@@ -49,6 +56,18 @@ def _load_job_detail(job_id: int) -> dict[str, Any] | None:
             show_api_error("Could not load job detail", exc)
             return None
     return st.session_state.get(cache_key)
+
+
+def _load_job_applications(job_id: int) -> list[dict[str, Any]] | None:
+    cache_key = f"employer_job_applications_{job_id}"
+    if cache_key not in st.session_state:
+        try:
+            with form_loading("Loading applications..."):
+                st.session_state[cache_key] = get_job_applications(job_id)
+        except ApiError as exc:
+            show_api_error("Could not load applications", exc)
+            return None
+    return st.session_state.get(cache_key) or []
 
 
 def _format_datetime(value: str | None) -> str:
@@ -153,6 +172,198 @@ def _clear_job_caches(job_id: int | None = None) -> None:
     st.session_state.pop("employer_jobs", None)
     if job_id is not None:
         st.session_state.pop(f"employer_job_detail_{job_id}", None)
+        st.session_state.pop(f"employer_job_applications_{job_id}", None)
+    else:
+        _delete_session_keys_with_prefix("employer_job_detail_")
+        _delete_session_keys_with_prefix("employer_job_applications_")
+
+
+def _render_view_dialog_header(title: str, key_prefix: str) -> None:
+    title_col, close_col = st.columns([10, 0.7], gap="small")
+    title_col.markdown(
+        f'<div class="custom-dialog-title">{html_or_empty(title)}</div>',
+        unsafe_allow_html=True,
+    )
+    if close_col.button("×", key=f"{key_prefix}_close", help="Close"):
+        close_dialog()
+        st.rerun()
+
+
+def _employee_name(application: dict[str, Any]) -> str:
+    employee = application.get("employee") or {}
+    return employee.get("full_name") or employee.get("email") or "Candidate"
+
+
+def _employee_profile(application: dict[str, Any]) -> dict[str, Any]:
+    employee = application.get("employee") or {}
+    return employee.get("employee_profile") or {}
+
+
+def _application_subtitle(application: dict[str, Any]) -> str:
+    profile = _employee_profile(application)
+    bits = [
+        profile.get("headline"),
+        profile.get("current_location"),
+    ]
+    years = profile.get("years_of_experience")
+    if years is not None:
+        bits.append(f"{years} years exp")
+    return " | ".join(str(bit) for bit in bits if bit) or "No profile summary yet"
+
+
+def _skill_chips(skills: list[dict[str, Any]] | None) -> str:
+    if not skills:
+        return '<span class="candidate-muted">No skills yet.</span>'
+    return "".join(
+        f'<span class="candidate-skill-chip">{html_or_empty(skill.get("skill_name"))}</span>'
+        for skill in skills
+        if skill.get("skill_name")
+    )
+
+
+def _open_candidate_dialog(application: dict[str, Any]) -> None:
+    st.session_state["active_candidate_application"] = application
+    open_dialog("candidate_detail", application.get("application_id"))
+
+
+def _render_applications_section(job_id: int) -> None:
+    applications = _load_job_applications(job_id)
+    if applications is None:
+        return
+
+    title_col, refresh_col = st.columns([4, 1], gap="small")
+    title_col.markdown(
+        f'<div class="applications-section-title">Applications <span>{len(applications)}</span></div>',
+        unsafe_allow_html=True,
+    )
+    if refresh_col.button(
+        "Refresh",
+        key=f"refresh_job_applications_{job_id}",
+        use_container_width=True,
+    ):
+        st.session_state.pop(f"employer_job_applications_{job_id}", None)
+        st.rerun()
+
+    if not applications:
+        st.markdown(
+            '<div class="empty-state">No applications for this job yet.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    for application in applications:
+        application_id = application.get("application_id")
+        employee = application.get("employee") or {}
+        profile = employee.get("employee_profile") or {}
+        row_col, action_col = st.columns([4, 1], gap="small")
+        row_col.markdown(
+            f"""
+            <div class="application-row">
+                <div class="application-main">
+                    <div class="application-name">{html_or_empty(_employee_name(application))}</div>
+                    <div class="application-meta">{html_or_empty(_application_subtitle(application))}</div>
+                </div>
+                <div class="application-side">
+                    <span class="application-status">{html_or_empty(str(application.get("status") or "pending").title())}</span>
+                    <div class="application-date">Applied: {html_or_empty(_format_datetime(application.get("applied_at")))}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        action_col.write("")
+        if action_col.button(
+            "View",
+            key=f"view_candidate_{application_id or employee.get('employee_id')}",
+            use_container_width=True,
+            on_click=_open_candidate_dialog,
+            args=(application,),
+        ):
+            pass
+
+
+def _render_candidate_timeline_item(item: dict[str, Any], kind: str) -> None:
+    if kind == "experience":
+        title = item.get("title") or "Experience"
+        secondary = item.get("company_name")
+    else:
+        title = item.get("school") or "Education"
+        secondary = " | ".join(
+            str(bit)
+            for bit in (item.get("degree"), item.get("field_of_study"))
+            if bit
+        )
+    meta_bits = [
+        secondary,
+        item.get("employment_type"),
+        item.get("location") or item.get("location_type"),
+        format_date_range(item.get("start_date"), item.get("end_date")),
+    ]
+    meta = " | ".join(str(bit) for bit in meta_bits if bit)
+    description = item.get("description") or ""
+    st.markdown(
+        f"""
+        <div class="candidate-timeline-item">
+            <div class="candidate-item-title">{html_or_empty(title)}</div>
+            <div class="candidate-item-meta">{html_or_empty(meta)}</div>
+            <div class="candidate-item-description">{html_or_empty(description, "No description yet.")}</div>
+            <div class="candidate-skill-row">{_skill_chips(item.get("skills"))}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+@st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
+def candidate_detail_dialog() -> None:
+    application = st.session_state.get("active_candidate_application") or {}
+    employee = application.get("employee") or {}
+    profile = employee.get("employee_profile") or {}
+    title = _employee_name(application)
+    _render_view_dialog_header(title, "candidate_detail_dialog")
+
+    contact_bits = [
+        employee.get("email"),
+        employee.get("phone"),
+        profile.get("current_location"),
+    ]
+    contact = " | ".join(str(bit) for bit in contact_bits if bit)
+    st.markdown(
+        f"""
+        <div class="candidate-hero">
+            <div class="candidate-avatar">{html_or_empty(initials(title, "CA"))}</div>
+            <div class="candidate-hero-main">
+                <div class="candidate-headline">{html_or_empty(profile.get("headline"), "No headline yet.")}</div>
+                <div class="candidate-contact">{html_or_empty(contact, "No contact details yet.")}</div>
+                <div class="candidate-application-meta">
+                    Applied {_format_datetime(application.get("applied_at"))} · {html_or_empty(str(application.get("status") or "pending").title())}
+                </div>
+            </div>
+        </div>
+        <div class="candidate-summary">{html_or_empty(profile.get("summary"), "No profile summary yet.")}</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="candidate-section-title">Skills</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="candidate-skill-row">{_skill_chips(employee.get("skills"))}</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="candidate-section-title">Experience</div>', unsafe_allow_html=True)
+    experiences = employee.get("experiences") or []
+    if not experiences:
+        st.markdown('<div class="empty-state">No experience yet.</div>', unsafe_allow_html=True)
+    for experience in experiences:
+        _render_candidate_timeline_item(experience, "experience")
+
+    st.markdown('<div class="candidate-section-title">Education</div>', unsafe_allow_html=True)
+    educations = employee.get("educations") or []
+    if not educations:
+        st.markdown('<div class="empty-state">No education yet.</div>', unsafe_allow_html=True)
+    for education in educations:
+        _render_candidate_timeline_item(education, "education")
 
 
 def _render_company_summary(profile: dict[str, Any]) -> None:
@@ -459,6 +670,7 @@ def edit_job_dialog() -> None:
     job_detail = _load_job_detail(int(job_id))
     if job_detail is not None:
         _render_job_form("edit", job_detail)
+        _render_applications_section(int(job_id))
     render_discard_confirmation("edit_job_dialog")
 
 
@@ -468,6 +680,8 @@ def _render_active_employer_dialog() -> None:
         create_job_dialog()
     elif active_dialog == "edit_job":
         edit_job_dialog()
+    elif active_dialog == "candidate_detail":
+        candidate_detail_dialog()
 
 
 def _open_create_job_dialog() -> None:
