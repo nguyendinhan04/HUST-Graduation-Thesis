@@ -949,6 +949,121 @@ def inject_linkedin_styles() -> None:
             font-weight: 650;
         }
 
+        .skill-gap-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+            gap: 18px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .skill-gap-label {
+            color: #666666;
+            font-size: 13px;
+            font-weight: 650;
+            line-height: 1.3;
+        }
+
+        .skill-gap-score {
+            color: #075985;
+            font-size: 30px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-top: 4px;
+        }
+
+        .skill-gap-count-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .skill-gap-count {
+            min-height: 54px;
+            box-sizing: border-box;
+            padding: 9px 10px;
+            border: 1px solid #d7d3cc;
+            border-radius: 8px;
+            color: #666666;
+            background: #f8fafc;
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1.25;
+        }
+
+        .skill-gap-count span {
+            display: block;
+            color: #191919;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 3px;
+        }
+
+        .skill-gap-progress {
+            width: 100%;
+            height: 10px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e5e7eb;
+            margin: 8px 0 16px;
+        }
+
+        .skill-gap-progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: #0ea5e9;
+        }
+
+        .skill-gap-missing-title {
+            color: #404040;
+            font-size: 14px;
+            font-weight: 750;
+            line-height: 1.35;
+            margin: 0 0 8px;
+        }
+
+        .skill-gap-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .skill-gap-missing-chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 30px;
+            padding: 0 12px;
+            border-radius: 999px;
+            color: #92400e;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .skill-gap-complete {
+            color: #166534;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .skill-gap-info {
+            color: #666666;
+            background: #f8fafc;
+            border: 1px solid #d7d3cc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            font-size: 14px;
+            font-weight: 650;
+        }
+
         .st-key-job_detail_back button {
             border: 1px solid #a8a8a8 !important;
             background: #ffffff !important;
@@ -1046,6 +1161,11 @@ def inject_linkedin_styles() -> None:
             .job-detail-stat-grid {
                 grid-template-columns: 1fr;
                 gap: 14px;
+            }
+
+            .skill-gap-summary,
+            .skill-gap-count-grid {
+                grid-template-columns: 1fr;
             }
 
             div[class*="st-key-job-card-wrap-"] {

@@ -6,7 +6,7 @@ from typing import Any
 
 import streamlit as st
 
-from frontend_app.api_client import ApiError, apply_job, get_job_detail
+from frontend_app.api_client import ApiError, apply_job, get_job_detail, get_job_skill_gap
 from frontend_app.formatting import html_or_empty, show_api_error
 from frontend_app.loading import form_loading
 from frontend_app.state import navigate_to
@@ -129,6 +129,37 @@ def _skills_markup(skills: list[dict[str, Any]] | None) -> str:
     return f'<div class="job-detail-skills">{"".join(items)}</div>'
 
 
+def _missing_skill_chips(skills: list[dict[str, Any]] | None) -> str:
+    if not skills:
+        return '<div class="skill-gap-complete">Bạn đã cover toàn bộ kỹ năng yêu cầu.</div>'
+
+    chips = []
+    for skill in skills:
+        name = skill.get("job_skill_name")
+        if name:
+            chips.append(f'<span class="skill-gap-missing-chip">{html_or_empty(name)}</span>')
+    if not chips:
+        return '<div class="skill-gap-complete">Bạn đã cover toàn bộ kỹ năng yêu cầu.</div>'
+    return f'<div class="skill-gap-chip-row">{"".join(chips)}</div>'
+
+
+def _coverage_width(value: Any) -> int:
+    try:
+        coverage = float(value)
+    except (TypeError, ValueError):
+        coverage = 0.0
+    return max(0, min(int(round(coverage * 100)), 100))
+
+
+def _skill_gap_error_message(message: str | None) -> str:
+    lower_message = (message or "").lower()
+    if "no skills in job_skills" in lower_message:
+        return "Công việc này chưa có dữ liệu kỹ năng để tính skill gap."
+    if "profile has no skills" in lower_message:
+        return "Hồ sơ của bạn chưa có kỹ năng để tính skill gap."
+    return "Chưa thể tải skill gap cho công việc này."
+
+
 def _render_job_summary(job: dict[str, Any]) -> None:
     company = job.get("company") or {}
     location = job.get("location") or job.get("location_type") or company.get("location") or "Chưa cập nhật"
@@ -193,6 +224,61 @@ def _load_job_detail(job_id: int) -> dict[str, Any] | None:
     return st.session_state.get(cache_key)
 
 
+def _load_job_skill_gap(job_id: int) -> dict[str, Any] | None:
+    cache_key = f"job_skill_gap_{job_id}"
+    error_key = f"job_skill_gap_error_{job_id}"
+    if cache_key not in st.session_state and error_key not in st.session_state:
+        try:
+            with form_loading("Loading skill gap..."):
+                st.session_state[cache_key] = get_job_skill_gap(job_id)
+        except ApiError as exc:
+            st.session_state[error_key] = str(exc)
+            return None
+    return st.session_state.get(cache_key)
+
+
+def _render_skill_gap(job_id: int) -> None:
+    gap = _load_job_skill_gap(job_id)
+    if gap is None:
+        error = st.session_state.get(f"job_skill_gap_error_{job_id}")
+        _render_section(
+            "Skill gap",
+            f'<div class="skill-gap-info">{html_or_empty(_skill_gap_error_message(error))}</div>',
+        )
+        return
+
+    score = gap.get("score") or {}
+    coverage_display = score.get("coverage_display") or "0.0%"
+    coverage_width = _coverage_width(score.get("coverage"))
+    covered_count = score.get("covered_skill_count") or 0
+    related_count = score.get("related_skill_count") or 0
+    missing_count = score.get("missing_skill_count") or 0
+    total_count = score.get("total_job_skill_count") or 0
+
+    _render_section(
+        "Skill gap",
+        f"""
+        <div class="skill-gap-summary">
+            <div>
+                <div class="skill-gap-label">Profile coverage</div>
+                <div class="skill-gap-score">{html_or_empty(coverage_display)}</div>
+            </div>
+            <div class="skill-gap-count-grid">
+                <div class="skill-gap-count"><span>{html_or_empty(covered_count)}</span> Covered</div>
+                <div class="skill-gap-count"><span>{html_or_empty(related_count)}</span> Related</div>
+                <div class="skill-gap-count"><span>{html_or_empty(missing_count)}</span> Missing</div>
+                <div class="skill-gap-count"><span>{html_or_empty(total_count)}</span> Required</div>
+            </div>
+        </div>
+        <div class="skill-gap-progress" aria-label="Skill gap coverage">
+            <div class="skill-gap-progress-fill" style="width: {coverage_width}%"></div>
+        </div>
+        <div class="skill-gap-missing-title">Kỹ năng còn thiếu</div>
+        {_missing_skill_chips(gap.get("missing_skills"))}
+        """,
+    )
+
+
 def _handle_apply(job_id: int) -> None:
     try:
         with form_loading("Submitting application..."):
@@ -247,6 +333,7 @@ def render_job_detail_page() -> None:
     if st.session_state.get("job_apply_error_message"):
         job_apply_error_dialog()
 
+    _render_skill_gap(int(job_id))
     _render_section("Mô tả công việc", _text_to_bullets(job.get("description")))
     _render_section("Yêu cầu ứng viên", _text_to_bullets(job.get("requirement")) + _skills_markup(job.get("skills")))
     _render_section("Quyền lợi", _text_to_bullets(job.get("benefit")))

@@ -184,6 +184,22 @@ def get_job_detail(job_id: int) -> Any:
     return request_json("GET", f"/jobs/{job_id}", auth=True)
 
 
+def get_job_skill_gap(
+    job_id: int,
+    threshold: float = 0.6,
+    related_threshold: float = 0.35,
+) -> Any:
+    return request_json(
+        "GET",
+        f"/jobs/{job_id}/skill-gap",
+        params={
+            "threshold": threshold,
+            "related_threshold": related_threshold,
+        },
+        auth=True,
+    )
+
+
 def apply_job(job_id: int) -> Any:
     return request_json("POST", f"/jobs/{job_id}/apply", auth=True)
 
