@@ -15,11 +15,14 @@ from frontend_app.api_client import (
     refresh_employer_profile,
     update_job_posting,
 )
+from frontend_app.forms import render_dialog_header, render_discard_confirmation
 from frontend_app.formatting import clean_payload, html_or_empty, initials, show_api_error
 from frontend_app.loading import form_loading
 from frontend_app.recommendation_views import _format_salary, _posted_label
+from frontend_app.state import close_dialog, open_dialog
 
 
+DIALOG_NATIVE_TITLE = "\u200b"
 STATUS_OPTIONS = ["open", "draft", "closed"]
 EMPLOYMENT_OPTIONS = ["", "Full-time", "Part-time", "Contract", "Internship", "Remote"]
 LOCATION_TYPE_OPTIONS = ["", "On-site", "Hybrid", "Remote"]
@@ -266,15 +269,10 @@ def _render_job_form(mode: str, job: dict[str, Any] | None = None) -> None:
     job = job or {}
     is_edit = mode == "edit"
     job_id = job.get("job_id") or job.get("id")
-    title_label = "Edit job" if is_edit else "Create job"
     submit_label = "Save changes" if is_edit else "Create job"
     form_key = f"employer_job_{mode}_{job_id or 'new'}"
     parsed_deadline = _parse_deadline(job.get("deadline"))
 
-    st.markdown(
-        f'<div class="employer-job-form-title">{html_or_empty(title_label)}</div>',
-        unsafe_allow_html=True,
-    )
     with st.form(f"{form_key}_form"):
         title = st.text_input(
             "Title",
@@ -365,13 +363,12 @@ def _render_job_form(mode: str, job: dict[str, Any] | None = None) -> None:
             key=f"{form_key}_benefit",
         )
 
-        submit_col, cancel_col = st.columns([1, 1])
-        submitted = submit_col.form_submit_button(submit_label, use_container_width=True)
-        cancelled = cancel_col.form_submit_button("Cancel", use_container_width=True)
-
-    if cancelled:
-        _clear_job_form_state()
-        st.rerun()
+        _, submit_col = st.columns([4, 1.3])
+        submitted = submit_col.form_submit_button(
+            submit_label,
+            type="primary",
+            use_container_width=True,
+        )
 
     if not submitted:
         return
@@ -411,10 +408,42 @@ def _render_job_form(mode: str, job: dict[str, Any] | None = None) -> None:
                 create_job_posting(payload)
         _clear_job_caches(int(job_id) if job_id is not None else None)
         _clear_job_form_state()
+        close_dialog()
         st.success("Job saved successfully.")
         st.rerun()
     except ApiError as exc:
         show_api_error("Could not save job", exc)
+
+
+@st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
+def create_job_dialog() -> None:
+    render_dialog_header("Create job", "create_job_dialog")
+    _render_job_form("create")
+    render_discard_confirmation("create_job_dialog")
+
+
+@st.dialog(DIALOG_NATIVE_TITLE, dismissible=False)
+def edit_job_dialog() -> None:
+    render_dialog_header("Edit job", "edit_job_dialog")
+
+    job_id = st.session_state.get("active_item_id")
+    if job_id is None:
+        st.info("Job not found.")
+        render_discard_confirmation("edit_job_dialog")
+        return
+
+    job_detail = _load_job_detail(int(job_id))
+    if job_detail is not None:
+        _render_job_form("edit", job_detail)
+    render_discard_confirmation("edit_job_dialog")
+
+
+def _render_active_employer_dialog() -> None:
+    active_dialog = st.session_state.get("active_dialog")
+    if active_dialog == "create_job":
+        create_job_dialog()
+    elif active_dialog == "edit_job":
+        edit_job_dialog()
 
 
 def _render_job_row(job: dict[str, Any]) -> None:
@@ -448,8 +477,9 @@ def _render_jobs_section(jobs: list[dict[str, Any]]) -> None:
         unsafe_allow_html=True,
     )
     if create_col.button("Create", key="employer_jobs_create", use_container_width=True):
-        st.session_state["employer_job_form_mode"] = "create"
-        st.session_state["employer_edit_job_id"] = None
+        _clear_job_form_state()
+        open_dialog("create_job")
+        st.rerun()
     if refresh_col.button("Refresh", key="employer_jobs_refresh", use_container_width=True):
         _clear_job_caches()
         st.rerun()
@@ -476,18 +506,9 @@ def _render_jobs_section(jobs: list[dict[str, Any]]) -> None:
         edit_button_col.write("")
         edit_button_col.write("")
         if edit_button_col.button("Edit", key="employer_jobs_edit", use_container_width=True):
-            st.session_state["employer_job_form_mode"] = "edit"
-            st.session_state["employer_edit_job_id"] = int(selected_job_id)
-
-    form_mode = st.session_state.get("employer_job_form_mode")
-    if form_mode == "create":
-        _render_job_form("create")
-    elif form_mode == "edit":
-        edit_job_id = st.session_state.get("employer_edit_job_id")
-        if edit_job_id is not None:
-            job_detail = _load_job_detail(int(edit_job_id))
-            if job_detail is not None:
-                _render_job_form("edit", job_detail)
+            _clear_job_form_state()
+            open_dialog("edit_job", int(selected_job_id))
+            st.rerun()
 
     if not jobs:
         st.markdown(
@@ -521,3 +542,4 @@ def render_employer_workspace() -> None:
     if jobs is None:
         return
     _render_jobs_section(jobs)
+    _render_active_employer_dialog()

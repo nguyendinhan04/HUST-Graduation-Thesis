@@ -92,6 +92,10 @@ def clear_active_dialog_draft() -> None:
         _delete_state_keys_with_prefix("profile_edit_form_")
     elif active_dialog == "add_skill":
         _delete_state_keys_with_prefix("add_skill_form_")
+    elif active_dialog == "create_job":
+        _delete_state_keys_with_prefix("employer_job_create_")
+    elif active_dialog == "edit_job":
+        _delete_state_keys_with_prefix("employer_job_edit_")
 
 
 
