@@ -1407,8 +1407,9 @@ def inject_linkedin_styles() -> None:
 
         div[class*="st-key-employer-job-wrap-"] {
             position: relative;
-            margin: 0 0 8px;
-            overflow: hidden;
+            margin: 0 0 10px;
+            padding: 2px;
+            overflow: visible;
         }
 
         div[class*="st-key-employer-job-wrap-"]:hover .employer-job-row {
