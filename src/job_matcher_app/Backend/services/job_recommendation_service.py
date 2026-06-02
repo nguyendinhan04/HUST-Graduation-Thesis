@@ -22,6 +22,7 @@ from models import (
     Experience,
     ExperienceSkill,
     Skill,
+    User,
 )
 
 try:
@@ -1317,7 +1318,9 @@ class JobRecommendationService:
         self,
         db: AsyncSession,
         job_id: int,
+        current_user: User,
     ) -> dict:
+        include_closed = current_user.role == "employer"
         job_row = (
             await db.execute(
                 text(
@@ -1347,10 +1350,27 @@ class JobRecommendationService:
                     FROM jobs j
                     JOIN companies c ON j.company_id = c.id
                     WHERE j.id = :job_id
-                      AND j.status = 'open'
+                      AND j.status <> 'deleted'
+                      AND (
+                          j.status = 'open'
+                          OR (
+                              :include_closed = TRUE
+                              AND j.status = 'closed'
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM employers e
+                                  WHERE e.id = j.employer_id
+                                    AND e.user_id = :current_user_id
+                              )
+                          )
+                      )
                     """
                 ),
-                {"job_id": job_id},
+                {
+                    "job_id": job_id,
+                    "include_closed": include_closed,
+                    "current_user_id": current_user.id,
+                },
             )
         ).mappings().first()
         if job_row is None:

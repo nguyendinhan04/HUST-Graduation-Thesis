@@ -232,12 +232,17 @@ async def get_job_skill_gap(
 @router.get("/{job_id}")
 async def get_job_detail(
     job_id: int = Path(..., ge=1),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
     service = JobRecommendationService()
 
     try:
-        return await service.get_job_detail(db=db, job_id=job_id)
+        return await service.get_job_detail(
+            db=db,
+            job_id=job_id,
+            current_user=current_user,
+        )
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
