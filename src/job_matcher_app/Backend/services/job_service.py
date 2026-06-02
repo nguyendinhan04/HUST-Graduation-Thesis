@@ -12,7 +12,7 @@ from models import Application, Company, Employee, Employer, Job, JobSkill, Skil
 class JobService:
     """Service for employer job posting workflows."""
 
-    VALID_STATUSES = {"open", "closed", "draft"}
+    VALID_STATUSES = {"open", "closed", "draft", "deleted"}
 
     @staticmethod
     async def _fetch_job_skills(
@@ -154,7 +154,7 @@ class JobService:
 
         job_status = status or "open"
         if job_status not in JobService.VALID_STATUSES:
-            raise ValueError("status must be one of: open, closed, draft")
+            raise ValueError("status must be one of: open, closed, draft, deleted")
 
         if salary_min is not None and salary_min < 0:
             raise ValueError("salary_min must be greater than or equal to 0")
@@ -455,7 +455,7 @@ class JobService:
 
         if "status" in fields_set:
             if not status or status not in JobService.VALID_STATUSES:
-                raise ValueError("status must be one of: open, closed, draft")
+                raise ValueError("status must be one of: open, closed, draft, deleted")
 
         proposed_salary_min = salary_min if "salary_min" in fields_set else job.salary_min
         proposed_salary_max = salary_max if "salary_max" in fields_set else job.salary_max

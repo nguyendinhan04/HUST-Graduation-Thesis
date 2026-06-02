@@ -363,12 +363,36 @@ def _render_job_form(mode: str, job: dict[str, Any] | None = None) -> None:
             key=f"{form_key}_benefit",
         )
 
-        _, submit_col = st.columns([4, 1.3])
+        if is_edit:
+            delete_col, _, submit_col = st.columns([1.3, 2.7, 1.3])
+            delete_submitted = delete_col.form_submit_button(
+                "Delete",
+                use_container_width=True,
+            )
+        else:
+            delete_submitted = False
+            _, submit_col = st.columns([4, 1.3])
         submitted = submit_col.form_submit_button(
             submit_label,
             type="primary",
             use_container_width=True,
         )
+
+    if delete_submitted:
+        if job_id is None:
+            st.warning("Job not found.")
+            return
+        try:
+            with form_loading("Deleting job..."):
+                update_job_posting(int(job_id), {"status": "deleted"})
+            _clear_job_caches(int(job_id))
+            _clear_job_form_state()
+            close_dialog()
+            st.success("Job deleted.")
+            st.rerun()
+        except ApiError as exc:
+            show_api_error("Could not delete job", exc)
+        return
 
     if not submitted:
         return

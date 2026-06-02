@@ -48,7 +48,7 @@ class UpdateJobRequest(BaseModel):
     location_type: str | None = None
     address: str | None = None
     deadline: datetime | None = None
-    status: Literal["open", "closed", "draft"] | None = None
+    status: Literal["open", "closed", "draft", "deleted"] | None = None
 
 
 def _fields_set(payload: BaseModel) -> set[str]:
