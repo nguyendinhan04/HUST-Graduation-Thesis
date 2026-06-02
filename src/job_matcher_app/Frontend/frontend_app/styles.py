@@ -1405,6 +1405,41 @@ def inject_linkedin_styles() -> None:
             gap: 8px;
         }
 
+        div[class*="st-key-employer-job-wrap-"] {
+            position: relative;
+            margin: 0 0 8px;
+            overflow: hidden;
+        }
+
+        div[class*="st-key-employer-job-wrap-"]:hover .employer-job-row {
+            border-color: #0ea5e9;
+            box-shadow: 0 8px 22px rgba(14, 165, 233, 0.13);
+        }
+
+        div[class*="st-key-employer-job-wrap-"] div[data-testid="stButton"] {
+            position: absolute !important;
+            inset: 0 !important;
+            z-index: 20 !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        div[class*="st-key-employer-job-wrap-"] div[data-testid="stButton"] > button {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            opacity: 0 !important;
+            cursor: pointer !important;
+            border: 0 !important;
+            border-radius: 8px !important;
+            background: transparent !important;
+        }
+
         .employer-job-row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) 210px;
@@ -1413,8 +1448,10 @@ def inject_linkedin_styles() -> None:
             background: #ffffff;
             border: 1px solid #d7d3cc;
             border-radius: 8px;
-            margin-bottom: 8px;
+            margin: 0;
             padding: 15px 16px;
+            cursor: pointer;
+            transition: border-color 0.16s ease, box-shadow 0.16s ease;
         }
 
         .employer-job-main {

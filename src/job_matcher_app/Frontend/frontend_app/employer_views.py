@@ -447,27 +447,41 @@ def _render_active_employer_dialog() -> None:
 
 
 def _render_job_row(job: dict[str, Any]) -> None:
+    job_id = job.get("job_id") or job.get("id")
     status = _status_label(job.get("status"))
     status_class = "employer-job-status-" + "".join(
         char for char in status if char.isalnum()
     )
-    st.markdown(
-        f"""
-        <div class="employer-job-row">
-            <div class="employer-job-main">
-                <div class="employer-job-title">{html_or_empty(job.get("title"), "Untitled job")}</div>
-                <div class="employer-job-meta">{html_or_empty(_job_meta(job))}</div>
+    row_key = f"employer-job-wrap-{job_id or 'missing'}"
+    button_key = f"employer-job-click-{job_id or 'missing'}"
+    with st.container(key=row_key):
+        st.markdown(
+            f"""
+            <div class="employer-job-row">
+                <div class="employer-job-main">
+                    <div class="employer-job-title">{html_or_empty(job.get("title"), "Untitled job")}</div>
+                    <div class="employer-job-meta">{html_or_empty(_job_meta(job))}</div>
+                </div>
+                <div class="employer-job-side">
+                    <span class="employer-job-status {status_class}">{html_or_empty(status.title())}</span>
+                    <div class="employer-job-salary">{html_or_empty(_format_salary(job))}</div>
+                    <div class="employer-job-date">Deadline: {html_or_empty(_format_datetime(job.get("deadline")))}</div>
+                    <div class="employer-job-date">{html_or_empty(_posted_label(job.get("created_at")))}</div>
+                </div>
             </div>
-            <div class="employer-job-side">
-                <span class="employer-job-status {status_class}">{html_or_empty(status.title())}</span>
-                <div class="employer-job-salary">{html_or_empty(_format_salary(job))}</div>
-                <div class="employer-job-date">Deadline: {html_or_empty(_format_datetime(job.get("deadline")))}</div>
-                <div class="employer-job-date">{html_or_empty(_posted_label(job.get("created_at")))}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Edit job",
+            key=button_key,
+            disabled=job_id is None,
+            help="Edit job",
+            use_container_width=True,
+        ):
+            _clear_job_form_state()
+            open_dialog("edit_job", int(job_id))
+            st.rerun()
 
 
 def _render_jobs_section(jobs: list[dict[str, Any]]) -> None:
@@ -483,32 +497,6 @@ def _render_jobs_section(jobs: list[dict[str, Any]]) -> None:
     if refresh_col.button("Refresh", key="employer_jobs_refresh", use_container_width=True):
         _clear_job_caches()
         st.rerun()
-
-    job_options = [
-        int(job_id)
-        for job in jobs
-        for job_id in [job.get("job_id") or job.get("id")]
-        if job_id is not None
-    ]
-    if job_options:
-        labels = {
-            int(job.get("job_id") or job.get("id")): job.get("title") or "Untitled job"
-            for job in jobs
-            if job.get("job_id") or job.get("id")
-        }
-        edit_select_col, edit_button_col = st.columns([4, 1], gap="small")
-        selected_job_id = edit_select_col.selectbox(
-            "Job to edit",
-            job_options,
-            format_func=lambda item: labels.get(int(item), "Untitled job"),
-            key="employer_edit_job_select",
-        )
-        edit_button_col.write("")
-        edit_button_col.write("")
-        if edit_button_col.button("Edit", key="employer_jobs_edit", use_container_width=True):
-            _clear_job_form_state()
-            open_dialog("edit_job", int(selected_job_id))
-            st.rerun()
 
     if not jobs:
         st.markdown(
