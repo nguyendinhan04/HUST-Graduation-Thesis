@@ -54,10 +54,14 @@ def _status_label(status: Any) -> str:
     return value or "unknown"
 
 
+def _clean_text(value: Any) -> str:
+    return str(value).strip() if value is not None else ""
+
+
 def _render_company_summary(profile: dict[str, Any]) -> None:
     company = profile.get("company") or {}
     employer_profile = profile.get("employer_profile") or {}
-    company_name = company.get("name") or "Company"
+    company_name = _clean_text(company.get("name")) or "Company profile"
     logo_url = (company.get("logo_url") or "").strip()
     logo_markup = (
         f'<img class="employer-company-logo" src="{escape(logo_url)}" alt="{html_or_empty(company_name)}">'
@@ -65,44 +69,59 @@ def _render_company_summary(profile: dict[str, Any]) -> None:
         else f'<div class="employer-company-logo-placeholder">{escape(initials(company_name, "CO"))}</div>'
     )
     facts = [
-        company.get("industry"),
-        company.get("company_size"),
-        company.get("location") or company.get("address"),
+        _clean_text(company.get("industry")),
+        _clean_text(company.get("company_size")),
+        _clean_text(company.get("location")) or _clean_text(company.get("address")),
     ]
     fact_markup = "".join(
         f'<span class="employer-fact">{html_or_empty(fact)}</span>'
         for fact in facts
         if fact
     )
-    website = company.get("website")
+    fact_row_markup = (
+        f'<div class="employer-fact-row">{fact_markup}</div>'
+        if fact_markup
+        else '<div class="employer-missing-note">Company details have not been updated.</div>'
+    )
+    website = _clean_text(company.get("website"))
     website_markup = (
         f'<a class="employer-company-link" href="{escape(website)}" target="_blank">Website</a>'
         if website
         else ""
     )
-    description = company.get("description") or "No company description yet."
-    signed_in_name = profile.get("full_name") or profile.get("email") or "Employer"
-    position = employer_profile.get("position") or "Employer"
-
-    st.markdown(
-        f"""
-        <section class="employer-summary">
-            <div class="employer-summary-header">
-                <div class="employer-summary-logo">{logo_markup}</div>
-                <div class="employer-summary-main">
-                    <div class="employer-title-row">
-                        <div class="employer-company-name">{html_or_empty(company_name)}</div>
-                        {website_markup}
-                    </div>
-                    <div class="employer-profile-line">{html_or_empty(signed_in_name)} · {html_or_empty(position)}</div>
-                    <div class="employer-fact-row">{fact_markup}</div>
-                </div>
-            </div>
-            <div class="employer-description">{html_or_empty(description)}</div>
-        </section>
-        """,
-        unsafe_allow_html=True,
+    description = _clean_text(company.get("description"))
+    description_markup = (
+        f'<div class="employer-description">{html_or_empty(description)}</div>'
+        if description
+        else '<div class="employer-description employer-description-muted">No company description yet.</div>'
     )
+    signed_in_name = _clean_text(profile.get("full_name")) or _clean_text(profile.get("email"))
+    position = _clean_text(employer_profile.get("position"))
+    profile_bits = [bit for bit in (signed_in_name, position) if bit]
+    profile_line_markup = (
+        f'<div class="employer-profile-line">{" &middot; ".join(html_or_empty(bit) for bit in profile_bits)}</div>'
+        if profile_bits
+        else ""
+    )
+
+    summary_markup = (
+        '<div class="employer-summary">'
+        '<div class="employer-summary-header">'
+        f'<div class="employer-summary-logo">{logo_markup}</div>'
+        '<div class="employer-summary-main">'
+        '<div class="employer-title-row">'
+        f'<div class="employer-company-name">{html_or_empty(company_name)}</div>'
+        f'{website_markup}'
+        '</div>'
+        f'{profile_line_markup}'
+        f'{fact_row_markup}'
+        '</div>'
+        '</div>'
+        f'{description_markup}'
+        '</div>'
+    )
+
+    st.markdown(summary_markup, unsafe_allow_html=True)
 
 
 def _render_job_row(job: dict[str, Any]) -> None:

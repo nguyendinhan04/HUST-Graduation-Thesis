@@ -1362,6 +1362,17 @@ def inject_linkedin_styles() -> None:
             margin-top: 16px;
         }
 
+        .employer-description-muted,
+        .employer-missing-note {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .employer-missing-note {
+            margin-top: 10px;
+        }
+
         .employer-section-title {
             color: #111827;
             font-size: 22px;
