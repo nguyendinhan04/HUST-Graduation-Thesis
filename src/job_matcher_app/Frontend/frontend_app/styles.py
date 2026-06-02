@@ -1416,10 +1416,10 @@ def inject_linkedin_styles() -> None:
             box-shadow: 0 8px 22px rgba(14, 165, 233, 0.13);
         }
 
-        div[class*="st-key-employer-job-wrap-"] div[data-testid="stButton"] {
+        div[class*="st-key-employer-job-click-"] {
             position: absolute !important;
             inset: 0 !important;
-            z-index: 20 !important;
+            z-index: 30 !important;
             width: 100% !important;
             height: 100% !important;
             min-height: 100% !important;
@@ -1427,14 +1427,21 @@ def inject_linkedin_styles() -> None:
             padding: 0 !important;
         }
 
-        div[class*="st-key-employer-job-wrap-"] div[data-testid="stButton"] > button {
+        div[class*="st-key-employer-job-click-"] div[data-testid="stButton"],
+        div[class*="st-key-employer-job-click-"] div[data-testid="stButton"] > div,
+        div[class*="st-key-employer-job-click-"] [data-testid="stTooltipIcon"],
+        div[class*="st-key-employer-job-click-"] [data-testid="stTooltipHoverTarget"],
+        div[class*="st-key-employer-job-click-"] button {
             width: 100% !important;
             height: 100% !important;
             min-height: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            opacity: 0 !important;
             cursor: pointer !important;
+        }
+
+        div[class*="st-key-employer-job-click-"] button {
+            opacity: 0 !important;
             border: 0 !important;
             border-radius: 8px !important;
             background: transparent !important;

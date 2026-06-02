@@ -446,6 +446,16 @@ def _render_active_employer_dialog() -> None:
         edit_job_dialog()
 
 
+def _open_create_job_dialog() -> None:
+    _clear_job_form_state()
+    open_dialog("create_job")
+
+
+def _open_edit_job_dialog(job_id: int) -> None:
+    _clear_job_form_state()
+    open_dialog("edit_job", job_id)
+
+
 def _render_job_row(job: dict[str, Any]) -> None:
     job_id = job.get("job_id") or job.get("id")
     status = _status_label(job.get("status"))
@@ -472,16 +482,15 @@ def _render_job_row(job: dict[str, Any]) -> None:
             """,
             unsafe_allow_html=True,
         )
-        if st.button(
+        st.button(
             "Edit job",
             key=button_key,
             disabled=job_id is None,
             help="Edit job",
             use_container_width=True,
-        ):
-            _clear_job_form_state()
-            open_dialog("edit_job", int(job_id))
-            st.rerun()
+            on_click=_open_edit_job_dialog if job_id is not None else None,
+            args=(int(job_id),) if job_id is not None else None,
+        )
 
 
 def _render_jobs_section(jobs: list[dict[str, Any]]) -> None:
@@ -490,10 +499,12 @@ def _render_jobs_section(jobs: list[dict[str, Any]]) -> None:
         f'<div class="employer-section-title">Jobs <span>{len(jobs)}</span></div>',
         unsafe_allow_html=True,
     )
-    if create_col.button("Create", key="employer_jobs_create", use_container_width=True):
-        _clear_job_form_state()
-        open_dialog("create_job")
-        st.rerun()
+    create_col.button(
+        "Create",
+        key="employer_jobs_create",
+        use_container_width=True,
+        on_click=_open_create_job_dialog,
+    )
     if refresh_col.button("Refresh", key="employer_jobs_refresh", use_container_width=True):
         _clear_job_caches()
         st.rerun()
