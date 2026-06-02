@@ -1,15 +1,28 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time
+from decimal import Decimal, InvalidOperation
 from html import escape
 from typing import Any
 
 import streamlit as st
 
-from frontend_app.api_client import ApiError, get_my_employer_jobs, refresh_employer_profile
-from frontend_app.formatting import html_or_empty, initials, show_api_error
+from frontend_app.api_client import (
+    ApiError,
+    create_job_posting,
+    get_job_detail,
+    get_my_employer_jobs,
+    refresh_employer_profile,
+    update_job_posting,
+)
+from frontend_app.formatting import clean_payload, html_or_empty, initials, show_api_error
 from frontend_app.loading import form_loading
 from frontend_app.recommendation_views import _format_salary, _posted_label
+
+
+STATUS_OPTIONS = ["open", "draft", "closed"]
+EMPLOYMENT_OPTIONS = ["", "Full-time", "Part-time", "Contract", "Internship", "Remote"]
+LOCATION_TYPE_OPTIONS = ["", "On-site", "Hybrid", "Remote"]
 
 
 def _load_employer_jobs() -> list[dict[str, Any]] | None:
@@ -21,6 +34,18 @@ def _load_employer_jobs() -> list[dict[str, Any]] | None:
             show_api_error("Could not load employer jobs", exc)
             return None
     return st.session_state.get("employer_jobs") or []
+
+
+def _load_job_detail(job_id: int) -> dict[str, Any] | None:
+    cache_key = f"employer_job_detail_{job_id}"
+    if cache_key not in st.session_state:
+        try:
+            with form_loading("Loading job detail..."):
+                st.session_state[cache_key] = get_job_detail(job_id)
+        except ApiError as exc:
+            show_api_error("Could not load job detail", exc)
+            return None
+    return st.session_state.get(cache_key)
 
 
 def _format_datetime(value: str | None) -> str:
@@ -56,6 +81,75 @@ def _status_label(status: Any) -> str:
 
 def _clean_text(value: Any) -> str:
     return str(value).strip() if value is not None else ""
+
+
+def _format_form_value(value: Any) -> str:
+    return "" if value is None else str(value)
+
+
+def _parse_decimal(value: str, label: str) -> str | None:
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    try:
+        amount = Decimal(cleaned)
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError(f"{label} must be a valid number.") from exc
+    if amount < 0:
+        raise ValueError(f"{label} must be greater than or equal to 0.")
+    return str(amount)
+
+
+def _parse_int(value: str, label: str) -> int | None:
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    try:
+        number = int(cleaned)
+    except ValueError as exc:
+        raise ValueError(f"{label} must be a whole number.") from exc
+    if number < 0:
+        raise ValueError(f"{label} must be greater than or equal to 0.")
+    return number
+
+
+def _parse_deadline(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def _deadline_to_api(enabled: bool, value: date | None) -> str | None:
+    if not enabled or value is None:
+        return None
+    return datetime.combine(value, time(hour=23, minute=59, second=59)).isoformat()
+
+
+def _select_index(options: list[str], value: Any) -> int:
+    cleaned = _clean_text(value)
+    return options.index(cleaned) if cleaned in options else 0
+
+
+def _delete_session_keys_with_prefix(prefix: str) -> None:
+    for key in list(st.session_state.keys()):
+        if key.startswith(prefix):
+            del st.session_state[key]
+
+
+def _clear_job_form_state() -> None:
+    _delete_session_keys_with_prefix("employer_job_create_")
+    _delete_session_keys_with_prefix("employer_job_edit_")
+    st.session_state["employer_job_form_mode"] = None
+    st.session_state["employer_edit_job_id"] = None
+
+
+def _clear_job_caches(job_id: int | None = None) -> None:
+    st.session_state.pop("employer_jobs", None)
+    if job_id is not None:
+        st.session_state.pop(f"employer_job_detail_{job_id}", None)
 
 
 def _render_company_summary(profile: dict[str, Any]) -> None:
@@ -124,6 +218,205 @@ def _render_company_summary(profile: dict[str, Any]) -> None:
     st.markdown(summary_markup, unsafe_allow_html=True)
 
 
+def _build_job_payload(
+    *,
+    title: str,
+    description: str,
+    requirement: str,
+    benefit: str,
+    salary_min: str,
+    salary_max: str,
+    salary_currency: str,
+    experience_required: str,
+    employment_type: str,
+    working_time: str,
+    location_type: str,
+    address: str,
+    deadline_enabled: bool,
+    deadline: date | None,
+    status: str,
+) -> dict[str, Any]:
+    salary_min_value = _parse_decimal(salary_min, "Salary min")
+    salary_max_value = _parse_decimal(salary_max, "Salary max")
+    if salary_min_value is not None and salary_max_value is not None:
+        if Decimal(salary_max_value) < Decimal(salary_min_value):
+            raise ValueError("Salary max must be greater than or equal to salary min.")
+
+    return clean_payload(
+        {
+            "title": title,
+            "description": description,
+            "requirement": requirement,
+            "benefit": benefit,
+            "salary_min": salary_min_value,
+            "salary_max": salary_max_value,
+            "salary_currency": salary_currency,
+            "experience_required": _parse_int(experience_required, "Experience required"),
+            "employment_type": employment_type,
+            "working_time": working_time,
+            "location_type": location_type,
+            "address": address,
+            "deadline": _deadline_to_api(deadline_enabled, deadline),
+            "status": status,
+        }
+    )
+
+
+def _render_job_form(mode: str, job: dict[str, Any] | None = None) -> None:
+    job = job or {}
+    is_edit = mode == "edit"
+    job_id = job.get("job_id") or job.get("id")
+    title_label = "Edit job" if is_edit else "Create job"
+    submit_label = "Save changes" if is_edit else "Create job"
+    form_key = f"employer_job_{mode}_{job_id or 'new'}"
+    parsed_deadline = _parse_deadline(job.get("deadline"))
+
+    st.markdown(
+        f'<div class="employer-job-form-title">{html_or_empty(title_label)}</div>',
+        unsafe_allow_html=True,
+    )
+    with st.form(f"{form_key}_form"):
+        title = st.text_input(
+            "Title",
+            value=_format_form_value(job.get("title")),
+            key=f"{form_key}_title",
+        )
+        status = st.selectbox(
+            "Status",
+            STATUS_OPTIONS,
+            index=_select_index(STATUS_OPTIONS, job.get("status") or "open"),
+            key=f"{form_key}_status",
+        )
+
+        salary_col, exp_col, currency_col = st.columns(3)
+        salary_min = salary_col.text_input(
+            "Salary min",
+            value=_format_form_value(job.get("salary_min")),
+            key=f"{form_key}_salary_min",
+        )
+        salary_max = exp_col.text_input(
+            "Salary max",
+            value=_format_form_value(job.get("salary_max")),
+            key=f"{form_key}_salary_max",
+        )
+        salary_currency = currency_col.text_input(
+            "Currency",
+            value=_format_form_value(job.get("salary_currency") or "VND"),
+            key=f"{form_key}_salary_currency",
+        )
+
+        type_col, working_col, location_type_col = st.columns(3)
+        employment_type = type_col.selectbox(
+            "Employment type",
+            EMPLOYMENT_OPTIONS,
+            index=_select_index(EMPLOYMENT_OPTIONS, job.get("employment_type")),
+            key=f"{form_key}_employment_type",
+        )
+        working_time = working_col.text_input(
+            "Working time",
+            value=_format_form_value(job.get("working_time")),
+            key=f"{form_key}_working_time",
+        )
+        location_type = location_type_col.selectbox(
+            "Location type",
+            LOCATION_TYPE_OPTIONS,
+            index=_select_index(LOCATION_TYPE_OPTIONS, job.get("location_type")),
+            key=f"{form_key}_location_type",
+        )
+
+        address_col, experience_col = st.columns([2, 1])
+        address = address_col.text_input(
+            "Address",
+            value=_format_form_value(job.get("address")),
+            key=f"{form_key}_address",
+        )
+        experience_required = experience_col.text_input(
+            "Experience required",
+            value=_format_form_value(job.get("experience_required")),
+            key=f"{form_key}_experience_required",
+        )
+
+        deadline_enabled = st.checkbox(
+            "Set deadline",
+            value=parsed_deadline is not None,
+            key=f"{form_key}_deadline_enabled",
+        )
+        deadline = None
+        if deadline_enabled:
+            deadline = st.date_input(
+                "Deadline",
+                value=parsed_deadline or date.today(),
+                key=f"{form_key}_deadline",
+            )
+
+        description = st.text_area(
+            "Description",
+            value=_format_form_value(job.get("description")),
+            key=f"{form_key}_description",
+        )
+        requirement = st.text_area(
+            "Requirement",
+            value=_format_form_value(job.get("requirement")),
+            key=f"{form_key}_requirement",
+        )
+        benefit = st.text_area(
+            "Benefit",
+            value=_format_form_value(job.get("benefit")),
+            key=f"{form_key}_benefit",
+        )
+
+        submit_col, cancel_col = st.columns([1, 1])
+        submitted = submit_col.form_submit_button(submit_label, use_container_width=True)
+        cancelled = cancel_col.form_submit_button("Cancel", use_container_width=True)
+
+    if cancelled:
+        _clear_job_form_state()
+        st.rerun()
+
+    if not submitted:
+        return
+
+    if not title.strip():
+        st.warning("Title is required.")
+        return
+
+    try:
+        payload = _build_job_payload(
+            title=title,
+            description=description,
+            requirement=requirement,
+            benefit=benefit,
+            salary_min=salary_min,
+            salary_max=salary_max,
+            salary_currency=salary_currency,
+            experience_required=experience_required,
+            employment_type=employment_type,
+            working_time=working_time,
+            location_type=location_type,
+            address=address,
+            deadline_enabled=deadline_enabled,
+            deadline=deadline,
+            status=status,
+        )
+    except ValueError as exc:
+        st.warning(str(exc))
+        return
+
+    try:
+        loading_label = "Saving job..." if is_edit else "Creating job..."
+        with form_loading(loading_label):
+            if is_edit and job_id is not None:
+                update_job_posting(int(job_id), payload)
+            else:
+                create_job_posting(payload)
+        _clear_job_caches(int(job_id) if job_id is not None else None)
+        _clear_job_form_state()
+        st.success("Job saved successfully.")
+        st.rerun()
+    except ApiError as exc:
+        show_api_error("Could not save job", exc)
+
+
 def _render_job_row(job: dict[str, Any]) -> None:
     status = _status_label(job.get("status"))
     status_class = "employer-job-status-" + "".join(
@@ -149,14 +442,52 @@ def _render_job_row(job: dict[str, Any]) -> None:
 
 
 def _render_jobs_section(jobs: list[dict[str, Any]]) -> None:
-    header_col, action_col = st.columns([5, 1], gap="small")
+    header_col, create_col, refresh_col = st.columns([4, 1, 1], gap="small")
     header_col.markdown(
         f'<div class="employer-section-title">Jobs <span>{len(jobs)}</span></div>',
         unsafe_allow_html=True,
     )
-    if action_col.button("Refresh", key="employer_jobs_refresh", use_container_width=True):
-        st.session_state.pop("employer_jobs", None)
+    if create_col.button("Create", key="employer_jobs_create", use_container_width=True):
+        st.session_state["employer_job_form_mode"] = "create"
+        st.session_state["employer_edit_job_id"] = None
+    if refresh_col.button("Refresh", key="employer_jobs_refresh", use_container_width=True):
+        _clear_job_caches()
         st.rerun()
+
+    job_options = [
+        int(job_id)
+        for job in jobs
+        for job_id in [job.get("job_id") or job.get("id")]
+        if job_id is not None
+    ]
+    if job_options:
+        labels = {
+            int(job.get("job_id") or job.get("id")): job.get("title") or "Untitled job"
+            for job in jobs
+            if job.get("job_id") or job.get("id")
+        }
+        edit_select_col, edit_button_col = st.columns([4, 1], gap="small")
+        selected_job_id = edit_select_col.selectbox(
+            "Job to edit",
+            job_options,
+            format_func=lambda item: labels.get(int(item), "Untitled job"),
+            key="employer_edit_job_select",
+        )
+        edit_button_col.write("")
+        edit_button_col.write("")
+        if edit_button_col.button("Edit", key="employer_jobs_edit", use_container_width=True):
+            st.session_state["employer_job_form_mode"] = "edit"
+            st.session_state["employer_edit_job_id"] = int(selected_job_id)
+
+    form_mode = st.session_state.get("employer_job_form_mode")
+    if form_mode == "create":
+        _render_job_form("create")
+    elif form_mode == "edit":
+        edit_job_id = st.session_state.get("employer_edit_job_id")
+        if edit_job_id is not None:
+            job_detail = _load_job_detail(int(edit_job_id))
+            if job_detail is not None:
+                _render_job_form("edit", job_detail)
 
     if not jobs:
         st.markdown(

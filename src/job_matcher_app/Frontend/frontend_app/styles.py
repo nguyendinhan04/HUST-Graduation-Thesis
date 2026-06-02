@@ -1387,6 +1387,19 @@ def inject_linkedin_styles() -> None:
             font-weight: 700;
         }
 
+        .employer-job-form-title {
+            color: #111827;
+            background: #ffffff;
+            border: 1px solid #d7d3cc;
+            border-bottom: 0;
+            border-radius: 8px 8px 0 0;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.25;
+            margin: 12px 0 0;
+            padding: 14px 16px 0;
+        }
+
         .employer-job-list {
             display: grid;
             gap: 8px;

@@ -135,6 +135,14 @@ def get_my_employer_jobs() -> Any:
     return request_json("GET", "/jobs/me/employer", auth=True)
 
 
+def create_job_posting(payload: dict[str, Any]) -> Any:
+    return request_json("POST", "/jobs", json=payload, auth=True)
+
+
+def update_job_posting(job_id: int, payload: dict[str, Any]) -> Any:
+    return request_json("PATCH", f"/jobs/{job_id}", json=payload, auth=True)
+
+
 
 def update_profile(payload: dict[str, Any]) -> Any:
     return request_json("PATCH", "/users/me/profile", json=payload, auth=True)
