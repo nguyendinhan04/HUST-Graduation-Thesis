@@ -1690,6 +1690,103 @@ def inject_linkedin_styles() -> None:
             padding: 6px 9px;
         }
 
+        div[class*="st-key-employee-application-wrap-"] {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        div[class*="st-key-employee-application-wrap-"]:hover .employee-application-card {
+            border-color: #0a66c2;
+            box-shadow: 0 6px 18px rgba(10, 102, 194, 0.10);
+        }
+
+        div[class*="st-key-employee-application-wrap-"] div[data-testid="stButton"],
+        div[class*="st-key-employee-application-click-"] {
+            position: absolute !important;
+            inset: 0 !important;
+            z-index: 2 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        div[class*="st-key-employee-application-wrap-"] div[data-testid="stButton"] > button,
+        div[class*="st-key-employee-application-click-"] > div,
+        div[class*="st-key-employee-application-click-"] button {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            border: 0 !important;
+            opacity: 0 !important;
+            cursor: pointer !important;
+            box-shadow: none !important;
+            background: transparent !important;
+        }
+
+        .employee-application-card {
+            cursor: pointer;
+        }
+
+        .employee-application-side {
+            display: grid;
+            justify-items: end;
+            gap: 6px;
+            min-width: 128px;
+            text-align: right;
+        }
+
+        .employee-application-status {
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 850;
+            line-height: 1;
+            padding: 6px 9px;
+        }
+
+        .employee-application-status-pending {
+            color: #075985;
+            background: #e0f2fe;
+            border: 1px solid #bae6fd;
+        }
+
+        .employee-application-status-reviewing {
+            color: #92400e;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+        }
+
+        .employee-application-status-accepted {
+            color: #166534;
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+        }
+
+        .employee-application-status-rejected {
+            color: #991b1b;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+        }
+
+        .employee-application-status-withdrawn {
+            color: #374151;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+        }
+
+        .employee-application-date {
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
+        .employee-application-salary {
+            color: #0a66c2;
+            font-size: 14px;
+            font-weight: 850;
+            line-height: 1.3;
+            margin-top: 8px;
+        }
+
         .candidate-hero {
             display: grid;
             grid-template-columns: 56px minmax(0, 1fr);

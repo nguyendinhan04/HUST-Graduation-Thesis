@@ -1321,6 +1321,7 @@ class JobRecommendationService:
         current_user: User,
     ) -> dict:
         include_closed = current_user.role == "employer"
+        include_applied = current_user.role == "employee"
         job_row = (
             await db.execute(
                 text(
@@ -1363,12 +1364,24 @@ class JobRecommendationService:
                                     AND e.user_id = :current_user_id
                               )
                           )
+                          OR (
+                              :include_applied = TRUE
+                              AND j.status = 'closed'
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM applications a
+                                  JOIN employees employee ON employee.id = a.employee_id
+                                  WHERE a.job_id = j.id
+                                    AND employee.user_id = :current_user_id
+                              )
+                          )
                       )
                     """
                 ),
                 {
                     "job_id": job_id,
                     "include_closed": include_closed,
+                    "include_applied": include_applied,
                     "current_user_id": current_user.id,
                 },
             )

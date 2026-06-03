@@ -56,6 +56,7 @@ def logout() -> None:
     st.session_state["selected_job_return_page"] = "recommendations"
     _delete_state_keys_with_prefix("employer_jobs")
     _delete_state_keys_with_prefix("employer_job")
+    _delete_state_keys_with_prefix("my_applications")
 
 
 

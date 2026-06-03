@@ -5,6 +5,7 @@ from typing import Any
 import streamlit as st
 
 from frontend_app.api_client import ApiError, refresh_profile
+from frontend_app.application_views import render_applications_page
 from frontend_app.auth_views import render_auth_page
 from frontend_app.dialogs import render_active_dialog
 from frontend_app.employer_views import render_employer_workspace
@@ -60,6 +61,10 @@ def render_profile_page() -> None:
         return
     if current_page == "explore":
         render_explore_jobs_page()
+        render_active_dialog(profile)
+        return
+    if current_page == "applications":
+        render_applications_page()
         render_active_dialog(profile)
         return
     if current_page == "job_detail":

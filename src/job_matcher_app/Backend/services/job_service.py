@@ -223,6 +223,32 @@ class JobService:
         }
 
     @staticmethod
+    def _serialize_application_with_job(application: Application) -> dict:
+        job = application.job
+        company = job.company
+        return {
+            **JobService._serialize_application(application),
+            "job": {
+                "id": job.id,
+                "job_id": job.id,
+                "title": job.title,
+                "salary_min": str(job.salary_min) if job.salary_min is not None else None,
+                "salary_max": str(job.salary_max) if job.salary_max is not None else None,
+                "salary_currency": job.salary_currency,
+                "experience_required": job.experience_required,
+                "employment_type": job.employment_type,
+                "working_time": job.working_time,
+                "location_type": job.location_type,
+                "location": job.address,
+                "deadline": job.deadline.isoformat() if job.deadline else None,
+                "status": job.status,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "company_name": company.name if company else None,
+                "company_logo_url": company.logo_url if company else None,
+            },
+        }
+
+    @staticmethod
     def _build_job_embedding_payload(job: Job) -> dict:
         return {
             "job_id": job.id,
@@ -561,6 +587,39 @@ class JobService:
         applications = applications_result.scalars().all()
         return [
             JobService._serialize_application_with_employee(application)
+            for application in applications
+        ]
+
+    @staticmethod
+    async def list_applications_for_employee_async(
+        db: AsyncSession,
+        current_user: User,
+    ) -> list[dict]:
+        if current_user.role != "employee":
+            raise PermissionError("Only employees can view their applications")
+
+        employee_result = await db.execute(
+            select(Employee).where(Employee.user_id == current_user.id)
+        )
+        employee = employee_result.scalars().first()
+        if employee is None:
+            raise ValueError(f"Employee profile not found for user_id {current_user.id}")
+
+        applications_result = await db.execute(
+            select(Application)
+            .join(Job, Application.job_id == Job.id)
+            .options(
+                selectinload(Application.job).selectinload(Job.company),
+            )
+            .where(
+                Application.employee_id == employee.id,
+                Job.status != "deleted",
+            )
+            .order_by(Application.applied_at.desc(), Application.id.desc())
+        )
+        applications = applications_result.scalars().all()
+        return [
+            JobService._serialize_application_with_job(application)
             for application in applications
         ]
 

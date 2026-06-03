@@ -14,8 +14,8 @@ def _active_nav_page() -> str:
     current_page = st.session_state.get("current_page", "profile")
     if current_page == "job_detail":
         return_page = st.session_state.get("selected_job_return_page") or "recommendations"
-        return return_page if return_page in {"profile", "explore", "recommendations"} else "recommendations"
-    if current_page in {"explore", "recommendations"}:
+        return return_page if return_page in {"profile", "explore", "recommendations", "applications"} else "recommendations"
+    if current_page in {"explore", "recommendations", "applications"}:
         return current_page
     return "profile"
 
@@ -26,7 +26,7 @@ def _render_active_nav_styles() -> None:
     nav_pages = (
         ("dashboard",)
         if st.session_state.get("user_role") == "employer"
-        else ("profile", "explore", "recommendations")
+        else ("profile", "explore", "recommendations", "applications")
     )
     inactive_keys = [
         f"sidebar-nav-{page}"
@@ -114,6 +114,7 @@ def sidebar() -> None:
                     _nav_item("Profile", "👤", "profile")
                     _nav_item("Explore jobs", "🔎", "explore")
                     _nav_item("Recommendations", "💼", "recommendations")
+                    _nav_item("Applications", "📄", "applications")
 
             display_name = company.get("name") if is_employer else email
             display_name = display_name or email

@@ -144,6 +144,10 @@ def get_job_applications(job_id: int) -> Any:
     return request_json("GET", f"/jobs/{job_id}/applications", auth=True)
 
 
+def get_my_applications() -> Any:
+    return request_json("GET", "/jobs/me/applications", auth=True)
+
+
 
 def update_profile(payload: dict[str, Any]) -> Any:
     return request_json("PATCH", "/users/me/profile", json=payload, auth=True)

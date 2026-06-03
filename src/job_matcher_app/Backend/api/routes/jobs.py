@@ -168,6 +168,26 @@ async def list_my_employer_jobs(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@router.get("/me/applications")
+async def list_my_applications(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    try:
+        return await JobService.list_applications_for_employee_async(
+            db=db,
+            current_user=current_user,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 404 if "not found" in message.lower() else 400
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @router.post("/{job_id}/apply", status_code=201)
 async def apply_job(
     job_id: int = Path(..., ge=1),
