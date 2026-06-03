@@ -4,6 +4,7 @@ import os
 
 import streamlit as st
 
+from frontend_app.auth_persistence import request_persisted_auth_clear
 from frontend_app.config import DEFAULT_API_BASE_URL
 
 
@@ -41,6 +42,7 @@ def auth_headers() -> dict[str, str]:
 
 
 def logout() -> None:
+    request_persisted_auth_clear()
     st.session_state["access_token"] = None
     st.session_state["token_type"] = "bearer"
     st.session_state["user_role"] = None

@@ -26,6 +26,7 @@ from frontend_app.profile_views import (
 )
 from frontend_app.recommendation_views import render_recommendations_page
 from frontend_app.sidebar import sidebar
+from frontend_app.auth_persistence import sync_auth_storage
 from frontend_app.state import init_session_state
 from frontend_app.styles import inject_linkedin_styles
 
@@ -82,6 +83,7 @@ def main() -> None:
         layout="wide",
     )
     init_session_state()
+    sync_auth_storage()
     inject_linkedin_styles()
     sidebar()
 

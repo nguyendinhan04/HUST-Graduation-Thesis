@@ -5,7 +5,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-from frontend_app.state import api_base_url, auth_headers
+from frontend_app.state import api_base_url, auth_headers, logout
 
 
 class ApiError(Exception):
@@ -59,6 +59,9 @@ def request_json(
     except requests.RequestException as exc:
         raise ApiError(f"Could not connect to backend: {exc}") from exc
 
+    if response.status_code == 401 and auth:
+        logout()
+        raise ApiError("Your session has expired. Please sign in again.")
     if response.status_code >= 400:
         raise ApiError(parse_api_error(response))
     if not response.content:
@@ -79,10 +82,7 @@ def login(email: str, password: str) -> None:
     try:
         refresh_profile()
     except ApiError:
-        st.session_state["access_token"] = None
-        st.session_state["token_type"] = "bearer"
-        st.session_state["user_role"] = None
-        st.session_state["profile"] = None
+        logout()
         raise
 
 
@@ -98,10 +98,7 @@ def login_employer(email: str, password: str) -> None:
     try:
         refresh_employer_profile()
     except ApiError:
-        st.session_state["access_token"] = None
-        st.session_state["token_type"] = "bearer"
-        st.session_state["user_role"] = None
-        st.session_state["profile"] = None
+        logout()
         raise
 
 
