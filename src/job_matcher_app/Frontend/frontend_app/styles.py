@@ -92,6 +92,7 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-profile),
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-explore),
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-recommendations),
+        .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-applications),
         .st-key-sidebar-navigator div[data-testid="stElementContainer"]:has(.st-key-sidebar-nav-dashboard) {
             margin: 0 !important;
             padding: 0 !important;
@@ -100,10 +101,12 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-applications button,
         .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button,
         .st-key-sidebar-nav-profile button,
         .st-key-sidebar-nav-explore button,
         .st-key-sidebar-nav-recommendations button,
+        .st-key-sidebar-nav-applications button,
         .st-key-sidebar-nav-dashboard button {
             width: 100% !important;
             min-height: 46px !important;
@@ -123,26 +126,32 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button > div,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-applications button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button > div,
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button span,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-applications button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button span,
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button p,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button p,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button p,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-applications button p,
         .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button p,
         .st-key-sidebar-nav-profile button > div,
         .st-key-sidebar-nav-explore button > div,
         .st-key-sidebar-nav-recommendations button > div,
+        .st-key-sidebar-nav-applications button > div,
         .st-key-sidebar-nav-dashboard button > div,
         .st-key-sidebar-nav-profile button span,
         .st-key-sidebar-nav-explore button span,
         .st-key-sidebar-nav-recommendations button span,
+        .st-key-sidebar-nav-applications button span,
         .st-key-sidebar-nav-dashboard button span,
         .st-key-sidebar-nav-profile button p,
         .st-key-sidebar-nav-explore button p,
         .st-key-sidebar-nav-recommendations button p,
+        .st-key-sidebar-nav-applications button p,
         .st-key-sidebar-nav-dashboard button p {
             width: 100% !important;
             margin: 0 !important;
@@ -153,10 +162,12 @@ def inject_linkedin_styles() -> None:
         .st-key-sidebar-navigator .st-key-sidebar-nav-profile button:hover,
         .st-key-sidebar-navigator .st-key-sidebar-nav-explore button:hover,
         .st-key-sidebar-navigator .st-key-sidebar-nav-recommendations button:hover,
+        .st-key-sidebar-navigator .st-key-sidebar-nav-applications button:hover,
         .st-key-sidebar-navigator .st-key-sidebar-nav-dashboard button:hover,
         .st-key-sidebar-nav-profile button:hover,
         .st-key-sidebar-nav-explore button:hover,
         .st-key-sidebar-nav-recommendations button:hover,
+        .st-key-sidebar-nav-applications button:hover,
         .st-key-sidebar-nav-dashboard button:hover {
             color: #111827 !important;
             background: #eef0f5 !important;
