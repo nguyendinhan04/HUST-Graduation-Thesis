@@ -105,6 +105,7 @@ def _render_application_card(application: dict[str, Any]) -> None:
                         </div>
                         <div class="employee-application-side">
                             <span class="employee-application-status {status_class}">{html_or_empty(status.title())}</span>
+                            <div class="employee-application-salary">{html_or_empty(_format_salary(job))}</div>
                             <div class="employee-application-date">Applied: {html_or_empty(_format_datetime(application.get("applied_at")))}</div>
                         </div>
                     </div>
@@ -112,7 +113,6 @@ def _render_application_card(application: dict[str, Any]) -> None:
                         <div class="job-card-meta">{html_or_empty(_job_meta(job))}</div>
                         <div class="job-card-posted">{html_or_empty(_posted_label(job.get("created_at")))}</div>
                     </div>
-                    <div class="employee-application-salary">{html_or_empty(_format_salary(job))}</div>
                 </div>
             </div>
             """,

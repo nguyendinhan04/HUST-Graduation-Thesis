@@ -1737,20 +1737,41 @@ def inject_linkedin_styles() -> None:
             cursor: pointer;
         }
 
+        .employee-application-card .job-card-body {
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .employee-application-card .job-card-main {
+            grid-template-columns: minmax(0, 1fr) 172px;
+            align-items: start;
+        }
+
+        .employee-application-card .job-card-footer {
+            min-height: 40px;
+        }
+
         .employee-application-side {
             display: grid;
             justify-items: end;
-            gap: 6px;
-            min-width: 128px;
+            align-content: start;
+            gap: 7px;
+            width: 172px;
             text-align: right;
         }
 
         .employee-application-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 26px;
+            max-width: 100%;
             border-radius: 999px;
             font-size: 12px;
             font-weight: 850;
             line-height: 1;
             padding: 6px 9px;
+            white-space: nowrap;
         }
 
         .employee-application-status-pending {
@@ -1788,14 +1809,42 @@ def inject_linkedin_styles() -> None:
             font-size: 12px;
             font-weight: 700;
             line-height: 1.35;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .employee-application-salary {
             color: #0a66c2;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 850;
             line-height: 1.3;
-            margin-top: 8px;
+            max-width: 100%;
+            overflow: hidden;
+            text-align: right;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 720px) {
+            .employee-application-card .job-card-main,
+            .employee-application-card .job-card-footer {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .employee-application-side {
+                justify-items: start;
+                width: 100%;
+                text-align: left;
+            }
+
+            .employee-application-date,
+            .employee-application-salary {
+                text-align: left;
+                white-space: normal;
+            }
         }
 
         .candidate-hero {
