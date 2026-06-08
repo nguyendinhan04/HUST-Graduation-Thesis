@@ -84,6 +84,10 @@ class JobRecommendationService:
     def get_last_outbox_ids(self) -> dict[str, int]:
         return dict(self._last_outbox_ids)
 
+    @staticmethod
+    def _source_updated_at() -> str:
+        return datetime.utcnow().isoformat()
+
     async def _prepare_outbox_task(
         self,
         db: AsyncSession,
@@ -208,6 +212,7 @@ class JobRecommendationService:
         experience_id: int,
         experience: dict,
     ) -> PreparedOutboxTask:
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.skill_queue,
@@ -217,6 +222,7 @@ class JobRecommendationService:
                 "employee_id": employee_id,
                 "experience_id": experience_id,
                 "experience": experience,
+                "source_updated_at": source_updated_at,
             },
             task_type="experience_embedding_update",
             aggregate_type="experience",
@@ -232,6 +238,7 @@ class JobRecommendationService:
         employee_id: int,
         experience_id: int,
     ) -> PreparedOutboxTask:
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.skill_queue,
@@ -240,6 +247,7 @@ class JobRecommendationService:
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "experience_id": experience_id,
+                "source_updated_at": source_updated_at,
             },
             task_type="experience_embedding_delete",
             aggregate_type="experience",
@@ -267,6 +275,7 @@ class JobRecommendationService:
         education_id: int,
         education: dict,
     ) -> PreparedOutboxTask:
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.skill_queue,
@@ -276,6 +285,7 @@ class JobRecommendationService:
                 "employee_id": employee_id,
                 "education_id": education_id,
                 "education": education,
+                "source_updated_at": source_updated_at,
             },
             task_type="education_embedding_update",
             aggregate_type="education",
@@ -291,6 +301,7 @@ class JobRecommendationService:
         employee_id: int,
         education_id: int,
     ) -> PreparedOutboxTask:
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.skill_queue,
@@ -299,6 +310,7 @@ class JobRecommendationService:
                 "user_id": user_id,
                 "employee_id": employee_id,
                 "education_id": education_id,
+                "source_updated_at": source_updated_at,
             },
             task_type="education_embedding_delete",
             aggregate_type="education",
@@ -313,6 +325,7 @@ class JobRecommendationService:
         job_id: int,
         job_payload: dict,
     ) -> PreparedOutboxTask:
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.skill_queue,
@@ -320,6 +333,7 @@ class JobRecommendationService:
             payload={
                 "job_id": job_id,
                 "job": job_payload,
+                "source_updated_at": source_updated_at,
             },
             task_type="job_bert_embedding_update",
             aggregate_type="job",
@@ -334,6 +348,7 @@ class JobRecommendationService:
         job_id: int,
         job_payload: dict,
     ) -> PreparedOutboxTask:
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.tfidf_queue,
@@ -341,6 +356,7 @@ class JobRecommendationService:
             payload={
                 "job_id": job_id,
                 "job": job_payload,
+                "source_updated_at": source_updated_at,
             },
             task_type="job_tfidf_embedding_update",
             aggregate_type="job",
@@ -355,6 +371,7 @@ class JobRecommendationService:
         job_id: int,
         job_payload: dict,
     ) -> PreparedOutboxTask:
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.skill_extraction_queue,
@@ -362,6 +379,7 @@ class JobRecommendationService:
             payload={
                 "job_id": job_id,
                 "job": job_payload,
+                "source_updated_at": source_updated_at,
             },
             task_type="job_skill_extraction_update",
             aggregate_type="job",
@@ -830,6 +848,8 @@ class JobRecommendationService:
         user_id: int,
         employee_id: int,
     ) -> PreparedOutboxTask:
+        profile = await self.get_user_profile(db, user_id)
+        source_updated_at = self._source_updated_at()
         return await self._prepare_outbox_task(
             db,
             queue=self.tfidf_queue,
@@ -837,6 +857,8 @@ class JobRecommendationService:
             payload={
                 "user_id": user_id,
                 "employee_id": employee_id,
+                "profile": profile,
+                "source_updated_at": source_updated_at,
             },
             task_type="user_profile_tfidf_update",
             aggregate_type="employee",

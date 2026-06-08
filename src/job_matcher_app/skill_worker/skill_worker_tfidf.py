@@ -3,6 +3,7 @@ import os
 import pickle
 import re
 import sys
+from datetime import datetime, timezone
 from typing import Any
 
 import boto3
@@ -11,7 +12,7 @@ from rq import Queue, SimpleWorker
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from job_matcher_app.outbox import run_with_outbox
+from job_matcher_app.outbox import ensure_task_outbox_table, run_with_outbox
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +32,46 @@ def _get_database_url() -> str:
 
 engine = create_engine(_get_database_url(), pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+_EMBEDDING_METADATA_ENSURED = False
+
+
+def parse_source_updated_at(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        source_updated_at = value
+    else:
+        source_updated_at = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    if source_updated_at.tzinfo is not None:
+        source_updated_at = source_updated_at.astimezone(timezone.utc).replace(tzinfo=None)
+    return source_updated_at
+
+
+def ensure_embedding_metadata_columns() -> None:
+    global _EMBEDDING_METADATA_ENSURED
+
+    if _EMBEDDING_METADATA_ENSURED:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                ALTER TABLE job_embeddings_tfidf
+                ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMP
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE user_profile_embedding
+                ADD COLUMN IF NOT EXISTS vector_tfidf_source_updated_at TIMESTAMP
+                """
+            )
+        )
+    _EMBEDDING_METADATA_ENSURED = True
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -361,32 +402,41 @@ def load_user_profile_from_db(user_id: int, employee_id: int) -> dict[str, Any]:
 def upsert_user_profile_tfidf_embedding(
     employee_id: int,
     profile_vector: list[float],
-) -> None:
+    source_updated_at: datetime | None = None,
+) -> bool:
     vector_tfidf = to_pgvector_literal(profile_vector)
 
     db = SessionLocal()
     try:
-        db.execute(
+        result = db.execute(
             text(
                 """
                 INSERT INTO user_profile_embedding (
                     employee_id,
-                    vector_tfidf
+                    vector_tfidf,
+                    vector_tfidf_source_updated_at
                 )
                 VALUES (
                     :employee_id,
-                    CAST(:vector_tfidf AS vector)
+                    CAST(:vector_tfidf AS vector),
+                    :source_updated_at
                 )
                 ON CONFLICT (employee_id) DO UPDATE
-                SET vector_tfidf = EXCLUDED.vector_tfidf
+                SET vector_tfidf = EXCLUDED.vector_tfidf,
+                    vector_tfidf_source_updated_at = EXCLUDED.vector_tfidf_source_updated_at
+                WHERE user_profile_embedding.vector_tfidf_source_updated_at IS NULL
+                   OR :source_updated_at IS NULL
+                   OR user_profile_embedding.vector_tfidf_source_updated_at <= :source_updated_at
                 """
             ),
             {
                 "employee_id": employee_id,
                 "vector_tfidf": vector_tfidf,
+                "source_updated_at": source_updated_at,
             },
         )
         db.commit()
+        return result.rowcount != 0
     except Exception:
         db.rollback()
         raise
@@ -394,21 +444,40 @@ def upsert_user_profile_tfidf_embedding(
         db.close()
 
 
-def clear_user_profile_tfidf_embedding(employee_id: int) -> None:
+def clear_user_profile_tfidf_embedding(
+    employee_id: int,
+    source_updated_at: datetime | None = None,
+) -> bool:
     db = SessionLocal()
     try:
-        db.execute(
+        result = db.execute(
             text(
                 """
-                INSERT INTO user_profile_embedding (employee_id, vector_tfidf)
-                VALUES (:employee_id, NULL)
+                INSERT INTO user_profile_embedding (
+                    employee_id,
+                    vector_tfidf,
+                    vector_tfidf_source_updated_at
+                )
+                VALUES (
+                    :employee_id,
+                    NULL,
+                    :source_updated_at
+                )
                 ON CONFLICT (employee_id) DO UPDATE
-                SET vector_tfidf = NULL
+                SET vector_tfidf = NULL,
+                    vector_tfidf_source_updated_at = EXCLUDED.vector_tfidf_source_updated_at
+                WHERE user_profile_embedding.vector_tfidf_source_updated_at IS NULL
+                   OR :source_updated_at IS NULL
+                   OR user_profile_embedding.vector_tfidf_source_updated_at <= :source_updated_at
                 """
             ),
-            {"employee_id": employee_id},
+            {
+                "employee_id": employee_id,
+                "source_updated_at": source_updated_at,
+            },
         )
         db.commit()
+        return result.rowcount != 0
     except Exception:
         db.rollback()
         raise
@@ -434,6 +503,7 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
     def _process() -> dict[str, Any]:
         user_id = int(payload["user_id"])
         employee_id = int(payload["employee_id"])
+        source_updated_at = parse_source_updated_at(payload.get("source_updated_at"))
         lock_key = f"user:{user_id}:tfidf_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -445,11 +515,44 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
 
         logger.info("Đang xử lý TF-IDF update task user_id=%s", user_id)
         with lock:
-            profile = load_user_profile_from_db(user_id=user_id, employee_id=employee_id)
+            profile = payload.get("profile")
+            if profile is None:
+                logger.info(
+                    "Bỏ qua TF-IDF task user_id=%s vì payload thiếu profile.",
+                    user_id,
+                )
+                return {
+                    "user_id": user_id,
+                    "employee_id": employee_id,
+                    "vector_tfidf_updated": False,
+                    "vector_tfidf_cleared": False,
+                    "vector_size": 0,
+                    "status": "skipped",
+                    "reason": "missing_profile_payload",
+                }
+
             profile_vector = process_user_profile_tfidf_task(profile)
             vector_size = len(profile_vector)
             if vector_size == 0:
-                clear_user_profile_tfidf_embedding(employee_id)
+                cleared = clear_user_profile_tfidf_embedding(
+                    employee_id,
+                    source_updated_at=source_updated_at,
+                )
+                if not cleared:
+                    logger.info(
+                        "Bỏ qua clear TF-IDF cũ user_id=%s vì đã có request mới hơn.",
+                        user_id,
+                    )
+                    return {
+                        "user_id": user_id,
+                        "employee_id": employee_id,
+                        "vector_tfidf_updated": False,
+                        "vector_tfidf_cleared": False,
+                        "vector_size": 0,
+                        "status": "skipped",
+                        "reason": "stale_embedding_request",
+                    }
+
                 logger.info("Đã xóa TF-IDF vector user_id=%s vì profile rỗng.", user_id)
                 return {
                     "user_id": user_id,
@@ -461,10 +564,26 @@ def process_user_profile_tfidf_update_task(payload: dict[str, Any]) -> dict[str,
                     "reason": "empty_profile",
                 }
 
-            upsert_user_profile_tfidf_embedding(
+            updated = upsert_user_profile_tfidf_embedding(
                 employee_id=employee_id,
                 profile_vector=profile_vector,
+                source_updated_at=source_updated_at,
             )
+
+            if not updated:
+                logger.info(
+                    "Bỏ qua TF-IDF vector cũ user_id=%s vì đã có request mới hơn.",
+                    user_id,
+                )
+                return {
+                    "user_id": user_id,
+                    "employee_id": employee_id,
+                    "vector_tfidf_updated": False,
+                    "vector_tfidf_cleared": False,
+                    "vector_size": vector_size,
+                    "status": "skipped",
+                    "reason": "stale_embedding_request",
+                }
 
         logger.info("Đã cập nhật TF-IDF vector user_id=%s, vector_size=%s", user_id, vector_size)
         return {
@@ -489,11 +608,31 @@ def upsert_job_tfidf_embedding(
     job_id: int,
     job_title: str,
     job_vector: list[float],
-) -> None:
+    source_updated_at: datetime | None = None,
+) -> bool:
     embedding = to_pgvector_literal(job_vector)
 
     db = SessionLocal()
     try:
+        current_source_updated_at = db.execute(
+            text(
+                """
+                SELECT source_updated_at
+                FROM job_embeddings_tfidf
+                WHERE job_id = :job_id
+                FOR UPDATE
+                """
+            ),
+            {"job_id": job_id},
+        ).scalar_one_or_none()
+        if (
+            source_updated_at is not None
+            and current_source_updated_at is not None
+            and current_source_updated_at > source_updated_at
+        ):
+            db.commit()
+            return False
+
         db.execute(
             text(
                 """
@@ -506,17 +645,29 @@ def upsert_job_tfidf_embedding(
         db.execute(
             text(
                 """
-                INSERT INTO job_embeddings_tfidf (job_id, job_title, embedding)
-                VALUES (:job_id, :job_title, CAST(:embedding AS vector))
+                INSERT INTO job_embeddings_tfidf (
+                    job_id,
+                    job_title,
+                    embedding,
+                    source_updated_at
+                )
+                VALUES (
+                    :job_id,
+                    :job_title,
+                    CAST(:embedding AS vector),
+                    :source_updated_at
+                )
                 """
             ),
             {
                 "job_id": job_id,
                 "job_title": job_title,
                 "embedding": embedding,
+                "source_updated_at": source_updated_at,
             },
         )
         db.commit()
+        return True
     except Exception:
         db.rollback()
         raise
@@ -528,6 +679,7 @@ def process_job_tfidf_embedding_task(payload: dict[str, Any]) -> dict[str, Any]:
     def _process() -> dict[str, Any]:
         job_id = int(payload["job_id"])
         job = payload["job"]
+        source_updated_at = parse_source_updated_at(payload.get("source_updated_at"))
         lock_key = f"job:{job_id}:tfidf_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -541,11 +693,22 @@ def process_job_tfidf_embedding_task(payload: dict[str, Any]) -> dict[str, Any]:
         with lock:
             query_text = build_job_query_text(job)
             job_vector = vectorize_tfidf_text(query_text)
-            upsert_job_tfidf_embedding(
+            updated = upsert_job_tfidf_embedding(
                 job_id=job_id,
                 job_title=job.get("job_title") or job.get("title") or "",
                 job_vector=job_vector,
+                source_updated_at=source_updated_at,
             )
+
+            if not updated:
+                logger.info("Bỏ qua TF-IDF embedding cũ job_id=%s", job_id)
+                return {
+                    "job_id": job_id,
+                    "job_tfidf_embedding_updated": False,
+                    "vector_size": len(job_vector),
+                    "status": "skipped",
+                    "reason": "stale_embedding_request",
+                }
 
         logger.info("Đã cập nhật TF-IDF embedding task job_id=%s", job_id)
         return {
@@ -572,6 +735,8 @@ def embed_tfidf_texts_task(texts: list[str]) -> list[list[float]]:
 if __name__ == "__main__":
     queue_name = os.getenv("QUEUE_NAME", "skill-embedding-queue")
     logger.info("Khởi động TF-IDF Worker. Đang lắng nghe trên queue '%s'...", queue_name)
+    ensure_task_outbox_table()
+    ensure_embedding_metadata_columns()
 
     redis_host = os.getenv("REDIS_HOST", "redis")
     redis_port = int(os.getenv("REDIS_PORT", 6379))

@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import re
+from datetime import datetime, timezone
 from typing import List
 
 import numpy as np
@@ -11,7 +12,7 @@ from sentence_transformers import SentenceTransformer
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from job_matcher_app.outbox import run_with_outbox
+from job_matcher_app.outbox import ensure_task_outbox_table, run_with_outbox
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,6 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PROFILE_VECTOR_SIZE = 384
+_EMBEDDING_METADATA_ENSURED = False
 
 
 def _get_database_url() -> str:
@@ -33,6 +35,53 @@ def _get_database_url() -> str:
 
 engine = create_engine(_get_database_url(), pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def parse_source_updated_at(value) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        source_updated_at = value
+    else:
+        source_updated_at = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    if source_updated_at.tzinfo is not None:
+        source_updated_at = source_updated_at.astimezone(timezone.utc).replace(tzinfo=None)
+    return source_updated_at
+
+
+def ensure_embedding_metadata_columns() -> None:
+    global _EMBEDDING_METADATA_ENSURED
+
+    if _EMBEDDING_METADATA_ENSURED:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                ALTER TABLE job_embeddings_bert
+                ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMP
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE employee_education_embedding
+                ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMP
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE employee_experience_embedding
+                ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMP
+                """
+            )
+        )
+    _EMBEDDING_METADATA_ENSURED = True
 
 logger.info("Đang tải mô hình Hugging Face 'alvperez/skill-sim-model'...")
 try:
@@ -235,11 +284,31 @@ def upsert_job_bert_embedding(
     job_id: int,
     job_title: str,
     job_vector: List[float],
-) -> None:
+    source_updated_at: datetime | None = None,
+) -> bool:
     embedding_literal = to_pgvector_literal(job_vector)
 
     db = SessionLocal()
     try:
+        current_source_updated_at = db.execute(
+            text(
+                """
+                SELECT source_updated_at
+                FROM job_embeddings_bert
+                WHERE job_id = :job_id
+                FOR UPDATE
+                """
+            ),
+            {"job_id": job_id},
+        ).scalar_one_or_none()
+        if (
+            source_updated_at is not None
+            and current_source_updated_at is not None
+            and current_source_updated_at > source_updated_at
+        ):
+            db.commit()
+            return False
+
         db.execute(
             text(
                 """
@@ -252,17 +321,29 @@ def upsert_job_bert_embedding(
         db.execute(
             text(
                 """
-                INSERT INTO job_embeddings_bert (job_id, job_title, embedding)
-                VALUES (:job_id, :job_title, CAST(:embedding AS vector))
+                INSERT INTO job_embeddings_bert (
+                    job_id,
+                    job_title,
+                    embedding,
+                    source_updated_at
+                )
+                VALUES (
+                    :job_id,
+                    :job_title,
+                    CAST(:embedding AS vector),
+                    :source_updated_at
+                )
                 """
             ),
             {
                 "job_id": job_id,
                 "job_title": job_title,
                 "embedding": embedding_literal,
+                "source_updated_at": source_updated_at,
             },
         )
         db.commit()
+        return True
     except Exception:
         db.rollback()
         raise
@@ -274,6 +355,7 @@ def process_job_bert_embedding_task(payload: dict) -> dict:
     def _process() -> dict:
         job_id = int(payload["job_id"])
         job = payload["job"]
+        source_updated_at = parse_source_updated_at(payload.get("source_updated_at"))
         lock_key = f"job:{job_id}:bert_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -287,11 +369,22 @@ def process_job_bert_embedding_task(payload: dict) -> dict:
         with lock:
             job_text = build_job_embedding_text(job)
             job_vector = embed_bert_document(job_text).tolist()
-            upsert_job_bert_embedding(
+            updated = upsert_job_bert_embedding(
                 job_id=job_id,
                 job_title=job.get("job_title") or job.get("title") or "",
                 job_vector=job_vector,
+                source_updated_at=source_updated_at,
             )
+
+            if not updated:
+                logger.info("Bỏ qua BERT embedding cũ job_id=%s", job_id)
+                return {
+                    "job_id": job_id,
+                    "job_bert_embedding_updated": False,
+                    "vector_size": len(job_vector),
+                    "status": "skipped",
+                    "reason": "stale_embedding_request",
+                }
 
         logger.info("Đã cập nhật BERT embedding task job_id=%s", job_id)
         return {
@@ -390,39 +483,50 @@ def upsert_education_embedding_and_recompute_profile(
     employee_id: int,
     education_id: int,
     education_vector: List[float],
-) -> None:
+    source_updated_at: datetime | None = None,
+) -> bool:
     education_vector_literal = to_pgvector_literal(education_vector)
 
     db = SessionLocal()
     try:
         ensure_and_lock_profile_embedding_row(db, employee_id)
-        db.execute(
+        result = db.execute(
             text(
                 """
                 INSERT INTO employee_education_embedding (
                     employee_id,
                     education_id,
-                    education_vec
+                    education_vec,
+                    source_updated_at
                 )
                 VALUES (
                     :employee_id,
                     :education_id,
-                    CAST(:education_vec AS vector)
+                    CAST(:education_vec AS vector),
+                    :source_updated_at
                 )
                 ON CONFLICT (education_id) DO UPDATE
                 SET employee_id = EXCLUDED.employee_id,
-                    education_vec = EXCLUDED.education_vec
+                    education_vec = EXCLUDED.education_vec,
+                    source_updated_at = EXCLUDED.source_updated_at
+                WHERE employee_education_embedding.source_updated_at IS NULL
+                   OR :source_updated_at IS NULL
+                   OR employee_education_embedding.source_updated_at <= :source_updated_at
                 """
             ),
             {
                 "employee_id": employee_id,
                 "education_id": education_id,
                 "education_vec": education_vector_literal,
+                "source_updated_at": source_updated_at,
             },
         )
 
-        recompute_profile_education_vector(db, employee_id)
+        updated = result.rowcount != 0
+        if updated:
+            recompute_profile_education_vector(db, employee_id)
         db.commit()
+        return updated
     except Exception:
         db.rollback()
         raise
@@ -433,22 +537,34 @@ def upsert_education_embedding_and_recompute_profile(
 def delete_education_embedding_and_recompute_profile(
     employee_id: int,
     education_id: int,
-) -> None:
+    source_updated_at: datetime | None = None,
+) -> bool:
     db = SessionLocal()
     try:
         ensure_and_lock_profile_embedding_row(db, employee_id)
-        db.execute(
+        result = db.execute(
             text(
                 """
                 DELETE FROM employee_education_embedding
                 WHERE education_id = :education_id
+                  AND (
+                      :source_updated_at IS NULL
+                      OR source_updated_at IS NULL
+                      OR source_updated_at <= :source_updated_at
+                  )
                 """
             ),
-            {"education_id": education_id},
+            {
+                "education_id": education_id,
+                "source_updated_at": source_updated_at,
+            },
         )
 
-        recompute_profile_education_vector(db, employee_id)
+        deleted = result.rowcount != 0
+        if deleted:
+            recompute_profile_education_vector(db, employee_id)
         db.commit()
+        return deleted
     except Exception:
         db.rollback()
         raise
@@ -462,6 +578,7 @@ def process_user_education_embedding_task(payload: dict) -> dict:
         employee_id = int(payload["employee_id"])
         education_id = int(payload["education_id"])
         education = payload["education"]
+        source_updated_at = parse_source_updated_at(payload.get("source_updated_at"))
         lock_key = f"user:{user_id}:education_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -478,11 +595,27 @@ def process_user_education_embedding_task(payload: dict) -> dict:
         )
         with lock:
             education_vector = embed_bert_education_task(education)
-            upsert_education_embedding_and_recompute_profile(
+            updated = upsert_education_embedding_and_recompute_profile(
                 employee_id=employee_id,
                 education_id=education_id,
                 education_vector=education_vector,
+                source_updated_at=source_updated_at,
             )
+
+            if not updated:
+                logger.info(
+                    "Bỏ qua education embedding cũ user_id=%s, education_id=%s",
+                    user_id,
+                    education_id,
+                )
+                return {
+                    "user_id": user_id,
+                    "employee_id": employee_id,
+                    "education_id": education_id,
+                    "education_embedding_updated": False,
+                    "status": "skipped",
+                    "reason": "stale_embedding_request",
+                }
 
         logger.info(
             "Đã lưu education embedding task user_id=%s, education_id=%s",
@@ -504,6 +637,7 @@ def process_user_education_delete_task(payload: dict) -> dict:
         user_id = int(payload["user_id"])
         employee_id = int(payload["employee_id"])
         education_id = int(payload["education_id"])
+        source_updated_at = parse_source_updated_at(payload.get("source_updated_at"))
         lock_key = f"user:{user_id}:education_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -519,10 +653,26 @@ def process_user_education_delete_task(payload: dict) -> dict:
             education_id,
         )
         with lock:
-            delete_education_embedding_and_recompute_profile(
+            deleted = delete_education_embedding_and_recompute_profile(
                 employee_id=employee_id,
                 education_id=education_id,
+                source_updated_at=source_updated_at,
             )
+
+            if not deleted:
+                logger.info(
+                    "Bỏ qua education delete cũ user_id=%s, education_id=%s",
+                    user_id,
+                    education_id,
+                )
+                return {
+                    "user_id": user_id,
+                    "employee_id": employee_id,
+                    "education_id": education_id,
+                    "education_embedding_deleted": False,
+                    "status": "skipped",
+                    "reason": "stale_embedding_request",
+                }
 
         logger.info(
             "Đã xóa education embedding task user_id=%s, education_id=%s",
@@ -608,39 +758,50 @@ def upsert_experience_embedding_and_recompute_profile(
     employee_id: int,
     experience_id: int,
     experience_vector: List[float],
-) -> None:
+    source_updated_at: datetime | None = None,
+) -> bool:
     experience_vector_literal = to_pgvector_literal(experience_vector)
 
     db = SessionLocal()
     try:
         ensure_and_lock_profile_embedding_row(db, employee_id)
-        db.execute(
+        result = db.execute(
             text(
                 """
                 INSERT INTO employee_experience_embedding (
                     employee_id,
                     experience_id,
-                    experience_vec
+                    experience_vec,
+                    source_updated_at
                 )
                 VALUES (
                     :employee_id,
                     :experience_id,
-                    CAST(:experience_vec AS vector)
+                    CAST(:experience_vec AS vector),
+                    :source_updated_at
                 )
                 ON CONFLICT (experience_id) DO UPDATE
                 SET employee_id = EXCLUDED.employee_id,
-                    experience_vec = EXCLUDED.experience_vec
+                    experience_vec = EXCLUDED.experience_vec,
+                    source_updated_at = EXCLUDED.source_updated_at
+                WHERE employee_experience_embedding.source_updated_at IS NULL
+                   OR :source_updated_at IS NULL
+                   OR employee_experience_embedding.source_updated_at <= :source_updated_at
                 """
             ),
             {
                 "employee_id": employee_id,
                 "experience_id": experience_id,
                 "experience_vec": experience_vector_literal,
+                "source_updated_at": source_updated_at,
             },
         )
 
-        recompute_profile_experience_vector(db, employee_id)
+        updated = result.rowcount != 0
+        if updated:
+            recompute_profile_experience_vector(db, employee_id)
         db.commit()
+        return updated
     except Exception:
         db.rollback()
         raise
@@ -651,22 +812,34 @@ def upsert_experience_embedding_and_recompute_profile(
 def delete_experience_embedding_and_recompute_profile(
     employee_id: int,
     experience_id: int,
-) -> None:
+    source_updated_at: datetime | None = None,
+) -> bool:
     db = SessionLocal()
     try:
         ensure_and_lock_profile_embedding_row(db, employee_id)
-        db.execute(
+        result = db.execute(
             text(
                 """
                 DELETE FROM employee_experience_embedding
                 WHERE experience_id = :experience_id
+                  AND (
+                      :source_updated_at IS NULL
+                      OR source_updated_at IS NULL
+                      OR source_updated_at <= :source_updated_at
+                  )
                 """
             ),
-            {"experience_id": experience_id},
+            {
+                "experience_id": experience_id,
+                "source_updated_at": source_updated_at,
+            },
         )
 
-        recompute_profile_experience_vector(db, employee_id)
+        deleted = result.rowcount != 0
+        if deleted:
+            recompute_profile_experience_vector(db, employee_id)
         db.commit()
+        return deleted
     except Exception:
         db.rollback()
         raise
@@ -680,6 +853,7 @@ def process_user_experience_embedding_task(payload: dict) -> dict:
         employee_id = int(payload["employee_id"])
         experience_id = int(payload["experience_id"])
         experience = payload["experience"]
+        source_updated_at = parse_source_updated_at(payload.get("source_updated_at"))
         lock_key = f"user:{user_id}:experience_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -696,11 +870,27 @@ def process_user_experience_embedding_task(payload: dict) -> dict:
         )
         with lock:
             experience_vector = embed_bert_experience_task(experience)
-            upsert_experience_embedding_and_recompute_profile(
+            updated = upsert_experience_embedding_and_recompute_profile(
                 employee_id=employee_id,
                 experience_id=experience_id,
                 experience_vector=experience_vector,
+                source_updated_at=source_updated_at,
             )
+
+            if not updated:
+                logger.info(
+                    "Bỏ qua experience embedding cũ user_id=%s, experience_id=%s",
+                    user_id,
+                    experience_id,
+                )
+                return {
+                    "user_id": user_id,
+                    "employee_id": employee_id,
+                    "experience_id": experience_id,
+                    "experience_embedding_updated": False,
+                    "status": "skipped",
+                    "reason": "stale_embedding_request",
+                }
 
         logger.info(
             "Đã lưu experience embedding task user_id=%s, experience_id=%s",
@@ -722,6 +912,7 @@ def process_user_experience_delete_task(payload: dict) -> dict:
         user_id = int(payload["user_id"])
         employee_id = int(payload["employee_id"])
         experience_id = int(payload["experience_id"])
+        source_updated_at = parse_source_updated_at(payload.get("source_updated_at"))
         lock_key = f"user:{user_id}:experience_embedding_lock"
 
         redis_conn = get_redis_connection()
@@ -737,10 +928,26 @@ def process_user_experience_delete_task(payload: dict) -> dict:
             experience_id,
         )
         with lock:
-            delete_experience_embedding_and_recompute_profile(
+            deleted = delete_experience_embedding_and_recompute_profile(
                 employee_id=employee_id,
                 experience_id=experience_id,
+                source_updated_at=source_updated_at,
             )
+
+            if not deleted:
+                logger.info(
+                    "Bỏ qua experience delete cũ user_id=%s, experience_id=%s",
+                    user_id,
+                    experience_id,
+                )
+                return {
+                    "user_id": user_id,
+                    "employee_id": employee_id,
+                    "experience_id": experience_id,
+                    "experience_embedding_deleted": False,
+                    "status": "skipped",
+                    "reason": "stale_embedding_request",
+                }
 
         logger.info(
             "Đã xóa experience embedding task user_id=%s, experience_id=%s",
@@ -804,6 +1011,8 @@ def process_user_profile_multimodal_task(profile: dict) -> dict:
 if __name__ == "__main__":
     queue_name = os.getenv("QUEUE_NAME", "skill-embedding-queue")
     logger.info(f"Khởi động Skill Worker. Đang lắng nghe trên queue '{queue_name}'...")
+    ensure_task_outbox_table()
+    ensure_embedding_metadata_columns()
 
     redis_host = os.getenv("REDIS_HOST", "redis")
     redis_port = int(os.getenv("REDIS_PORT", 6379))

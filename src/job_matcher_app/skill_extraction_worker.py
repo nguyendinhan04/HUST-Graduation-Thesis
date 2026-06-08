@@ -12,7 +12,7 @@ from rq import Queue, SimpleWorker
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from job_matcher_app.outbox import run_with_outbox
+from job_matcher_app.outbox import ensure_task_outbox_table, run_with_outbox
 from job_matcher_app.skill_extraction.skill_repo_base import SkillRepository
 from job_matcher_app.skill_extraction.skill_repo_factory import create_skill_repository
 from job_matcher_app.skill_extraction.skill_trie import SkillTrie
@@ -558,6 +558,7 @@ if extractor_mode == "ner_skilltrie":
 if __name__ == "__main__":
     queue_name = os.getenv("QUEUE_NAME", "job-skill-extraction-queue")
     worker_name = os.getenv("WORKER_NAME", "job_skill_extraction_worker")
+    ensure_task_outbox_table()
 
     redis_conn = Redis(
         host=os.getenv("REDIS_HOST", "redis"),

@@ -239,13 +239,18 @@ class TaskOutbox(Base):
     payload = Column(JSON, nullable=False, server_default="{}")
     result = Column(JSON)
     error_message = Column(Text)
+    retry_count = Column(Integer, nullable=False, server_default="0")
+    max_retries = Column(Integer, nullable=False, server_default="5")
+    next_retry_at = Column(DateTime)
+    last_attempt_at = Column(DateTime)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    dead_letter_at = Column(DateTime)
     completed_at = Column(DateTime)
 
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending', 'done', 'failed')",
+            "status IN ('pending', 'done')",
             name="ck_task_outbox_status",
         ),
     )
