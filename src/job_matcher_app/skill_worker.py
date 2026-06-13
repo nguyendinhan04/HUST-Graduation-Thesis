@@ -94,9 +94,9 @@ def download_bert_model_from_minio(local_dir: str) -> None:
     endpoint = os.getenv("MINIO_ENDPOINT", "minio:9000")
     access_key = os.getenv("MINIO_ACCESS_KEY", "ROOTUSER")
     secret_key = os.getenv("MINIO_SECRET_KEY", "1234567890")
-    bucket_name = os.getenv("MINIO_BUCKET", "models")
+    bucket_name = os.getenv("MINIO_BUCKET", "model-bert")
     secure = _env_bool("MINIO_SECURE", False)
-    prefix = os.getenv("BERT_MODEL_PREFIX", "model-bert/job_domain_minilm_triplet_20260606_232105")
+    prefix = os.getenv("BERT_MODEL_PREFIX", "job_domain_minilm_triplet_20260606_232105")
 
     if not prefix.endswith("/"):
         prefix += "/"
