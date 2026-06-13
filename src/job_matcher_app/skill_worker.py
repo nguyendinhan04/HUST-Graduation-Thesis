@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import re
+import boto3
 from datetime import datetime, timezone
 from typing import List
 
@@ -83,6 +84,54 @@ def ensure_embedding_metadata_columns() -> None:
         )
     _EMBEDDING_METADATA_ENSURED = True
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "y"}
+
+def download_bert_model_from_minio(local_dir: str) -> None:
+    endpoint = os.getenv("MINIO_ENDPOINT", "minio:9000")
+    access_key = os.getenv("MINIO_ACCESS_KEY", "ROOTUSER")
+    secret_key = os.getenv("MINIO_SECRET_KEY", "1234567890")
+    bucket_name = os.getenv("MINIO_BUCKET", "models")
+    secure = _env_bool("MINIO_SECURE", False)
+    prefix = os.getenv("BERT_MODEL_PREFIX", "model-bert/job_domain_minilm_triplet_20260606_232105")
+
+    if not prefix.endswith("/"):
+        prefix += "/"
+
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=f"http{'s' if secure else ''}://{endpoint}",
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name="us-east-1",
+    )
+
+    response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+    objects = response.get("Contents", [])
+    if not objects:
+        raise FileNotFoundError(f"Không tìm thấy BERT model trong s3://{bucket_name}/{prefix}")
+
+    os.makedirs(local_dir, exist_ok=True)
+
+    for obj in objects:
+        key = obj["Key"]
+        if key.endswith("/"):
+            continue
+
+        # relative path
+        rel_path = os.path.relpath(key, prefix)
+        local_path = os.path.join(local_dir, rel_path)
+
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+        # Chỉ tải nếu file chưa tồn tại hoặc kích thước khác nhau
+        if not os.path.exists(local_path) or os.path.getsize(local_path) != obj["Size"]:
+            logger.info(f"Đang tải {key} về {local_path}...")
+            s3_client.download_file(bucket_name, key, local_path)
+
 logger.info("Đang tải mô hình Hugging Face 'alvperez/skill-sim-model'...")
 try:
     # Load model ONCE when worker starts up into memory (Global caching)
@@ -92,11 +141,13 @@ except Exception as e:
     logger.error(f"Lỗi khi tải skill embedding model: {e}")
     sys.exit(1)
 
-logger.info("Đang tải mô hình Hugging Face 'paraphrase-multilingual-MiniLM-L12-v2'...")
+logger.info("Đang tải mô hình BERT từ MinIO...")
 try:
+    local_model_dir = "/tmp/bert_model"
+    download_bert_model_from_minio(local_model_dir)
     # Load model ONCE in worker, not in FastAPI.
-    bert_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-    logger.info("Đã tải BERT/MiniLM model thành công.")
+    bert_model = SentenceTransformer(local_model_dir)
+    logger.info("Đã tải BERT/MiniLM model thành công từ MinIO.")
 except Exception as e:
     logger.error(f"Lỗi khi tải BERT/MiniLM model: {e}")
     sys.exit(1)
