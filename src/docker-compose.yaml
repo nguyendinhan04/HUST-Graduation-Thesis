@@ -122,7 +122,7 @@ services:
     expose:
       - "5433"                     # exposes 5433 to other containers on the same network
     ports:
-      - "5433:5433"
+      - "5433:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
