@@ -110,6 +110,28 @@ services:
     networks:
       - airflow
 
+
+  postgres2:
+    image: paradedb/paradedb:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres2-db-volume:/var/lib/postgresql/data
+    expose:
+      - "5433"                     # exposes 5433 to other containers on the same network
+    ports:
+      - "5433:5433"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - airflow
+
   redis:
     image: redis:latest
     expose:
