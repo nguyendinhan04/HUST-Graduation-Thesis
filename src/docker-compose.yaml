@@ -685,6 +685,7 @@ services:
     
 volumes:
   postgres-db-volume:
+  postgres2-db-volume:  
   # spark-data:
   minio-data:
   # clickhouse-data:
