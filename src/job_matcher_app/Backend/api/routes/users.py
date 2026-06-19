@@ -1,6 +1,6 @@
 from datetime import date
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Path, logger
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,8 +9,14 @@ from db import get_async_db
 from models import User
 from services import JobRecommendationService, UserService
 
+try:
+    from job_matcher_app.event_outbox import create_event_outbox_in_session
+except ImportError:
+    from event_outbox import create_event_outbox_in_session  # type: ignore
+
 
 router = APIRouter(prefix="/users", tags=["users"])
+logger = logging.getLogger(__name__)
 
 @router.get("/me")
 async def read_users_me(current_user: User = Depends(get_current_user)):
@@ -121,6 +127,35 @@ def _payload_data(payload: BaseModel) -> dict:
     return payload.dict()
 
 
+async def _safe_create_event(
+    db: AsyncSession,
+    *,
+    event_type: str,
+    entity_type: str,
+    entity_id: int | None,
+    user_id: int | None,
+    payload: dict | None = None,
+) -> None:
+    try:
+        await create_event_outbox_in_session(
+            db,
+            event_type=event_type,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            user_id=user_id,
+            payload=payload or {},
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.exception(
+            "Failed to create event_outbox event_type=%s entity_type=%s entity_id=%s",
+            event_type,
+            entity_type,
+            entity_id,
+        )
+
+
 @router.post("/employees", status_code=201)
 async def create_employee_user(
     payload: CreateEmployeeUserRequest,
@@ -129,10 +164,23 @@ async def create_employee_user(
     data = _payload_data(payload)
 
     try:
-        return await UserService.create_employee_user_async(
+        result = await UserService.create_employee_user_async(
             db=db,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="employee_user_created",
+            entity_type="user",
+            entity_id=result.get("id"),
+            user_id=result.get("id"),
+            payload={
+                "user_id": result.get("id"),
+                "employee_id": (result.get("employee_profile") or {}).get("employee_id"),
+                "role": result.get("role"),
+            },
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 409 if "already exists" in message.lower() else 400
@@ -149,10 +197,24 @@ async def create_employer_user(
     data = _payload_data(payload)
 
     try:
-        return await UserService.create_employer_user_async(
+        result = await UserService.create_employer_user_async(
             db=db,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="employer_user_created",
+            entity_type="user",
+            entity_id=result.get("id"),
+            user_id=result.get("id"),
+            payload={
+                "user_id": result.get("id"),
+                "employer_id": (result.get("employer_profile") or {}).get("employer_id"),
+                "company_id": (result.get("company") or {}).get("company_id"),
+                "role": result.get("role"),
+            },
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 409 if "already exists" in message.lower() else 400
@@ -212,12 +274,21 @@ async def create_user_education(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.create_user_education_async(
+        result = await UserService.create_user_education_async(
             db=db,
             user_id=user_id,
             embedding_service=embedding_service,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="education_created",
+            entity_type="education",
+            entity_id=result.get("education_id"),
+            user_id=user_id,
+            payload=result,
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -237,12 +308,21 @@ async def create_user_education_with_timing(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.create_user_education_with_timing_async(
+        result = await UserService.create_user_education_with_timing_async(
             db=db,
             user_id=user_id,
             embedding_service=embedding_service,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="education_created",
+            entity_type="education",
+            entity_id=result.get("education_id"),
+            user_id=user_id,
+            payload=result,
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -265,7 +345,7 @@ async def update_user_education(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.update_user_education_async(
+        result = await UserService.update_user_education_async(
             db=db,
             user_id=user_id,
             education_id=education_id,
@@ -274,6 +354,18 @@ async def update_user_education(
             skills_provided=skills_provided,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="education_updated",
+            entity_type="education",
+            entity_id=education_id,
+            user_id=user_id,
+            payload={
+                "education": result,
+                "fields_changed": sorted(_fields_set(payload)),
+            },
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -292,12 +384,21 @@ async def delete_user_education(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.delete_user_education_async(
+        result = await UserService.delete_user_education_async(
             db=db,
             user_id=user_id,
             education_id=education_id,
             embedding_service=embedding_service,
         )
+        await _safe_create_event(
+            db,
+            event_type="education_deleted",
+            entity_type="education",
+            entity_id=education_id,
+            user_id=user_id,
+            payload={"education_id": education_id, "result": result},
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -317,12 +418,21 @@ async def create_user_experience(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.create_user_experience_async(
+        result = await UserService.create_user_experience_async(
             db=db,
             user_id=user_id,
             embedding_service=embedding_service,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="experience_created",
+            entity_type="experience",
+            entity_id=result.get("experience_id"),
+            user_id=user_id,
+            payload=result,
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -345,7 +455,7 @@ async def update_user_experience(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.update_user_experience_async(
+        result = await UserService.update_user_experience_async(
             db=db,
             user_id=user_id,
             experience_id=experience_id,
@@ -354,6 +464,18 @@ async def update_user_experience(
             skills_provided=skills_provided,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="experience_updated",
+            entity_type="experience",
+            entity_id=experience_id,
+            user_id=user_id,
+            payload={
+                "experience": result,
+                "fields_changed": sorted(_fields_set(payload)),
+            },
+        )
+        return result
 
         # For debugging: log the input data before calling the service
         # import logging
@@ -379,12 +501,21 @@ async def delete_user_experience(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.delete_user_experience_async(
+        result = await UserService.delete_user_experience_async(
             db=db,
             user_id=user_id,
             experience_id=experience_id,
             embedding_service=embedding_service,
         )
+        await _safe_create_event(
+            db,
+            event_type="experience_deleted",
+            entity_type="experience",
+            entity_id=experience_id,
+            user_id=user_id,
+            payload={"experience_id": experience_id, "result": result},
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -403,12 +534,21 @@ async def add_employee_skill(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.add_employee_skill_async(
+        result = await UserService.add_employee_skill_async(
             db=db,
             user_id=user_id,
             embedding_service=embedding_service,
             skill_name=payload.skill_name,
         )
+        await _safe_create_event(
+            db,
+            event_type="employee_skill_added",
+            entity_type="skill",
+            entity_id=result.get("skill_id"),
+            user_id=user_id,
+            payload=result,
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -428,12 +568,21 @@ async def remove_employee_skill(
     user_id = current_user.id
     embedding_service = JobRecommendationService()
     try:
-        return await UserService.remove_employee_skill_async(
+        result = await UserService.remove_employee_skill_async(
             db=db,
             user_id=user_id,
             embedding_service=embedding_service,
             skill_id=skill_id,
         )
+        await _safe_create_event(
+            db,
+            event_type="employee_skill_removed",
+            entity_type="skill",
+            entity_id=skill_id,
+            user_id=user_id,
+            payload={"skill_id": skill_id, "result": result},
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
@@ -456,7 +605,7 @@ async def update_user_profile(
     embedding_service = JobRecommendationService()
 
     try:
-        return await UserService.update_user_profile_async(
+        result = await UserService.update_user_profile_async(
             db=db,
             user_id=user_id,
             embedding_service=embedding_service,
@@ -464,6 +613,18 @@ async def update_user_profile(
             skills_provided=skills_provided,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="user_profile_updated",
+            entity_type="user",
+            entity_id=user_id,
+            user_id=user_id,
+            payload={
+                "profile": result,
+                "fields_changed": sorted(_fields_set(payload)),
+            },
+        )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400

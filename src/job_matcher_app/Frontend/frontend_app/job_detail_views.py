@@ -212,12 +212,25 @@ def _render_section(title: str, body_markup: str) -> None:
     )
 
 
-def _load_job_detail(job_id: int) -> dict[str, Any] | None:
-    cache_key = f"job_detail_{job_id}"
+def _recommendation_context_cache_suffix(recommendation_context: dict[str, Any] | None) -> str:
+    if not recommendation_context:
+        return "direct"
+    request_id = recommendation_context.get("recommendation_request_id") or "unknown"
+    rank = recommendation_context.get("recommendation_rank") or "none"
+    return f"rec_{request_id}_{rank}"
+
+
+def _selected_recommendation_context() -> dict[str, Any] | None:
+    context = st.session_state.get("selected_job_recommendation_context")
+    return context if isinstance(context, dict) and context else None
+
+
+def _load_job_detail(job_id: int, recommendation_context: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    cache_key = f"job_detail_{job_id}_{_recommendation_context_cache_suffix(recommendation_context)}"
     if cache_key not in st.session_state:
         try:
             with form_loading("Loading job detail..."):
-                st.session_state[cache_key] = get_job_detail(job_id)
+                st.session_state[cache_key] = get_job_detail(job_id, recommendation_context=recommendation_context)
         except ApiError as exc:
             show_api_error("Could not load job detail", exc)
             return None
@@ -279,10 +292,10 @@ def _render_skill_gap(job_id: int) -> None:
     )
 
 
-def _handle_apply(job_id: int) -> None:
+def _handle_apply(job_id: int, recommendation_context: dict[str, Any] | None = None) -> None:
     try:
         with form_loading("Submitting application..."):
-            apply_job(job_id)
+            apply_job(job_id, recommendation_context=recommendation_context)
         st.session_state[f"job_apply_success_{job_id}"] = True
     except ApiError as exc:
         message = str(exc)
@@ -309,7 +322,8 @@ def render_job_detail_page() -> None:
         navigate_to(return_page)
         st.rerun()
 
-    job = _load_job_detail(int(job_id))
+    recommendation_context = _selected_recommendation_context()
+    job = _load_job_detail(int(job_id), recommendation_context=recommendation_context)
     if not job:
         return
 
@@ -324,7 +338,7 @@ def render_job_detail_page() -> None:
         use_container_width=True,
         disabled=is_expired,
     ):
-        _handle_apply(int(job_id))
+        _handle_apply(int(job_id), recommendation_context=recommendation_context)
     if is_expired:
         st.caption("Job đã quá hạn ứng tuyển.")
 

@@ -236,8 +236,25 @@ def search_jobs(
     return request_json("GET", "/jobs", params=params, auth=True)
 
 
-def get_job_detail(job_id: int) -> Any:
-    return request_json("GET", f"/jobs/{job_id}", auth=True)
+def _recommendation_params(recommendation_context: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    if not recommendation_context:
+        return None
+
+    params = {
+        key: value
+        for key, value in recommendation_context.items()
+        if key in {"recommendation_request_id", "recommendation_rank", "algorithm_version"} and value is not None
+    }
+    return params or None
+
+
+def get_job_detail(job_id: int, recommendation_context: dict[str, Any] | None = None) -> Any:
+    return request_json(
+        "GET",
+        f"/jobs/{job_id}",
+        params=_recommendation_params(recommendation_context),
+        auth=True,
+    )
 
 
 def get_job_skill_gap(
@@ -256,6 +273,11 @@ def get_job_skill_gap(
     )
 
 
-def apply_job(job_id: int) -> Any:
-    return request_json("POST", f"/jobs/{job_id}/apply", auth=True)
+def apply_job(job_id: int, recommendation_context: dict[str, Any] | None = None) -> Any:
+    return request_json(
+        "POST",
+        f"/jobs/{job_id}/apply",
+        params=_recommendation_params(recommendation_context),
+        auth=True,
+    )
 

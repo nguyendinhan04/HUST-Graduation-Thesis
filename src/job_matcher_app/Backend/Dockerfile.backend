@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 RUN mkdir -p /app/src/job_matcher_app
 COPY job_matcher_app/outbox.py /app/src/job_matcher_app/outbox.py
+COPY job_matcher_app/event_outbox.py /app/src/job_matcher_app/event_outbox.py
 
 EXPOSE 8000
 

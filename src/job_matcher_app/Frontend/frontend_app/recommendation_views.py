@@ -99,6 +99,15 @@ def _job_meta(job: dict[str, Any]) -> str:
     return " | ".join(bits)
 
 
+def _recommendation_context(job: dict[str, Any]) -> dict[str, Any] | None:
+    context = {
+        "recommendation_request_id": job.get("recommendation_request_id"),
+        "recommendation_rank": job.get("recommendation_rank"),
+        "algorithm_version": job.get("algorithm_version"),
+    }
+    return {key: value for key, value in context.items() if value is not None} or None
+
+
 def render_recommendations_page() -> None:
     st.markdown('<div class="recommendation-title">Recommended jobs</div>', unsafe_allow_html=True)
     header_col, action_col = st.columns([8, 1.6], gap="small")
@@ -156,5 +165,5 @@ def render_recommendations_page() -> None:
                 help="Xem chi tiết công việc",
                 use_container_width=True,
                 on_click=navigate_to_job_detail if job_id is not None else None,
-                args=(int(job_id),) if job_id is not None else None,
+                args=(int(job_id), "recommendations", _recommendation_context(job)) if job_id is not None else None,
             )

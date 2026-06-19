@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+import logging
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
@@ -12,10 +13,16 @@ from db import get_async_db
 from models import User
 from services import JobRecommendationService, JobService
 
+try:
+    from job_matcher_app.event_outbox import create_event_outbox_in_session
+except ImportError:
+    from event_outbox import create_event_outbox_in_session  # type: ignore
+
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 settings = get_settings()
 JobStatus = Literal["open", "closed", "draft", "deleted"]
+logger = logging.getLogger(__name__)
 
 
 class CreateJobRequest(BaseModel):
@@ -62,6 +69,37 @@ def _payload_data(payload: BaseModel) -> dict:
     return payload.dict()
 
 
+async def _safe_create_event(
+    db: AsyncSession,
+    *,
+    event_type: str,
+    entity_type: str,
+    entity_id: int | None,
+    user_id: int | None,
+    request_id: str | None = None,
+    payload: dict | None = None,
+) -> None:
+    try:
+        await create_event_outbox_in_session(
+            db,
+            event_type=event_type,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            user_id=user_id,
+            request_id=request_id,
+            payload=payload or {},
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.exception(
+            "Failed to create event_outbox event_type=%s entity_type=%s entity_id=%s",
+            event_type,
+            entity_type,
+            entity_id,
+        )
+
+
 @router.post("", status_code=201)
 async def create_job(
     payload: CreateJobRequest,
@@ -72,12 +110,26 @@ async def create_job(
     embedding_service = JobRecommendationService()
 
     try:
-        return await JobService.create_job_for_employer_async(
+        result = await JobService.create_job_for_employer_async(
             db=db,
             current_user=current_user,
             embedding_service=embedding_service,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="job_created",
+            entity_type="job",
+            entity_id=result.get("job_id"),
+            user_id=current_user.id,
+            payload={
+                "job_id": result.get("job_id"),
+                "company_id": result.get("company_id"),
+                "status": result.get("status"),
+                "title": result.get("title"),
+            },
+        )
+        return result
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ValueError as exc:
@@ -128,7 +180,7 @@ async def update_job(
     embedding_service = JobRecommendationService()
 
     try:
-        return await JobService.update_job_for_employer_async(
+        result = await JobService.update_job_for_employer_async(
             db=db,
             current_user=current_user,
             embedding_service=embedding_service,
@@ -136,6 +188,20 @@ async def update_job(
             fields_set=fields_set,
             **data,
         )
+        await _safe_create_event(
+            db,
+            event_type="job_updated",
+            entity_type="job",
+            entity_id=job_id,
+            user_id=current_user.id,
+            payload={
+                "job_id": job_id,
+                "fields_changed": sorted(fields_set),
+                "status": result.get("status"),
+                "title": result.get("title"),
+            },
+        )
+        return result
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ValueError as exc:
@@ -191,15 +257,37 @@ async def list_my_applications(
 @router.post("/{job_id}/apply", status_code=201)
 async def apply_job(
     job_id: int = Path(..., ge=1),
+    recommendation_request_id: str | None = Query(default=None, max_length=255),
+    recommendation_rank: int | None = Query(default=None, ge=1),
+    algorithm_version: str | None = Query(default=None, max_length=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
     try:
-        return await JobService.apply_job_for_employee_async(
+        result = await JobService.apply_job_for_employee_async(
             db=db,
             current_user=current_user,
             job_id=job_id,
         )
+        await _safe_create_event(
+            db,
+            event_type="job_application_created",
+            entity_type="application",
+            entity_id=result.get("application_id"),
+            user_id=current_user.id,
+            request_id=recommendation_request_id,
+            payload={
+                "application_id": result.get("application_id"),
+                "job_id": job_id,
+                "employee_id": result.get("employee_id"),
+                "status": result.get("status"),
+                "recommendation_request_id": recommendation_request_id,
+                "recommendation_rank": recommendation_rank,
+                "algorithm_version": algorithm_version,
+                "page_context": "job_apply",
+            },
+        )
+        return result
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ValueError as exc:
@@ -275,17 +363,38 @@ async def get_job_skill_gap(
 @router.get("/{job_id}")
 async def get_job_detail(
     job_id: int = Path(..., ge=1),
+    recommendation_request_id: str | None = Query(default=None, max_length=255),
+    recommendation_rank: int | None = Query(default=None, ge=1),
+    algorithm_version: str | None = Query(default=None, max_length=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
     service = JobRecommendationService()
 
     try:
-        return await service.get_job_detail(
+        result = await service.get_job_detail(
             db=db,
             job_id=job_id,
             current_user=current_user,
         )
+        if recommendation_request_id:
+            await _safe_create_event(
+                db,
+                event_type="recommendation_click",
+                entity_type="job",
+                entity_id=job_id,
+                user_id=current_user.id,
+                request_id=recommendation_request_id,
+                payload={
+                    "recommendation_request_id": recommendation_request_id,
+                    "algorithm_version": algorithm_version,
+                    "rank": recommendation_rank,
+                    "job_id": job_id,
+                    "source": "rrf_rerank",
+                    "page_context": "job_detail",
+                },
+            )
+        return result
     except ValueError as exc:
         message = str(exc)
         status_code = 404 if "not found" in message.lower() else 400
