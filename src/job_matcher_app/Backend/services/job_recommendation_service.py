@@ -927,67 +927,86 @@ class JobRecommendationService:
             "status": "queued",
         }
 
-    async def search_best_jobs_in_db_by_tfidf(
+    async def search_best_jobs_in_db_by_bm25(
         self,
         db: AsyncSession,
         user_id: int,
         limit: int = 100,
     ) -> list[int]:
         """
-        Search top jobs by comparing stored user TF-IDF vector with job TF-IDF vectors.
+        Search top jobs using ParadeDB BM25 based on user profile text.
         """
         if limit <= 0:
             raise ValueError("limit must be greater than 0")
 
-        lock_key = f"user:{user_id}:tfidf_embedding_lock"
-        if self.redis_conn.exists(lock_key):
-            raise RecommendationLockedError(
-                code="PROFILE_TFIDF_LOCKED",
-                message="Profile TF-IDF vector is currently being updated. Please try again later.",
-            )
-
-        employee_result = await db.execute(
-            select(Employee.id).where(Employee.user_id == user_id)
-        )
-        employee_id = employee_result.scalar_one_or_none()
+        profile = await self.get_user_profile(db, user_id)
+        employee_id = profile.get("employee_id")
         if employee_id is None:
             raise ValueError(f"Employee with user_id {user_id} not found")
 
-        profile_vector_result = await db.execute(
-            text(
-                """
-                SELECT vector_tfidf::text AS vector_tfidf
-                FROM user_profile_embedding
-                WHERE employee_id = :employee_id
-                """
-            ),
-            {"employee_id": employee_id},
-        )
-        profile_vector = profile_vector_result.scalar_one_or_none()
-        if profile_vector is None:
-            raise ValueError("User TF-IDF vector is not ready yet")
+        # Extract titles from headline and experiences
+        titles = set()
+        if profile.get("headline"):
+            titles.add(profile["headline"].strip())
+        for exp in profile.get("experiences", []):
+            title = exp.get("title") or exp.get("Title")
+            if title:
+                titles.add(title.strip())
+
+        # Extract skills
+        skills = set()
+        for skill in profile.get("skills", []):
+            skill_name = skill.get("skill_name")
+            if skill_name:
+                skills.add(skill_name.strip())
+
+        def _escape_bm25(text: str) -> str:
+            return text.replace('"', '\\"')
+
+        query_parts = []
+        if titles:
+            title_str = " OR ".join(f'"{_escape_bm25(t)}"' for t in titles if t)
+            if title_str:
+                query_parts.append(f'title:({title_str})^4.0')
+        
+        if skills:
+            skill_str = " OR ".join(f'"{_escape_bm25(s)}"' for s in skills if s)
+            if skill_str:
+                query_parts.append(f'requirement:({skill_str})^3.0')
+                query_parts.append(f'description:({skill_str})^3.0')
+        
+        if not query_parts:
+            # Fallback if profile is completely empty
+            return []
+            
+        bm25_query_str = " ".join(query_parts)
 
         rows = (
             await db.execute(
                 text(
                     """
-                    SELECT jet.job_id
-                    FROM job_embeddings_tfidf jet
-                    JOIN jobs j ON j.id = jet.job_id
-                    WHERE jet.embedding IS NOT NULL
-                      AND j.status = 'open'
-                    ORDER BY jet.embedding <=> CAST(:vector_tfidf AS vector)
+                    SELECT jobs.id
+                    FROM jobs
+                    WHERE jobs @@@ :bm25_query
+                      AND jobs.status = 'open'
+                      AND jobs.id NOT IN (
+                          SELECT a.job_id
+                          FROM applications a
+                          WHERE a.employee_id = :employee_id
+                      )
+                    ORDER BY pdb.score(jobs.id) DESC
                     LIMIT :limit
                     """
                 ),
                 {
-                    "vector_tfidf": profile_vector,
+                    "bm25_query": bm25_query_str,
                     "limit": limit,
+                    "employee_id": employee_id,
                 },
             )
         ).fetchall()
 
-        return [row.job_id for row in rows]
+        return [row.id for row in rows]
 
     # async def upsert_user_profile_embedding(
     #     self,
@@ -1100,6 +1119,11 @@ class JobRecommendationService:
         JOIN jobs j ON j.id = jeb.job_id
         WHERE jeb.embedding IS NOT NULL
           AND j.status = 'open'
+          AND j.id NOT IN (
+              SELECT a.job_id
+              FROM applications a
+              WHERE a.employee_id = :employee_id
+          )
         ORDER BY jeb.embedding <=> CAST(:embedding AS vector)
         LIMIT :limit;
         """)
@@ -1107,7 +1131,7 @@ class JobRecommendationService:
         records = (
             await db.execute(
                 search_query,
-                {"embedding": query_vector, "limit": limit},
+                {"embedding": query_vector, "limit": limit, "employee_id": employee_id},
             )
         ).fetchall()
         return [
@@ -1167,6 +1191,7 @@ class JobRecommendationService:
             params = {
                 "candidate_ids": candidate_ids,
                 "threshold": get_settings().DEFAULT_THRESHOLD,
+                "related_threshold": 0.35,
             }
             for i, skill in enumerate(user_skills):
                 params[f"name_{i}"] = skill
@@ -1191,7 +1216,13 @@ class JobRecommendationService:
                 SELECT
                     job_id,
                     COUNT(*) AS total_skills,
-                    SUM(CASE WHEN best_sim >= :threshold THEN 1 ELSE 0 END) AS covered_skills,
+                    SUM(
+                        CASE 
+                            WHEN best_sim >= :threshold THEN 1.0 
+                            WHEN best_sim >= :related_threshold THEN best_sim 
+                            ELSE 0.0 
+                        END
+                    ) AS fuzzy_covered_skills,
                     AVG(best_sim) AS avg_sim
                 FROM jd_skill_sims
                 GROUP BY job_id
@@ -1199,7 +1230,7 @@ class JobRecommendationService:
             rows = (await db.execute(skill_query, params)).fetchall()
             for row in rows:
                 total_skills = int(row.total_skills or 0)
-                covered_skills = int(row.covered_skills or 0)
+                covered_skills = float(row.fuzzy_covered_skills or 0.0)
                 skill_coverage = (
                     covered_skills / total_skills
                     if total_skills > 0
@@ -1733,7 +1764,15 @@ class JobRecommendationService:
 
         covered_count = len(covered_skills)
         total_count = len(job_skills)
-        coverage = round(covered_count / total_count, 4) if total_count else 0.0
+        
+        fuzzy_covered_sum = 0.0
+        for sim in similarities:
+            if sim >= threshold:
+                fuzzy_covered_sum += 1.0
+            elif sim >= related_threshold:
+                fuzzy_covered_sum += sim
+
+        coverage = round(fuzzy_covered_sum / total_count, 4) if total_count else 0.0
         avg_similarity = round(float(np.mean(similarities)), 4) if similarities else 0.0
 
         return {
@@ -1767,12 +1806,12 @@ class JobRecommendationService:
         """
 
         #Phase 1: Sử dụng skill embeddings để nhanh chóng lọc ra top 5x job candidates có độ tương đồng skill cao nhất.
-        top_job_tfidf = await self.search_best_jobs_in_db_by_tfidf(db, user_id, limit=top_k*5)
+        top_job_bm25 = await self.search_best_jobs_in_db_by_bm25(db, user_id, limit=top_k*5)
 
         top_job_bert = await self.search_best_jobs_in_db_by_bert(db, user_id, limit=top_k*5)
 
         # Kết hợp kết quả từ cả 2 phương pháp bằng RRF
-        combined_rankings = self.calculate_rrf(top_job_tfidf, top_job_bert, k=top_k*5)
+        combined_rankings = self.calculate_rrf(top_job_bm25, top_job_bert, k=top_k*5)
 
         if not combined_rankings:
             return []

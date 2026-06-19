@@ -1,3 +1,6 @@
+import logging
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,8 +10,15 @@ from models import User
 from db import get_async_db
 from services import JobRecommendationService, RecommendationLockedError
 
+try:
+    from job_matcher_app.event_outbox import create_event_outbox_in_session
+except ImportError:
+    from event_outbox import create_event_outbox_in_session  # type: ignore
+
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
+logger = logging.getLogger(__name__)
+RECOMMENDATION_ALGORITHM_VERSION = "rrf_rerank_v1"
 
 
 class RecommendRequest(BaseModel):
@@ -51,12 +61,47 @@ async def get_recommendations(
     service = JobRecommendationService()
 
     try:
+        recommendation_request_id = str(uuid.uuid4())
         job_ids = await service.recommend_jobs_2_phase(
             db=db,
             user_id=user_id,
             top_k=top_k,
         )
-        return await service.get_recommended_job_details(db, job_ids)
+        details = await service.get_recommended_job_details(db, job_ids)
+        for rank, item in enumerate(details, start=1):
+            item["recommendation_request_id"] = recommendation_request_id
+            item["recommendation_rank"] = rank
+            item["algorithm_version"] = RECOMMENDATION_ALGORITHM_VERSION
+
+        try:
+            for rank, item in enumerate(details, start=1):
+                job_id = int(item.get("id") or item.get("job_id"))
+                await create_event_outbox_in_session(
+                    db,
+                    event_type="recommendation_impression",
+                    entity_type="job",
+                    entity_id=job_id,
+                    user_id=user_id,
+                    request_id=recommendation_request_id,
+                    payload={
+                        "recommendation_request_id": recommendation_request_id,
+                        "algorithm_version": RECOMMENDATION_ALGORITHM_VERSION,
+                        "rank": rank,
+                        "job_id": job_id,
+                        "top_k": top_k,
+                        "source": "rrf_rerank",
+                        "page_context": "recommendation_home",
+                    },
+                )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logger.exception(
+                "Failed to create recommendation impression events user_id=%s",
+                user_id,
+            )
+
+        return details
     except RecommendationLockedError as exc:
         raise _recommendation_locked_http_exception(exc) from exc
     except ValueError as exc:
@@ -69,8 +114,8 @@ async def get_recommendations(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@router.get("/me/jobs/tfidf")
-async def get_tfidf_recommendation_ids(
+@router.get("/me/jobs/bm25")
+async def get_bm25_recommendation_ids(
     current_user: User = Depends(get_current_user),
     top_k: int = Query(20, ge=1),
     db: AsyncSession = Depends(get_async_db),
@@ -79,7 +124,7 @@ async def get_tfidf_recommendation_ids(
     service = JobRecommendationService()
 
     try:
-        return await service.search_best_jobs_in_db_by_tfidf(
+        return await service.search_best_jobs_in_db_by_bm25(
             db=db,
             user_id=user_id,
             limit=top_k,
