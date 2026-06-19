@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def _get_database_url() -> str:
     user = os.getenv("PG_USER", "airflow")
     password = os.getenv("PG_PASSWORD", "airflow")
-    host = os.getenv("PG_HOST", "postgres")
+    host = os.getenv("PG_HOST", "postgres2")
     port = os.getenv("PG_PORT", "5432")
     database = os.getenv("PG_DATABASE", "job_db_2")
     return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"

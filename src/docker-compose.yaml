@@ -50,7 +50,8 @@ x-airflow-common:
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   image: ${AIRFLOW_IMAGE_NAME:-nguyendinhan04/extend_airflow:airflow-latest}
-  # build: .
+  build:
+    context: ./airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -66,6 +67,20 @@ x-airflow-common:
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
     # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    PG_HOST: postgres
+    PG_PORT: 5432
+    PG_DATABASE: job_db_2
+    PG_USER: airflow
+    PG_PASSWORD: airflow
+    MINIO_ENDPOINT: minio:9000
+    MINIO_ACCESS_KEY: ROOTUSER
+    MINIO_SECRET_KEY: 1234567890
+    MINIO_SECURE: 'false'
+    LAKE_BUCKET: lake
+    LAKE_BRONZE_PREFIX: bronze/events
+    LAKE_SILVER_PREFIX: silver/recommendation_events
+    LAKE_GOLD_PREFIX: gold/recommendation_conversion_daily
+    EVENT_OUTBOX_RETENTION_DAYS: 30
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
@@ -75,6 +90,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/airflow/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/airflow/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/airflow/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/job_matcher_app:/opt/job_matcher_app
     # - ${AIRFLOW_PROJ_DIR:-.}/sqlite:/opt/sqlite
     # - ${AIRFLOW_PROJ_DIR:-.}/dbt:/opt/airflow/dbt
     # - ${AIRFLOW_PROJ_DIR:-.}/.dbt:/home/airflow/.dbt
@@ -156,7 +172,7 @@ services:
     container_name: job-matcher-backend
     restart: unless-stopped
     environment:
-      PG_HOST: postgres
+      PG_HOST: postgres2
       PG_PORT: 5432
       PG_DATABASE: job_db_2
       PG_USER: airflow
@@ -184,6 +200,7 @@ services:
     volumes:
       - ./job_matcher_app/Backend:/app/src/job_matcher_app/Backend
       - ./job_matcher_app/outbox.py:/app/src/job_matcher_app/outbox.py
+      - ./job_matcher_app/event_outbox.py:/app/src/job_matcher_app/event_outbox.py
     depends_on:
       redis:
         condition: service_healthy
@@ -224,7 +241,7 @@ services:
       REDIS_DB: 0
       QUEUE_NAME: skill-embedding-queue
       WORKER_NAME: skill_embedding_worker
-      PG_HOST: postgres
+      PG_HOST: postgres2
       PG_PORT: 5432
       PG_DATABASE: job_db_2
       PG_USER: airflow
@@ -259,7 +276,7 @@ services:
       MINIO_BUCKET: models
       MINIO_SECURE: "false"
       TFIDF_MODEL_PREFIX: models/tfidf/
-      PG_HOST: postgres
+      PG_HOST: postgres2
       PG_PORT: 5432
       PG_DATABASE: job_db_2
       PG_USER: airflow
@@ -298,7 +315,7 @@ services:
       MINIO_SECRET_KEY: 1234567890
       MINIO_BUCKET: models
       MINIO_SECURE: "false"
-      PG_HOST: postgres
+      PG_HOST: postgres2
       PG_PORT: 5432
       PG_DATABASE: job_db_2
       PG_USER: airflow
@@ -310,6 +327,44 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - airflow
+
+  lake-writer:
+    profiles:
+      - manual
+    build:
+      context: .
+      dockerfile: job_matcher_app/lake_writer/Dockerfile.lake_writer
+    image: job-matcher-lake-writer:latest
+    container_name: job-matcher-lake-writer
+    restart: "no"
+    environment:
+      PG_HOST: postgres2
+      PG_PORT: 5432
+      PG_DATABASE: job_db_2
+      PG_USER: airflow
+      PG_PASSWORD: airflow
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ROOTUSER
+      MINIO_SECRET_KEY: 1234567890
+      MINIO_SECURE: "false"
+      LAKE_BUCKET: lake
+      LAKE_BRONZE_PREFIX: bronze/events
+      LAKE_SILVER_PREFIX: silver/recommendation_events
+      LAKE_GOLD_PREFIX: gold/recommendation_conversion_daily
+      LAKE_WRITER_BATCH_SIZE: 1000
+      LAKE_WRITER_FLUSH_INTERVAL_SECONDS: 30
+      LAKE_WRITER_COMPRESSION: zstd
+      LAKE_WRITER_RUN_ONCE: "true"
+    volumes:
+      - ./job_matcher_app/event_outbox.py:/app/src/job_matcher_app/event_outbox.py
+      - ./job_matcher_app/lake_writer:/app/src/job_matcher_app/lake_writer
+    depends_on:
       postgres:
         condition: service_healthy
       minio:

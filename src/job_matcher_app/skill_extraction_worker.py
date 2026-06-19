@@ -34,7 +34,7 @@ SHORT_SKILL_WHITELIST = {"go", "r", "c", "c#", "c++", ".net", "ui", "ux", "sql",
 def _get_database_url() -> str:
     user = os.getenv("PG_USER", "airflow")
     password = os.getenv("PG_PASSWORD", "airflow")
-    host = os.getenv("PG_HOST", "postgres")
+    host = os.getenv("PG_HOST", "postgres2")
     port = os.getenv("PG_PORT", "5432")
     database = os.getenv("PG_DATABASE", "job_db_2")
     return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
@@ -143,7 +143,7 @@ def build_skill_trie() -> SkillTrie:
     repo: SkillRepository = create_skill_repository(
         backend="postgres",
         sqlite_db_path=os.getenv("SKILL_SQLITE_DB_PATH", "data/sqlite/skills.db"),
-        postgres_host=os.getenv("PG_HOST", "postgres"),
+        postgres_host=os.getenv("PG_HOST", "postgres2"),
         postgres_port=os.getenv("PG_PORT", "5432"),
         postgres_database=os.getenv("PG_DATABASE", "job_db_2"),
         postgres_user=os.getenv("PG_USER", "airflow"),
