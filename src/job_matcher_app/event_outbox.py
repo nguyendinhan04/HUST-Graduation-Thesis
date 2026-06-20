@@ -286,6 +286,7 @@ def delete_exported_event_outboxes(retention_days: int, limit: int = 5000) -> in
                       AND exported_at < CURRENT_TIMESTAMP - (:retention_days * INTERVAL '1 day')
                     ORDER BY exported_at, id
                     LIMIT :limit
+                    FOR UPDATE SKIP LOCKED
                 )
                 DELETE FROM event_outbox eo
                 USING deleted

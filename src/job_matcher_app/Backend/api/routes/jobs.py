@@ -329,8 +329,8 @@ async def list_job_applications(
 @router.get("/{job_id}/skill-gap")
 async def get_job_skill_gap(
     job_id: int = Path(..., ge=1),
-    threshold: float = Query(0.6, ge=0.0, le=1.0),
-    related_threshold: float = Query(0.35, ge=0.0, le=1.0),
+    threshold: float = Query(0.9, ge=0.0, le=1.0),
+    related_threshold: float = Query(0.7, ge=0.0, le=1.0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):

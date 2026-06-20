@@ -233,7 +233,7 @@ async def match_user_to_jd(
     db: AsyncSession,
     user_skills: list[str],
     jd_id: int,
-    threshold: float = settings.DEFAULT_THRESHOLD,
+    threshold: float = 0.9,
 ) -> MatchResult | None:
     """
     Tính JD Coverage % giữa user skills và 1 JD.
@@ -287,7 +287,7 @@ async def batch_match_user_to_jds(
     db: AsyncSession,
     user_skills: list[str],
     jd_ids: list[int],
-    threshold: float = settings.DEFAULT_THRESHOLD,
+    threshold: float = 0.9,
 ) -> list[dict]:
     """
     Match 1 user với nhiều JDs, trả về list sorted theo jd_coverage (cao nhất trước).

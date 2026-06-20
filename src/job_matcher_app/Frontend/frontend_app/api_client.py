@@ -259,9 +259,9 @@ def get_job_detail(job_id: int, recommendation_context: dict[str, Any] | None = 
 
 def get_job_skill_gap(
     job_id: int,
-    threshold: float = 0.6,
-    related_threshold: float = 0.35,
-) -> Any:
+    threshold: float = 0.9,
+    related_threshold: float = 0.7,
+) -> dict | None:
     return request_json(
         "GET",
         f"/jobs/{job_id}/skill-gap",
