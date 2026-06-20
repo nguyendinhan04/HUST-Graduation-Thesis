@@ -122,7 +122,7 @@ services:
       interval: 10s
       retries: 5
       start_period: 5s
-    restart: always
+    restart: no
     networks:
       - airflow
 
@@ -144,7 +144,7 @@ services:
       interval: 10s
       retries: 5
       start_period: 5s
-    restart: always
+    restart: no
     networks:
       - airflow
 
@@ -160,7 +160,7 @@ services:
       timeout: 30s
       retries: 50
       start_period: 30s
-    restart: always
+    restart: no
     networks:
       - airflow
 
@@ -170,7 +170,7 @@ services:
       dockerfile: job_matcher_app/Backend/Dockerfile.backend
     image: job-matcher-backend
     container_name: job-matcher-backend
-    restart: unless-stopped
+    restart: no
     environment:
       PG_HOST: postgres2
       PG_PORT: 5432
@@ -215,7 +215,7 @@ services:
       dockerfile: job_matcher_app/Frontend/Dockerfile.frontend
     image: job-matcher-frontend
     container_name: job-matcher-frontend
-    restart: unless-stopped
+    restart: no
     environment:
       API_BASE_URL: http://backend:8000
     ports:
@@ -234,7 +234,7 @@ services:
       dockerfile: job_matcher_app/skill_worker/Dockerfile.skill_worker
     image: skill-worker:latest
     container_name: job-matcher-skill-worker
-    restart: unless-stopped
+    restart: no
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -263,7 +263,7 @@ services:
       dockerfile: job_matcher_app/skill_worker/Dockerfile.skill_worker_tfidf
     image: skill-worker-tfidf:latest
     container_name: job-matcher-skill-worker-tfidf
-    restart: unless-stopped
+    restart: no
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -300,7 +300,7 @@ services:
       dockerfile: job_matcher_app/skill_worker/Dockerfile.skill_extraction_worker
     image: job-skill-extraction-worker:latest
     container_name: job-matcher-skill-extraction-worker
-    restart: unless-stopped
+    restart: no
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -383,7 +383,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    restart: always
+    restart: no
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -400,7 +400,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    restart: always
+    restart: no
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
