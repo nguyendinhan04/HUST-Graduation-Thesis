@@ -208,7 +208,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      postgres:
+      postgres2:
         condition: service_healthy
     networks:
       - airflow
@@ -260,7 +260,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      postgres:
+      postgres2:
         condition: service_healthy
     networks:
       - airflow
@@ -339,7 +339,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      postgres:
+      postgres2:
         condition: service_healthy
       minio:
         condition: service_started
@@ -377,7 +377,7 @@ services:
       - ./job_matcher_app/event_outbox.py:/app/src/job_matcher_app/event_outbox.py
       - ./job_matcher_app/lake_writer:/app/src/job_matcher_app/lake_writer
     depends_on:
-      postgres:
+      postgres2:
         condition: service_healthy
       minio:
         condition: service_started
