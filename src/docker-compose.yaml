@@ -688,7 +688,7 @@ services:
 
   consumer:
      profiles:
-       - app
+       - batch
      image :  nguyendinhan04/kafka-consumer:latest
      depends_on:
        - redis
