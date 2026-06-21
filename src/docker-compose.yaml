@@ -686,17 +686,17 @@ services:
   #     - airflow
   
 
-  consumer:
-     profiles:
-       - batch
-     image :  nguyendinhan04/kafka-consumer:latest
-     depends_on:
-       - redis
-     volumes:
-       - ${AIRFLOW_PROJ_DIR:-.}/JobUpdateConsumer:/app
-     command: ["python", "redis_consumer.py", "--worker-name", "job-update-consumer"]
-     networks:
-       - airflow
+  # consumer:
+  #    profiles:
+  #      - batch
+  #    image :  nguyendinhan04/kafka-consumer:latest
+  #    depends_on:
+  #      - redis
+  #    volumes:
+  #      - ${AIRFLOW_PROJ_DIR:-.}/JobUpdateConsumer:/app
+  #    command: ["python", "redis_consumer.py", "--worker-name", "job-update-consumer"]
+  #    networks:
+  #      - airflow
 
   # triton-server:
   #   image: nvcr.io/nvidia/tritonserver:23.10-py3
