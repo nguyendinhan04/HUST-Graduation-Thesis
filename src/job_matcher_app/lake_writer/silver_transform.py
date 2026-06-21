@@ -159,14 +159,19 @@ def _collect_bronze_rows(
     for event_type in RECOMMENDATION_EVENT_TYPES:
         prefix = _event_prefix(storage.settings, event_type, metric_date)
         for key in storage.list_parquet_keys(prefix):
-            table = pq.read_table(BytesIO(storage.get_bytes(key)))
-            for row in table.to_pylist():
-                normalized = _normalize_row(row, key)
-                if not normalized:
-                    continue
-                event_id = normalized["event_id"]
-                if event_id:
-                    bronze_rows[event_id] = normalized
+            try:
+                raw_bytes = storage.get_bytes(key)
+                table = pq.read_table(BytesIO(raw_bytes))
+                for row in table.to_pylist():
+                    normalized = _normalize_row(row, key)
+                    if not normalized:
+                        continue
+                    event_id = normalized["event_id"]
+                    if event_id:
+                        bronze_rows[event_id] = normalized
+            except Exception as e:
+                logger.error(f"WARNING: File {key} bi hong hoac rong. Bo qua file nay. Error: {e}")
+                continue
     return list(bronze_rows.values())
 
 
