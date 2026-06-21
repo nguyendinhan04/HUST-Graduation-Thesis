@@ -69,7 +69,7 @@ x-airflow-common:
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
     # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    PG_HOST: postgres
+    PG_HOST: postgres2
     PG_PORT: 5432
     PG_DATABASE: job_db_2
     PG_USER: airflow
@@ -534,7 +534,6 @@ services:
   airflow-cli:
     <<: *airflow-common
     profiles:
-      - batch
       - debug
     environment:
       <<: *airflow-common-env
