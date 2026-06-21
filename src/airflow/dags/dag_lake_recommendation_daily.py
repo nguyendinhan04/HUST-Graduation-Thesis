@@ -16,10 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 def _logical_date(context: dict) -> date:
+    import pendulum
     data_interval_start = context.get("data_interval_start")
     if data_interval_start is not None:
-        return data_interval_start.date()
-    return datetime.utcnow().date() - timedelta(days=1)
+        return data_interval_start.in_timezone("Asia/Ho_Chi_Minh").date()
+    return pendulum.now("Asia/Ho_Chi_Minh").subtract(days=1).date()
 
 
 def build_silver(**context) -> dict[str, object]:
