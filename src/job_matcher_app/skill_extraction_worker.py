@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 VALID_EXTRACTOR_MODES = {"ner_skilltrie", "skilltrie_only"}
 DEFAULT_NER_MODEL_PREFIX = "models/checkpoint-360/"
 DEFAULT_MODEL_CACHE_DIR = "/tmp/job_matcher_models"
-NER_LABELS = ["O", "B-LANG", "I-LANG", "B-TECH", "I-TECH"]
+NER_LABELS = ["O", "B-SKILL", "I-SKILL"]
 DEFAULT_SKILL_SEMANTIC_MODEL = "alvperez/skill-sim-model"
 SHORT_SKILL_WHITELIST = {"go", "r", "c", "c#", "c++", ".net", "ui", "ux", "sql", "k8s", "ci/cd"}
 
@@ -240,7 +240,7 @@ def normalize_skill_name(value: Any) -> str:
 
 
 def is_supported_ner_entity(entity_group: str) -> bool:
-    return "LANG" in entity_group or "TECH" in entity_group
+    return "SKILL" in entity_group
 
 
 def reject_ner_phrase(raw_phrase: Any, normalized_phrase: str, score: float) -> str | None:
