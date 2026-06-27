@@ -741,19 +741,21 @@ services:
   #       soft: 262144
   #       hard: 262144
 
-  # grafana:
-  #   image: grafana/grafana
-  #   container_name: grafana
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - GF_SECURITY_ADMIN_PASSWORD=admin
-  #   depends_on:
-  #     - clickhosue
-  #   volumes:
-  #     - grafana-storage:/var/lib/grafana
-  #   networks: 
-  #     - airflow
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      postgres2:
+        condition: service_healthy
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    networks: 
+      - airflow
     
 volumes:
   postgres-db-volume:
@@ -761,7 +763,7 @@ volumes:
   # spark-data:
   minio-data:
   # clickhouse-data:
-  # grafana-storage:
+  grafana-storage:
 
 
 networks:

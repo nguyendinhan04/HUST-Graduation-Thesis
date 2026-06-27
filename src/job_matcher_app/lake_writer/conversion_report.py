@@ -37,6 +37,85 @@ METRIC_SCHEMA = pa.schema(
 )
 
 
+
+def get_pg_connection():
+    import psycopg2
+    host = os.getenv("PG_HOST", "postgres2")
+    port = os.getenv("PG_PORT", "5432")
+    database = os.getenv("PG_DATABASE", "job_db_2")
+    user = os.getenv("PG_USER", "airflow")
+    password = os.getenv("PG_PASSWORD", "airflow")
+    return psycopg2.connect(
+        host=host, port=port, database=database, user=user, password=password
+    )
+
+def write_gold_metrics_to_pg(rows: list[dict[str, Any]], metric_date: date):
+    if not rows:
+        return
+        
+    import psycopg2
+    from psycopg2.extras import execute_values
+    
+    conn = get_pg_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS gold_recommendation_metrics (
+                    id SERIAL PRIMARY KEY,
+                    metric_date DATE NOT NULL,
+                    algorithm_version VARCHAR(255) NOT NULL,
+                    rank_bucket VARCHAR(50) NOT NULL,
+                    impressions INT DEFAULT 0,
+                    clicks INT DEFAULT 0,
+                    applications INT DEFAULT 0,
+                    click_through_rate FLOAT DEFAULT 0.0,
+                    apply_conversion_rate FLOAT DEFAULT 0.0,
+                    click_to_apply_rate FLOAT DEFAULT 0.0,
+                    computed_at TIMESTAMP NOT NULL,
+                    UNIQUE(metric_date, algorithm_version, rank_bucket)
+                )
+            ''')
+            
+            cur.execute(
+                "DELETE FROM gold_recommendation_metrics WHERE metric_date = %s",
+                (metric_date,)
+            )
+            
+            insert_query = '''
+                INSERT INTO gold_recommendation_metrics (
+                    metric_date, algorithm_version, rank_bucket,
+                    impressions, clicks, applications,
+                    click_through_rate, apply_conversion_rate, click_to_apply_rate,
+                    computed_at
+                ) VALUES %s
+            '''
+            
+            data_to_insert = [
+                (
+                    row["metric_date"],
+                    row["algorithm_version"],
+                    row["rank_bucket"],
+                    row["impressions"],
+                    row["clicks"],
+                    row["applications"],
+                    row["click_through_rate"],
+                    row["apply_conversion_rate"],
+                    row["click_to_apply_rate"],
+                    row["computed_at"],
+                )
+                for row in rows
+            ]
+            
+            execute_values(cur, insert_query, data_to_insert)
+            
+        conn.commit()
+        logger.info("Wrote %s rows to PostgreSQL table gold_recommendation_metrics for date %s", len(rows), metric_date)
+    except Exception as e:
+        conn.rollback()
+        logger.error("Failed to write gold metrics to Postgres: %s", e)
+    finally:
+        conn.close()
+
 def _target_date(explicit_date: date | None = None) -> date:
     if explicit_date is not None:
         return explicit_date
@@ -211,6 +290,10 @@ def run_conversion_report(metric_date: date | None = None) -> dict[str, Any]:
         settings.lake_bucket,
         object_name,
     )
+    
+    # Write to Postgres for BI/Grafana
+    write_gold_metrics_to_pg(rows, target_date)
+
     return {
         "metric_date": target_date.isoformat(),
         "rows": len(rows),
