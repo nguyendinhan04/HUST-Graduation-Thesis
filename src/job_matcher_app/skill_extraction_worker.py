@@ -17,6 +17,30 @@ from job_matcher_app.skill_extraction.skill_repo_base import SkillRepository
 from job_matcher_app.skill_extraction.skill_repo_factory import create_skill_repository
 from job_matcher_app.skill_extraction.skill_trie import SkillTrie
 
+
+import json
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
+def get_telemetry_redis_client():
+    from redis import Redis
+    return Redis(
+        host=os.getenv("REDIS_HOST", "redis"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        db=int(os.getenv("REDIS_DB", 0)),
+        password=os.getenv("REDIS_PASSWORD", None),
+        decode_responses=True,
+    )
+
+def emit_ner_telemetry(payload: dict):
+    try:
+        rc = get_telemetry_redis_client()
+        stream_name = os.getenv("TELEMETRY_STREAM_NAME", "ner_telemetry_stream")
+        str_payload = {k: str(v) for k, v in payload.items()}
+        rc.xadd(stream_name, str_payload)
+    except Exception as e:
+        logger.error(f"Failed to emit telemetry: {e}")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -400,19 +424,31 @@ def extract_job_skills(job: dict[str, Any]) -> tuple[list[str], str]:
         return skilltrie_skills, "skilltrie_only"
 
     ner_candidates, ner_stats = extract_ner_candidates(text_value)
-    semantic_ner_skills = semantic_normalize_ner_candidates(ner_candidates)
-    final_skills = unique_skill_names(skilltrie_skills + semantic_ner_skills)
+    
+    skilltrie_set = set(skilltrie_skills)
+    intersected_skills = [s for s in ner_candidates if s in skilltrie_set]
+    final_skills = unique_skill_names(intersected_skills)
+    
+    dropped_candidates = [s for s in ner_candidates if s not in skilltrie_set]
+    job_id = job.get("id") or job.get("job_id") or 0
+    for dropped in dropped_candidates:
+        emit_ner_telemetry({
+            "job_id": job_id,
+            "raw_text": text_value,
+            "ner_phrase": dropped,
+            "status": "dropped_not_in_trie"
+        })
+        
     logger.info(
         "Skill extraction candidates: skilltrie=%s ner_raw=%s ner_accepted=%s "
-        "ner_rejected=%s ner_semantic=%s final=%s",
+        "ner_rejected=%s final=%s",
         len(skilltrie_skills),
         ner_stats["raw"],
         ner_stats["accepted"],
         ner_stats["rejected"],
-        len(semantic_ner_skills),
         len(final_skills),
     )
-    return final_skills, "skilltrie_ner_semantic"
+    return final_skills, "skilltrie_ner"
 
 
 def replace_job_skills(job_id: int, skill_names: list[str]) -> dict[str, Any]:

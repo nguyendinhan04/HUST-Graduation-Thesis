@@ -310,6 +310,39 @@ services:
     networks:
       - airflow
 
+  telemetry-worker:
+    profiles:
+      - app
+    build:
+      context: .
+      dockerfile: job_matcher_app/skill_worker/Dockerfile.skill_worker
+    image: telemetry-worker:latest
+    container_name: job-matcher-telemetry-worker
+    restart: no
+    command: ["python", "/app/src/job_matcher_app/telemetry_worker.py"]
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      TELEMETRY_STREAM_NAME: ner_telemetry_stream
+      TELEMETRY_MINIO_BUCKET: telemetry
+      TELEMETRY_GROUP_NAME: telemetry_group
+      TELEMETRY_CONSUMER_NAME: worker_1
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ROOTUSER
+      MINIO_SECRET_KEY: 1234567890
+      MINIO_SECURE: "false"
+    volumes:
+      - ./job_matcher_app/telemetry_worker.py:/app/src/job_matcher_app/telemetry_worker.py
+      - ./telemetry_temp:/app/src/telemetry_temp
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - airflow
+
   lake-writer:
     profiles:
       - app
