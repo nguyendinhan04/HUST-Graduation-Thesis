@@ -832,13 +832,9 @@ class UserService:
 
     #         if profile_embedding_should_update:
     #             profile = await embedding_service.get_user_profile(db, user_id)
-    #             profile_vector_tfidf = await embedding_service.process_user_profile_tfidf(
-    #                 profile
-    #             )
     #             profile_vector = await embedding_service.process_user_profile_multimodal(
     #                 profile
     #             )
-    #             profile_vector["tfidf_vec"] = profile_vector_tfidf
     #             await embedding_service.upsert_user_profile_embedding(
     #                 db,
     #                 employee.id,
@@ -899,7 +895,6 @@ class UserService:
         education_skills: list[Skill] = []
 
         prepared_embedding_task = None
-        prepared_tfidf_task = None
         try:
             education = Education(
                 employee_id=employee.id,
@@ -939,13 +934,6 @@ class UserService:
                     education=education_payload,
                 )
             )
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=employee.id,
-                )
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -969,16 +957,6 @@ class UserService:
                 education.id,
             )
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                employee.id,
-            )
 
         return UserService._serialize_education(education, education_skills)
 
@@ -1030,7 +1008,6 @@ class UserService:
         mark("validate_dates_and_normalize_skills", step_started_at)
 
         prepared_embedding_task = None
-        prepared_tfidf_task = None
         try:
             step_started_at = time.perf_counter()
             education = Education(
@@ -1078,13 +1055,6 @@ class UserService:
                     education=education_payload,
                 )
             )
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=employee.id,
-                )
-            )
             mark("create_outbox_task", step_started_at)
 
             step_started_at = time.perf_counter()
@@ -1109,16 +1079,6 @@ class UserService:
                 "education_id=%s",
                 user_id,
                 education.id,
-            )
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                employee.id,
             )
         mark("enqueue_education_embedding_task", step_started_at)
 
@@ -1185,7 +1145,6 @@ class UserService:
         ]
 
         prepared_embedding_task = None
-        prepared_tfidf_task = None
         try:
             fields = {
                 "school": school,
@@ -1248,13 +1207,6 @@ class UserService:
                     education=education_payload,
                 )
             )
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=education.employee_id,
-                )
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1278,16 +1230,6 @@ class UserService:
                 education.id,
             )
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                education.employee_id,
-            )
 
         return UserService._serialize_education(education, response_skills)
 
@@ -1323,7 +1265,6 @@ class UserService:
         employee_id = education.employee_id
 
         prepared_embedding_task = None
-        prepared_tfidf_task = None
         try:
             await db.execute(
                 delete(EducationSkill).where(
@@ -1338,13 +1279,6 @@ class UserService:
                     user_id=user_id,
                     employee_id=employee_id,
                     education_id=education_id,
-                )
-            )
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=employee_id,
                 )
             )
 
@@ -1369,16 +1303,6 @@ class UserService:
                 education_id,
             )
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                employee_id,
-            )
 
         return {
             "education_id": education_id,
@@ -1422,7 +1346,6 @@ class UserService:
         experience_skills: list[Skill] = []
 
         prepared_embedding_task = None
-        prepared_tfidf_task = None
         try:
             experience = Experience(
                 employee_id=employee.id,
@@ -1464,13 +1387,6 @@ class UserService:
                     experience=experience_payload,
                 )
             )
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=employee.id,
-                )
-            )
 
             user.updated_at = datetime.utcnow()
 
@@ -1494,16 +1410,6 @@ class UserService:
                 experience.id,
             )
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                employee.id,
-            )
 
         return UserService._serialize_experience(experience, experience_skills)
 
@@ -1558,7 +1464,6 @@ class UserService:
         ]
 
         prepared_embedding_task = None
-        prepared_tfidf_task = None
         response_data = None
         try:
             fields = {
@@ -1628,13 +1533,6 @@ class UserService:
                 )
             )
             logger2.warning("Prepared experience embedding update outbox task for user_id=%s, experience_id=%s", user_id, experience.id)
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=experience.employee_id,
-                )
-            )
             logger2.warning("Prepared profile TF-IDF update outbox task for user_id=%s, experience_id=%s", user_id, experience.id)
 
             user.updated_at = datetime.utcnow()
@@ -1665,16 +1563,6 @@ class UserService:
                 experience.id,
             )
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                response_data["employee_id"] if response_data else experience.employee_id,
-            )
 
         return response_data
 
@@ -1710,7 +1598,6 @@ class UserService:
         employee_id = experience.employee_id
 
         prepared_embedding_task = None
-        prepared_tfidf_task = None
         try:
             await db.execute(
                 delete(ExperienceSkill).where(
@@ -1725,13 +1612,6 @@ class UserService:
                     user_id=user_id,
                     employee_id=employee_id,
                     experience_id=experience_id,
-                )
-            )
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=employee_id,
                 )
             )
 
@@ -1756,16 +1636,6 @@ class UserService:
                 experience_id,
             )
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                employee_id,
-            )
 
         return {
             "experience_id": experience_id,
@@ -1991,7 +1861,6 @@ class UserService:
         if existing_skill_result.scalars().first():
             raise ValueError(f"Employee already has standalone skill {skill.id}")
 
-        prepared_tfidf_task = None
         try:
             db.add(EmployeeSkill(employee_id=employee.id, skill_id=skill.id))
             user.updated_at = datetime.utcnow()
@@ -1999,13 +1868,6 @@ class UserService:
             employee_id = employee.id
             skill_id = skill.id
             response_skill_name = skill.name
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=employee_id,
-                )
-            )
 
             if skill.embedding_status != "done":
                 await embedding_service.embed_skills(
@@ -2021,16 +1883,6 @@ class UserService:
             await db.rollback()
             raise
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                employee_id,
-            )
 
         return {
             "employee_id": employee_id,
@@ -2070,19 +1922,11 @@ class UserService:
         if not employee_skill:
             raise ValueError(f"Employee standalone skill {skill_id} not found")
 
-        prepared_tfidf_task = None
         try:
             employee_id = employee.id
             await db.delete(employee_skill)
             user.updated_at = datetime.utcnow()
             await db.flush()
-            prepared_tfidf_task = (
-                await embedding_service.prepare_user_profile_tfidf_update_outbox_task(
-                    db,
-                    user_id=user_id,
-                    employee_id=employee_id,
-                )
-            )
             await db.commit()
         except IntegrityError as exc:
             await db.rollback()
@@ -2091,16 +1935,6 @@ class UserService:
             await db.rollback()
             raise
 
-        try:
-            if prepared_tfidf_task is not None:
-                embedding_service.enqueue_prepared_outbox_task(prepared_tfidf_task)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue profile TF-IDF update for user_id=%s, "
-                "employee_id=%s",
-                user_id,
-                employee_id,
-            )
 
         return {
             "employee_id": employee_id,

@@ -72,10 +72,7 @@ class JobRecommendationService:
             password=self.redis_password
         )
         self.skill_queue = Queue("skill-embedding-queue", connection=self.redis_conn)
-        self.tfidf_queue = Queue(
-            os.getenv("TFIDF_QUEUE_NAME", "profile-tfidf-queue"),
-            connection=self.redis_conn,
-        )
+
         self.skill_extraction_queue = Queue(
             os.getenv("SKILL_EXTRACTION_QUEUE_NAME", "job-skill-extraction-queue"),
             connection=self.redis_conn,
@@ -342,28 +339,6 @@ class JobRecommendationService:
             outbox_key="bert",
         )
 
-    async def prepare_job_tfidf_embedding_update_outbox_task(
-        self,
-        db: AsyncSession,
-        *,
-        job_id: int,
-        job_payload: dict,
-    ) -> PreparedOutboxTask:
-        source_updated_at = self._source_updated_at()
-        return await self._prepare_outbox_task(
-            db,
-            queue=self.tfidf_queue,
-            func_name="job_matcher_app.skill_worker_tfidf.process_job_tfidf_embedding_task",
-            payload={
-                "job_id": job_id,
-                "job": job_payload,
-                "source_updated_at": source_updated_at,
-            },
-            task_type="job_tfidf_embedding_update",
-            aggregate_type="job",
-            aggregate_id=job_id,
-            outbox_key="tfidf",
-        )
 
     async def prepare_job_skill_extraction_update_outbox_task(
         self,
@@ -699,96 +674,6 @@ class JobRecommendationService:
             return []
         return value if isinstance(value, list) else [value]
 
-    @staticmethod
-    def _append_tfidf_fields(parts: list[str], item: dict, keys: list[str]) -> None:
-        for key in keys:
-            value = item.get(key)
-            if not value:
-                continue
-            if isinstance(value, list):
-                parts.append(" ".join(map(str, value)))
-            else:
-                parts.append(str(value))
-
-    @staticmethod
-    def _build_profile_tfidf_query_text(profile: dict) -> str:
-        parts: list[str] = []
-
-        educations = JobRecommendationService._normalize_to_list(
-            profile.get("Educations")
-            or profile.get("educations")
-            or profile.get("Education")
-            or profile.get("education")
-        )
-        for education in educations:
-            if isinstance(education, dict):
-                JobRecommendationService._append_tfidf_fields(
-                    parts,
-                    education,
-                    [
-                        "Field of study",
-                        "Field of Study",
-                        "field_of_study",
-                        "Major",
-                        "major",
-                        "Degree",
-                        "degree",
-                        "Description",
-                        "description",
-                        "Skill",
-                        "skill",
-                        "Skills",
-                        "skills",
-                    ],
-                )
-            elif education:
-                parts.append(str(education))
-
-        experiences = JobRecommendationService._normalize_to_list(
-            profile.get("Experiences")
-            or profile.get("experiences")
-            or profile.get("Experience")
-            or profile.get("experience")
-        )
-        for experience in experiences:
-            if isinstance(experience, dict):
-                JobRecommendationService._append_tfidf_fields(
-                    parts,
-                    experience,
-                    [
-                        "Position",
-                        "position",
-                        "Company name",
-                        "company_name",
-                        "Description",
-                        "description",
-                        "Title",
-                        "title",
-                        "Skill",
-                        "skill",
-                        "Skills",
-                        "skills",
-                    ],
-                )
-            elif experience:
-                parts.append(str(experience))
-
-        profile_skills = profile.get("Skills") or profile.get("skills")
-        if profile_skills:
-            if isinstance(profile_skills, list):
-                parts.append(" ".join(map(str, profile_skills)))
-            else:
-                parts.append(str(profile_skills))
-
-        return " ".join(parts)
-
-    @staticmethod
-    def _has_profile_tfidf_text(profile: dict) -> bool:
-        query_text = JobRecommendationService._build_profile_tfidf_query_text(profile)
-        query_text = str(query_text or "").lower()
-        query_text = re.sub(r"<[^>]+>", " ", query_text)
-        query_text = re.sub(r"[^\w\s]", " ", query_text)
-        return bool(" ".join(query_text.split()))
 
     def calculate_recency_weight(self,end_time_str, current_year=2026):
         """
@@ -825,108 +710,6 @@ class JobRecommendationService:
             "User Profile Vector Job in RQ worker failed",
         )
 
-    async def process_user_profile_tfidf(self, profile: dict) -> list[float]:
-        """
-        Trả về vector TF-IDF + SVD cho user profile do worker TF-IDF tính toán.
-        """
-        if not self._has_profile_tfidf_text(profile):
-            return []
-
-        job = self.tfidf_queue.enqueue(
-            "job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_task",
-            profile,
-            job_timeout="10m",
-        )
-        return await self._wait_for_job(
-            job,
-            "User Profile TF-IDF Vector Job in RQ worker failed",
-        )
-
-    async def prepare_user_profile_tfidf_update_outbox_task(
-        self,
-        db: AsyncSession,
-        *,
-        user_id: int,
-        employee_id: int,
-    ) -> PreparedOutboxTask:
-        profile = await self.get_user_profile(db, user_id)
-        source_updated_at = self._source_updated_at()
-        return await self._prepare_outbox_task(
-            db,
-            queue=self.tfidf_queue,
-            func_name="job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_update_task",
-            payload={
-                "user_id": user_id,
-                "employee_id": employee_id,
-                "profile": profile,
-                "source_updated_at": source_updated_at,
-            },
-            task_type="user_profile_tfidf_update",
-            aggregate_type="employee",
-            aggregate_id=employee_id,
-            outbox_key="user_profile_tfidf_update",
-        )
-
-    async def upsert_user_profile_tfidf_embedding(
-        self,
-        db: AsyncSession,
-        employee_id: int,
-        profile_vector: list[float],
-    ) -> None:
-        tfidf_vec = self._to_pgvector_literal(profile_vector)
-
-        await db.execute(
-            text(
-                """
-                INSERT INTO user_profile_embedding (
-                    employee_id,
-                    vector_tfidf
-                )
-                VALUES (
-                    :employee_id,
-                    CAST(:vector_tfidf AS vector)
-                )
-                ON CONFLICT (employee_id) DO UPDATE
-                SET vector_tfidf = EXCLUDED.vector_tfidf
-                """
-            ),
-            {
-                "employee_id": employee_id,
-                "vector_tfidf": tfidf_vec,
-            },
-        )
-
-    async def update_user_profile_tfidf_vector(
-        self,
-        db: AsyncSession,
-        user_id: int,
-    ) -> dict:
-        result = await db.execute(
-            select(Employee.id).where(Employee.user_id == user_id)
-        )
-        employee_id = result.scalar_one_or_none()
-        if employee_id is None:
-            raise ValueError(f"Employee with user_id {user_id} not found")
-
-        try:
-            prepared_task = await self.prepare_user_profile_tfidf_update_outbox_task(
-                db,
-                user_id=user_id,
-                employee_id=employee_id,
-            )
-            await db.commit()
-        except Exception:
-            await db.rollback()
-            raise
-
-        self.enqueue_prepared_outbox_task(prepared_task)
-
-        return {
-            "user_id": user_id,
-            "employee_id": employee_id,
-            "vector_tfidf_enqueued": True,
-            "status": "queued",
-        }
 
     async def search_best_jobs_in_db_by_bm25(
         self,

@@ -5,16 +5,7 @@ from sentence_transformers import SentenceTransformer
 from config import get_settings
 import numpy as np
 
-class TFIDFModel:
-    def __init__(self, svd, vectorizer, n_components):
-        self.svd = svd
-        self.vectorizer = vectorizer
-        self.n_components = n_components
 
-    def get_query_vector(self, query: str):
-        query_vec = self.vectorizer.transform([query])
-        query_vec_svd = self.svd.transform(query_vec)
-        return query_vec_svd
     
 
 class BERTModel:
@@ -72,34 +63,7 @@ class MLModelLoader:
         )
     
 
-    @staticmethod
-    def load_tfidf_artifacts_from_minio(s3_client, bucket_name, model_key=None, prefix="models/tfidf/"):
-        # Nếu chưa truyền key cụ thể thì tự lấy file mới nhất trong prefix
-        if model_key is None:
-            resp = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
-            objects = resp.get("Contents", [])
-            if not objects:
-                raise FileNotFoundError(f"Không tìm thấy model nào trong s3://{bucket_name}/{prefix}")
-            latest_obj = max(objects, key=lambda x: x["LastModified"])
-            model_key = latest_obj["Key"]
 
-        obj = s3_client.get_object(Bucket=bucket_name, Key=model_key)
-        artifacts = pickle.loads(obj["Body"].read())
-
-        logging.info(f"Đã tải model TF-IDF từ MinIO: s3://{bucket_name}/{model_key} (LastModified: {obj['LastModified']})")
-        return artifacts, model_key
-
-    def load_model_tfidf(self) -> TFIDFModel:
-        tfidf_artifacts_loaded, loaded_key = self.load_tfidf_artifacts_from_minio(
-            s3_client=self.s3_client,
-            bucket_name=self.config.minio_bucket,
-        )
-
-        vectorizer = tfidf_artifacts_loaded["vectorizer"]
-        svd = tfidf_artifacts_loaded["svd"]
-        n_components = tfidf_artifacts_loaded["n_components"]
-
-        return TFIDFModel(svd=svd, vectorizer=vectorizer, n_components=n_components)
 
     @staticmethod
     def load_model_BERT_from_HF():

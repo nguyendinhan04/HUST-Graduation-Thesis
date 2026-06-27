@@ -34,16 +34,12 @@ OUTBOX_TASK_ROUTES = {
         "job_matcher_app.skill_worker.process_job_bert_embedding_task",
         "10m",
     ),
-    "job_tfidf_embedding_update": (
-        "job_matcher_app.skill_worker_tfidf.process_job_tfidf_embedding_task",
-        "10m",
-    ),
     "job_skill_extraction_update": (
         "job_matcher_app.skill_extraction_worker.process_job_skill_extraction_task",
         "10m",
     ),
-    "user_profile_tfidf_update": (
-        "job_matcher_app.skill_worker_tfidf.process_user_profile_tfidf_update_task",
+    "user_profile_bert_update": (
+        "job_matcher_app.skill_worker.process_user_profile_bert_update_task",
         "10m",
     ),
 }

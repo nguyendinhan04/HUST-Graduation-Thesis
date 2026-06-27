@@ -633,26 +633,3 @@ async def update_user_profile(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-
-@router.patch("/me/tfidf-vector")
-async def update_user_profile_tfidf_vector(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
-):
-    user_id = current_user.id
-    embedding_service = JobRecommendationService()
-
-    try:
-        return await embedding_service.update_user_profile_tfidf_vector(
-            db=db,
-            user_id=user_id,
-        )
-    except ValueError as exc:
-        message = str(exc)
-        status_code = 404 if "not found" in message.lower() else 400
-        raise HTTPException(status_code=status_code, detail=message) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc

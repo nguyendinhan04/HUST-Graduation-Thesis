@@ -186,7 +186,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
-      TFIDF_QUEUE_NAME: profile-tfidf-queue
       SKILL_EXTRACTION_QUEUE_NAME: job-skill-extraction-queue
       OUTBOX_DISPATCHER_ENABLED: "true"
       OUTBOX_DISPATCH_INTERVAL_SECONDS: 30
@@ -267,44 +266,7 @@ services:
     networks:
       - airflow
 
-  # skill-worker-tfidf:
-  #   profiles:
-  #     - app
-  #   build:
-  #     context: .
-  #     dockerfile: job_matcher_app/skill_worker/Dockerfile.skill_worker_tfidf
-  #   image: skill-worker-tfidf:latest
-  #   container_name: job-matcher-skill-worker-tfidf
-  #   restart: no
-  #   environment:
-  #     REDIS_HOST: redis
-  #     REDIS_PORT: 6379
-  #     REDIS_DB: 0
-  #     QUEUE_NAME: profile-tfidf-queue
-  #     WORKER_NAME: tfidf_worker
-  #     MINIO_ENDPOINT: minio:9000
-  #     MINIO_ACCESS_KEY: ROOTUSER
-  #     MINIO_SECRET_KEY: 1234567890
-  #     MINIO_BUCKET: models
-  #     MINIO_SECURE: "false"
-  #     TFIDF_MODEL_PREFIX: models/tfidf/
-  #     PG_HOST: postgres2
-  #     PG_PORT: 5432
-  #     PG_DATABASE: job_db_2
-  #     PG_USER: airflow
-  #     PG_PASSWORD: airflow
-  #   volumes:
-  #     - ./job_matcher_app/skill_worker/skill_worker_tfidf.py:/app/src/job_matcher_app/skill_worker_tfidf.py
-  #     - ./job_matcher_app/outbox.py:/app/src/job_matcher_app/outbox.py
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #     postgres:
-  #       condition: service_healthy
-  #     minio:
-  #       condition: service_started
-  #   networks:
-  #     - airflow
+
 
   job-skill-extraction-worker:
     profiles:

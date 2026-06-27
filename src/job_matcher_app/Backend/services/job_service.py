@@ -338,11 +338,6 @@ class JobService:
                     job_id=job.id,
                     job_payload=job_payload,
                 ),
-                await embedding_service.prepare_job_tfidf_embedding_update_outbox_task(
-                    db,
-                    job_id=job.id,
-                    job_payload=job_payload,
-                ),
                 await embedding_service.prepare_job_skill_extraction_update_outbox_task(
                     db,
                     job_id=job.id,
@@ -362,15 +357,11 @@ class JobService:
         bert_job_id = embedding_service.enqueue_prepared_outbox_task(
             prepared_vector_tasks[0]
         )
-        tfidf_job_id = embedding_service.enqueue_prepared_outbox_task(
-            prepared_vector_tasks[1]
-        )
         skill_extraction_job_id = embedding_service.enqueue_prepared_outbox_task(
-            prepared_vector_tasks[2]
+            prepared_vector_tasks[1]
         )
         vector_jobs = {
             "bert_job_id": bert_job_id,
-            "tfidf_job_id": tfidf_job_id,
             "skill_extraction_job_id": skill_extraction_job_id,
             "outbox_ids": embedding_service.get_last_outbox_ids(),
             "status": "queued",
@@ -722,11 +713,6 @@ class JobService:
                         job_id=job.id,
                         job_payload=job_payload,
                     ),
-                    await embedding_service.prepare_job_tfidf_embedding_update_outbox_task(
-                        db,
-                        job_id=job.id,
-                        job_payload=job_payload,
-                    ),
                     await embedding_service.prepare_job_skill_extraction_update_outbox_task(
                         db,
                         job_id=job.id,
@@ -748,15 +734,11 @@ class JobService:
             bert_job_id = embedding_service.enqueue_prepared_outbox_task(
                 prepared_vector_tasks[0]
             )
-            tfidf_job_id = embedding_service.enqueue_prepared_outbox_task(
-                prepared_vector_tasks[1]
-            )
             skill_extraction_job_id = embedding_service.enqueue_prepared_outbox_task(
-                prepared_vector_tasks[2]
+                prepared_vector_tasks[1]
             )
             vector_jobs = {
                 "bert_job_id": bert_job_id,
-                "tfidf_job_id": tfidf_job_id,
                 "skill_extraction_job_id": skill_extraction_job_id,
                 "outbox_ids": embedding_service.get_last_outbox_ids(),
                 "status": "queued",
