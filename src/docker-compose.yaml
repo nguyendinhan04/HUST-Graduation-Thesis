@@ -742,6 +742,8 @@ services:
   #       hard: 262144
 
   grafana:
+    profiles:
+      - batch
     image: grafana/grafana
     container_name: grafana
     ports:
