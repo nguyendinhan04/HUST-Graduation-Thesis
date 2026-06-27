@@ -30,6 +30,9 @@ def get_redis_client() -> Redis:
         db=int(os.getenv("REDIS_DB", 0)),
         password=os.getenv("REDIS_PASSWORD", None),
         decode_responses=True,
+        socket_keepalive=True,
+        health_check_interval=30,
+        socket_timeout=30, # ensure socket timeout is larger than the block time (5s)
     )
 
 
