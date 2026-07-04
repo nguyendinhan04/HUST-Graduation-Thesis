@@ -974,8 +974,8 @@ class JobRecommendationService:
             )
             params = {
                 "candidate_ids": candidate_ids,
-                "threshold": 0.6,
-                "related_threshold": 0.35,
+                "threshold": 0.9,
+                "related_threshold": 0.7,
             }
             for i, skill in enumerate(user_skills):
                 params[f"name_{i}"] = skill
@@ -1447,8 +1447,8 @@ class JobRecommendationService:
         db: AsyncSession,
         job_id: int,
         user_id: int,
-        threshold: float = 0.6,
-        related_threshold: float = 0.35,
+        threshold: float = 0.9,
+        related_threshold: float = 0.7,
     ) -> dict:
         if related_threshold > threshold:
             raise ValueError("related_threshold must be less than or equal to threshold")
