@@ -10,7 +10,7 @@ import streamlit as st
 from frontend_app.api_client import ApiError, get_recommended_jobs
 from frontend_app.formatting import html_or_empty, initials, show_api_error
 from frontend_app.loading import form_loading
-from frontend_app.state import navigate_to_job_detail
+from frontend_app.state import navigate_to_job_detail, navigate_to
 
 
 def _format_salary(job: dict[str, Any]) -> str:
@@ -123,7 +123,14 @@ def render_recommendations_page() -> None:
             with form_loading("Loading recommendations..."):
                 st.session_state["recommended_jobs"] = get_recommended_jobs()
         except ApiError as exc:
-            show_api_error("Could not load recommendations", exc)
+            msg_lower = str(exc).lower()
+            if "hồ sơ cá nhân" in msg_lower or "user profile" in msg_lower:
+                st.warning("Vui lòng tạo và cập nhật hồ sơ cá nhân đầy đủ trước khi nhận gợi ý việc làm.")
+                if st.button("Đến trang Hồ sơ", type="primary", use_container_width=True):
+                    navigate_to("profile")
+                    st.rerun()
+            else:
+                show_api_error("Could not load recommendations", exc)
             return
 
     jobs = st.session_state.get("recommended_jobs") or []

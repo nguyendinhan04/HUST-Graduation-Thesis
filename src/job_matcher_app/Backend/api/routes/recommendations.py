@@ -38,12 +38,16 @@ def _recommendation_locked_http_exception(exc: RecommendationLockedError) -> HTT
 
 def _handle_value_error(exc: ValueError) -> HTTPException:
     message = str(exc)
-    if "not found" in message.lower() and ("employee" in message.lower() or "profile" in message.lower()):
+    msg_lower = message.lower()
+    is_missing_profile = "not found" in msg_lower and ("employee" in msg_lower or "profile" in msg_lower)
+    is_missing_vectors = "bert vectors are not ready" in msg_lower
+    
+    if is_missing_profile or is_missing_vectors:
         return HTTPException(
             status_code=400,
-            detail="Vui lòng tạo hồ sơ cá nhân (user profile) trước khi nhận gợi ý việc làm."
+            detail="Vui lòng tạo và cập nhật hồ sơ cá nhân (user profile) đầy đủ trước khi nhận gợi ý việc làm."
         )
-    status_code = 404 if "not found" in message.lower() else 400
+    status_code = 404 if "not found" in msg_lower else 400
     return HTTPException(status_code=status_code, detail=message)
 
 
