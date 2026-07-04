@@ -36,6 +36,17 @@ def _recommendation_locked_http_exception(exc: RecommendationLockedError) -> HTT
     )
 
 
+def _handle_value_error(exc: ValueError) -> HTTPException:
+    message = str(exc)
+    if "not found" in message.lower() and ("employee" in message.lower() or "profile" in message.lower()):
+        return HTTPException(
+            status_code=400,
+            detail="Vui lòng tạo hồ sơ cá nhân (user profile) trước khi nhận gợi ý việc làm."
+        )
+    status_code = 404 if "not found" in message.lower() else 400
+    return HTTPException(status_code=status_code, detail=message)
+
+
 @router.post("/demo")
 async def demo_recommendation(payload: RecommendRequest):
     service = JobRecommendationService()
@@ -105,9 +116,7 @@ async def get_recommendations(
     except RecommendationLockedError as exc:
         raise _recommendation_locked_http_exception(exc) from exc
     except ValueError as exc:
-        message = str(exc)
-        status_code = 404 if "not found" in message.lower() else 400
-        raise HTTPException(status_code=status_code, detail=message) from exc
+        raise _handle_value_error(exc) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
@@ -132,9 +141,7 @@ async def get_bm25_recommendation_ids(
     except RecommendationLockedError as exc:
         raise _recommendation_locked_http_exception(exc) from exc
     except ValueError as exc:
-        message = str(exc)
-        status_code = 404 if "not found" in message.lower() else 400
-        raise HTTPException(status_code=status_code, detail=message) from exc
+        raise _handle_value_error(exc) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
@@ -159,9 +166,7 @@ async def get_bert_recommendation_ids(
     except RecommendationLockedError as exc:
         raise _recommendation_locked_http_exception(exc) from exc
     except ValueError as exc:
-        message = str(exc)
-        status_code = 404 if "not found" in message.lower() else 400
-        raise HTTPException(status_code=status_code, detail=message) from exc
+        raise _handle_value_error(exc) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:

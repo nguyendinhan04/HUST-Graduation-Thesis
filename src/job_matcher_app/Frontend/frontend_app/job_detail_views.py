@@ -347,7 +347,11 @@ def render_job_detail_page() -> None:
     if st.session_state.get("job_apply_error_message"):
         job_apply_error_dialog()
 
-    _render_skill_gap(int(job_id))
+    skill_gap_placeholder = st.empty()
+
     _render_section("Mô tả công việc", _text_to_bullets(job.get("description")))
     _render_section("Yêu cầu ứng viên", _text_to_bullets(job.get("requirement")) + _skills_markup(job.get("skills")))
     _render_section("Quyền lợi", _text_to_bullets(job.get("benefit")))
+
+    with skill_gap_placeholder.container():
+        _render_skill_gap(int(job_id))

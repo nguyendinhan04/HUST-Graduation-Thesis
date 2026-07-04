@@ -1533,7 +1533,6 @@ class UserService:
                 )
             )
             logger2.warning("Prepared experience embedding update outbox task for user_id=%s, experience_id=%s", user_id, experience.id)
-            logger2.warning("Prepared profile TF-IDF update outbox task for user_id=%s, experience_id=%s", user_id, experience.id)
 
             user.updated_at = datetime.utcnow()
             response_data = UserService._serialize_experience(
