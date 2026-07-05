@@ -679,6 +679,7 @@ def _render_job_form(mode: str, job: dict[str, Any] | None = None) -> None:
             _clear_job_caches(int(job_id))
             _clear_job_form_state()
             close_dialog()
+            navigate_to("dashboard")
             st.success("Job deleted.")
             st.rerun()
         except ApiError as exc:
