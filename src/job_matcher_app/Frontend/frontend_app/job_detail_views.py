@@ -319,20 +319,38 @@ def _has_user_applied(job_id: int) -> bool:
     if st.session_state.get(f"job_apply_success_{job_id}"):
         return True
 
-    if "my_applications" not in st.session_state:
+    # Check existing cache first
+    applications = st.session_state.get("my_applications")
+    if applications is None:
         try:
-            st.session_state["my_applications"] = get_my_applications()
+            applications = get_my_applications()
+            st.session_state["my_applications"] = applications
         except ApiError:
-            return False
+            applications = []
 
-    applications = st.session_state.get("my_applications") or []
-    for app in applications:
-        app_job_id = app.get("job_id")
-        if not app_job_id:
-            job = app.get("job") or {}
-            app_job_id = job.get("job_id") or job.get("id")
-        if str(app_job_id) == str(job_id):
+    # Helper function to check the list
+    def _is_in_list(apps_list, target_id):
+        for app in apps_list:
+            app_job_id = app.get("job_id")
+            if not app_job_id:
+                job = app.get("job") or {}
+                app_job_id = job.get("job_id") or job.get("id")
+            if str(app_job_id) == str(target_id):
+                return True
+        return False
+
+    if _is_in_list(applications, job_id):
+        return True
+
+    # If not found, the cache might be stale. Force a fresh fetch just for this check.
+    try:
+        fresh_apps = get_my_applications()
+        st.session_state["my_applications"] = fresh_apps
+        if _is_in_list(fresh_apps, job_id):
             return True
+    except ApiError:
+        pass
+
     return False
 
 
