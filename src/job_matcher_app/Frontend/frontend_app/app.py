@@ -92,11 +92,13 @@ def main() -> None:
     inject_linkedin_styles()
     sidebar()
 
-    if st.session_state.get("access_token"):
-        if st.session_state.get("user_role") == "employer":
-            render_employer_workspace()
+    main_placeholder = st.empty()
+    with main_placeholder.container():
+        if st.session_state.get("access_token"):
+            if st.session_state.get("user_role") == "employer":
+                render_employer_workspace()
+            else:
+                render_profile_page()
         else:
-            render_profile_page()
-    else:
-        render_auth_page()
+            render_auth_page()
 
