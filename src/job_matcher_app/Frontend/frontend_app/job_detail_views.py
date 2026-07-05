@@ -297,10 +297,13 @@ def _handle_apply(job_id: int, recommendation_context: dict[str, Any] | None = N
         with form_loading("Submitting application..."):
             apply_job(job_id, recommendation_context=recommendation_context)
         st.session_state[f"job_apply_success_{job_id}"] = True
+        st.session_state.pop("my_applications", None)
     except ApiError as exc:
         message = str(exc)
         if "already applied" in message.lower():
-            st.warning("Bạn đã ứng tuyển công việc này.")
+            st.session_state[f"job_apply_success_{job_id}"] = True
+            st.session_state.pop("my_applications", None)
+            st.rerun()
         elif "deadline has passed" in message.lower() or "quá hạn" in message.lower():
             st.session_state["job_apply_error_message"] = JOB_APPLY_EXPIRED_MESSAGE
         else:
@@ -327,7 +330,7 @@ def _has_user_applied(job_id: int) -> bool:
         if not app_job_id:
             job = app.get("job") or {}
             app_job_id = job.get("job_id") or job.get("id")
-        if app_job_id == job_id:
+        if str(app_job_id) == str(job_id):
             return True
     return False
 
