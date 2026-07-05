@@ -312,8 +312,7 @@ def _handle_apply(job_id: int, recommendation_context: dict[str, Any] | None = N
 
 
 def _has_user_applied(job_id: int) -> bool:
-    user = st.session_state.get("auth_user")
-    if not user or user.get("role") != "employee":
+    if st.session_state.get("user_role") != "employee":
         return False
 
     if st.session_state.get(f"job_apply_success_{job_id}"):
