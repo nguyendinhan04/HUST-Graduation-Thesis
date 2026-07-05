@@ -321,13 +321,13 @@ def _has_user_applied(job_id: int) -> bool:
 
     try:
         fresh_apps = get_my_applications()
-        print(f"==================================================")
-        print(f"DEBUG _has_user_applied: Target job_id: {job_id} (type: {type(job_id)})")
-        print(f"DEBUG _has_user_applied: Fetched applications type: {type(fresh_apps)}")
+        print(f"==================================================", flush=True)
+        print(f"DEBUG _has_user_applied: Target job_id: {job_id} (type: {type(job_id)})", flush=True)
+        print(f"DEBUG _has_user_applied: Fetched applications type: {type(fresh_apps)}", flush=True)
         if isinstance(fresh_apps, list):
-            print(f"DEBUG _has_user_applied: Total applications found: {len(fresh_apps)}")
+            print(f"DEBUG _has_user_applied: Total applications found: {len(fresh_apps)}", flush=True)
         else:
-            print(f"DEBUG _has_user_applied: RAW RESPONSE: {fresh_apps}")
+            print(f"DEBUG _has_user_applied: RAW RESPONSE: {fresh_apps}", flush=True)
             
         for app in fresh_apps:
             app_job_id = app.get("job_id")
@@ -335,17 +335,17 @@ def _has_user_applied(job_id: int) -> bool:
                 job = app.get("job") or {}
                 app_job_id = job.get("job_id") or job.get("id")
                 
-            print(f"  -> Checking app_job_id: {app_job_id} (type: {type(app_job_id)}) against {job_id}")
+            print(f"  -> Checking app_job_id: {app_job_id} (type: {type(app_job_id)}) against {job_id}", flush=True)
             
             if str(app_job_id) == str(job_id):
-                print(f"  -> MATCH FOUND! Returning True.")
-                print(f"==================================================")
+                print(f"  -> MATCH FOUND! Returning True.", flush=True)
+                print(f"==================================================", flush=True)
                 return True
                 
-        print(f"DEBUG _has_user_applied: Finished looping, NO MATCH FOUND.")
-        print(f"==================================================")
+        print(f"DEBUG _has_user_applied: Finished looping, NO MATCH FOUND.", flush=True)
+        print(f"==================================================", flush=True)
     except ApiError as e:
-        print(f"DEBUG _has_user_applied: API ERROR: {e}")
+        print(f"DEBUG _has_user_applied: API ERROR: {e}", flush=True)
         pass
 
     return False
