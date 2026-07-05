@@ -2,6 +2,7 @@ boto3
 flashtext
 numpy
 psycopg2-binary
+pytorch-crf
 redis
 rq
 sqlalchemy

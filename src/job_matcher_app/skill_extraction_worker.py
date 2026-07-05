@@ -48,7 +48,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 VALID_EXTRACTOR_MODES = {"ner_skilltrie", "skilltrie_only"}
-DEFAULT_NER_MODEL_PREFIX = "models/checkpoint-360/"
+DEFAULT_NER_MODEL_PREFIX = "model-ner/checkpoint-450/"
 DEFAULT_MODEL_CACHE_DIR = "/tmp/job_matcher_models"
 NER_LABELS = ["O", "B-SKILL", "I-SKILL"]
 DEFAULT_SKILL_SEMANTIC_MODEL = "alvperez/skill-sim-model"
@@ -135,23 +135,55 @@ def download_minio_prefix(prefix: str, local_dir: Path) -> Path:
 
 
 def load_ner_pipeline():
-    from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
+    from transformers import AutoTokenizer, pipeline, AutoModel, AutoConfig, PreTrainedModel
+    import torch
+    import torch.nn as nn
+    from torchcrf import CRF
+
+    class RobertaCRFForTokenClassification(PreTrainedModel):
+        config_class = AutoConfig
+
+        def __init__(self, config):
+            super().__init__(config)
+            self.num_labels = config.num_labels
+            self.roberta = AutoModel.from_config(config)
+            self.dropout = nn.Dropout(config.hidden_dropout_prob)
+            self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+            self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+
+        def forward(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
+            outputs = self.roberta(input_ids, attention_mask=attention_mask, **kwargs)
+            sequence_output = outputs[0]
+            sequence_output = self.dropout(sequence_output)
+            logits = self.classifier(sequence_output)
+
+            loss = None
+            if labels is not None:
+                mask = (labels != -100)
+                crf_labels = labels.clone()
+                crf_labels[~mask] = 0
+                loss = -self.crf(logits, crf_labels, mask=mask.byte(), reduction='mean')
+
+            with torch.no_grad():
+                preds = self.crf.decode(logits)
+                pseudo_logits = torch.zeros_like(logits)
+                for i, pred_seq in enumerate(preds):
+                    for j, p in enumerate(pred_seq):
+                        pseudo_logits[i, j, p] = 10000.0
+
+            if loss is not None:
+                return {"loss": loss, "logits": pseudo_logits}
+            return {"logits": pseudo_logits}
 
     cache_dir = Path(os.getenv("MODEL_CACHE_DIR", DEFAULT_MODEL_CACHE_DIR))
     model_prefix = os.getenv("NER_MODEL_PREFIX", DEFAULT_NER_MODEL_PREFIX)
-    model_dir = Path(os.getenv("NER_LOCAL_PATH", str(cache_dir / "checkpoint-360")))
+    model_dir = Path(os.getenv("NER_LOCAL_PATH", str(cache_dir / "checkpoint-450")))
 
     if not model_dir.exists() or not any(model_dir.iterdir()):
         download_minio_prefix(model_prefix, model_dir)
 
-    id2label = {index: label for index, label in enumerate(NER_LABELS)}
-    label2id = {label: index for index, label in id2label.items()}
     tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
-    model = AutoModelForTokenClassification.from_pretrained(
-        str(model_dir),
-        id2label=id2label,
-        label2id=label2id,
-    )
+    model = RobertaCRFForTokenClassification.from_pretrained(str(model_dir))
     device = _env_int("NER_DEVICE", -1)
     logger.info("Loading NER pipeline from %s with device=%s", model_dir, device)
     return pipeline(
