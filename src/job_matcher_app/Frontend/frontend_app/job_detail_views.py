@@ -319,36 +319,43 @@ def _has_user_applied(job_id: int) -> bool:
     if st.session_state.get(f"job_apply_success_{job_id}"):
         return True
 
+    debug_logs = []
+    has_applied = False
+
     try:
         fresh_apps = get_my_applications()
-        print(f"==================================================", flush=True)
-        print(f"DEBUG _has_user_applied: Target job_id: {job_id} (type: {type(job_id)})", flush=True)
-        print(f"DEBUG _has_user_applied: Fetched applications type: {type(fresh_apps)}", flush=True)
+        debug_logs.append(f"**Target job_id:** `{job_id}` (type: `{type(job_id).__name__}`)")
+        debug_logs.append(f"**Fetched applications type:** `{type(fresh_apps).__name__}`")
+        
         if isinstance(fresh_apps, list):
-            print(f"DEBUG _has_user_applied: Total applications found: {len(fresh_apps)}", flush=True)
+            debug_logs.append(f"**Total applications found:** `{len(fresh_apps)}`")
+            for app in fresh_apps:
+                app_job_id = app.get("job_id")
+                if not app_job_id:
+                    job = app.get("job") or {}
+                    app_job_id = job.get("job_id") or job.get("id")
+                    
+                debug_logs.append(f"- Checking `app_job_id`: `{app_job_id}` (type: `{type(app_job_id).__name__}`) against `{job_id}`")
+                
+                if str(app_job_id) == str(job_id):
+                    debug_logs.append("✅ **MATCH FOUND!**")
+                    has_applied = True
+                    break
         else:
-            print(f"DEBUG _has_user_applied: RAW RESPONSE: {fresh_apps}", flush=True)
+            debug_logs.append(f"**RAW RESPONSE:** `{fresh_apps}`")
             
-        for app in fresh_apps:
-            app_job_id = app.get("job_id")
-            if not app_job_id:
-                job = app.get("job") or {}
-                app_job_id = job.get("job_id") or job.get("id")
-                
-            print(f"  -> Checking app_job_id: {app_job_id} (type: {type(app_job_id)}) against {job_id}", flush=True)
+        if not has_applied:
+            debug_logs.append("❌ **NO MATCH FOUND.**")
             
-            if str(app_job_id) == str(job_id):
-                print(f"  -> MATCH FOUND! Returning True.", flush=True)
-                print(f"==================================================", flush=True)
-                return True
-                
-        print(f"DEBUG _has_user_applied: Finished looping, NO MATCH FOUND.", flush=True)
-        print(f"==================================================", flush=True)
     except ApiError as e:
-        print(f"DEBUG _has_user_applied: API ERROR: {e}", flush=True)
-        pass
+        debug_logs.append(f"❌ **API ERROR:** `{e}`")
 
-    return False
+    # Hiển thị log ra thanh sidebar bên trái của giao diện web
+    with st.sidebar.expander("🛠️ DEBUG: Kiểm tra ứng tuyển", expanded=True):
+        for log in debug_logs:
+            st.markdown(log)
+
+    return has_applied
 
 
 def render_job_detail_page() -> None:
