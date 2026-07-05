@@ -298,6 +298,7 @@ def _handle_apply(job_id: int, recommendation_context: dict[str, Any] | None = N
             apply_job(job_id, recommendation_context=recommendation_context)
         st.session_state[f"job_apply_success_{job_id}"] = True
         st.session_state.pop("my_applications", None)
+        st.rerun()
     except ApiError as exc:
         message = str(exc)
         if "already applied" in message.lower():
