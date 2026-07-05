@@ -701,164 +701,215 @@ class UserService:
 
         return UserService._serialize_employer_user(user, employer, company)
 
-    # @staticmethod
-    # async def update_user_profile_async(
-    #     db: AsyncSession,
-    #     user_id: int,
-    #     embedding_service: Any,
-    #     full_name: str = None,
-    #     phone: str = None,
-    #     avatar_url: str = None,
-    #     headline: str = None,
-    #     summary: str = None,
-    #     years_of_experience: int = None,
-    #     current_location: str = None,
-    #     skills: list[str] | None = None,
-    #     skills_provided: bool = False,
-    #     educations: list[dict] | None = None,
-    #     experiences: list[dict] | None = None,
-    # ) -> dict:
-    #     """Update user/employee profile and embed new or pending skills."""
-    #     user = await db.get(User, user_id)
-    #     if not user:
-    #         raise ValueError(f"User with id {user_id} not found")
+    @staticmethod
+    async def update_user_profile_async(
+        db: AsyncSession,
+        user_id: int,
+        full_name: str = None,
+        phone: str = None,
+        avatar_url: str = None,
+        headline: str = None,
+        summary: str = None,
+        years_of_experience: int = None,
+        current_location: str = None,
+    ) -> dict:
+        """Update user and employee basic profile information."""
+        user = await db.get(User, user_id)
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
 
-    #     employee_fields = {
-    #         "headline": headline,
-    #         "summary": summary,
-    #         "years_of_experience": years_of_experience,
-    #         "current_location": current_location,
-    #     }
-    #     needs_employee = skills_provided or any(
-    #         value is not None for value in employee_fields.values()
-    #     )
+        employee_fields = {
+            "headline": headline,
+            "summary": summary,
+            "years_of_experience": years_of_experience,
+            "current_location": current_location,
+        }
+        needs_employee = any(
+            value is not None for value in employee_fields.values()
+        )
 
-    #     employee = await UserService._fetch_employee_with_skills(db, user_id)
-    #     if needs_employee and not employee:
-    #         raise ValueError(f"Employee profile not found for user_id {user_id}")
+        employee = await UserService._fetch_employee_with_skills(db, user_id)
+        if needs_employee and not employee:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
 
-    #     skills_changed = False
-    #     embedded_skill_count = 0
-    #     profile_embedding_updated = False
-    #     response_skills = [
-    #         employee_skill.skill
-    #         for employee_skill in employee.employee_skills
-    #     ] if employee else []
+        response_skills = [
+            employee_skill.skill
+            for employee_skill in employee.employee_skills
+        ] if employee else []
 
-    #     try:
-    #         user_profile_changed = False
-    #         if full_name is not None:
-    #             user.full_name = full_name
-    #             user_profile_changed = True
-    #         if phone is not None:
-    #             user.phone = phone
-    #             user_profile_changed = True
-    #         if avatar_url is not None:
-    #             user.avatar_url = avatar_url
-    #             user_profile_changed = True
+        try:
+            user_profile_changed = False
+            if full_name is not None:
+                user.full_name = full_name
+                user_profile_changed = True
+            if phone is not None:
+                user.phone = phone
+                user_profile_changed = True
+            if avatar_url is not None:
+                user.avatar_url = avatar_url
+                user_profile_changed = True
 
-    #         employee_profile_changed = False
-    #         if employee:
-    #             for field_name, value in employee_fields.items():
-    #                 if value is not None:
-    #                     setattr(employee, field_name, value)
-    #                     employee_profile_changed = True
+            employee_profile_changed = False
+            if employee:
+                for field_name, value in employee_fields.items():
+                    if value is not None:
+                        setattr(employee, field_name, value)
+                        employee_profile_changed = True
 
-    #         skills_to_embed = []
-    #         if skills_provided:
-    #             if skills is None:
-    #                 raise ValueError("skills must be a list when provided")
+            if user_profile_changed or employee_profile_changed:
+                user.updated_at = datetime.utcnow()
 
-    #             normalized_skill_names = UserService._normalize_skill_names(skills or [])
-    #             desired_skills, created_skill_keys = await UserService._get_or_create_skills(
-    #                 db,
-    #                 normalized_skill_names,
-    #             )
+            await db.commit()
 
-    #             current_skill_ids = {
-    #                 employee_skill.skill_id
-    #                 for employee_skill in employee.employee_skills
-    #             }
-    #             desired_skill_ids = {skill.id for skill in desired_skills}
-    #             skills_changed = current_skill_ids != desired_skill_ids
+        except Exception as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to update user profile: {exc}") from exc
 
-    #             if skills_changed:
-    #                 skill_ids_to_remove = current_skill_ids - desired_skill_ids
-    #                 if skill_ids_to_remove:
-    #                     await db.execute(
-    #                         delete(EmployeeSkill).where(
-    #                             EmployeeSkill.employee_id == employee.id,
-    #                             EmployeeSkill.skill_id.in_(skill_ids_to_remove),
-    #                         )
-    #                     )
-
-    #                 skill_ids_to_add = desired_skill_ids - current_skill_ids
-    #                 for skill_id in skill_ids_to_add:
-    #                     db.add(
-    #                         EmployeeSkill(
-    #                             employee_id=employee.id,
-    #                             skill_id=skill_id,
-    #                         )
-    #                     )
-
-    #             response_skills = desired_skills
-    #             skills_to_embed = [
-    #                 skill.name
-    #                 for skill in desired_skills
-    #                 if skill.name.lower() in created_skill_keys
-    #                 or skill.embedding_status != "done"
-    #             ]
-
-    #         if user_profile_changed or employee_profile_changed or skills_changed:
-    #             user.updated_at = datetime.utcnow()
-
-    #         profile_embedding_should_update = (
-    #             employee is not None
-    #             and (employee_profile_changed or skills_changed)
-    #         )
-    #         if (skills_to_embed or profile_embedding_should_update) and embedding_service is None:
-    #             raise RuntimeError("embedding service is not ready")
-
-    #         await db.flush()
-
-    #         if skills_to_embed:
-    #             if embedding_service is None:
-    #                 raise RuntimeError("skill embedding service is not ready")
-
-    #             embedded_skill_count = await embedding_service.embed_skills(
-    #                 db,
-    #                 skills_to_embed,
-    #             )
-
-    #         if profile_embedding_should_update:
-    #             profile = await embedding_service.get_user_profile(db, user_id)
-    #             profile_vector = await embedding_service.process_user_profile_multimodal(
-    #                 profile
-    #             )
-    #             await embedding_service.upsert_user_profile_embedding(
-    #                 db,
-    #                 employee.id,
-    #                 profile_vector,
-    #             )
-    #             profile_embedding_updated = True
-
-    #         await db.commit()
-
-    #     except IntegrityError as exc:
-    #         await db.rollback()
-    #         raise ValueError(f"Failed to update user profile: {exc}") from exc
-    #     except Exception:
-    #         await db.rollback()
-    #         raise
-
-    #     return UserService._serialize_updated_profile(
-    #         user=user,
-    #         employee=employee,
-    #         skills=response_skills,
-    #         skills_changed=skills_changed,
-    #         embedded_skill_count=embedded_skill_count,
-    #         profile_embedding_updated=profile_embedding_updated,
-    #     )
+        return UserService._serialize_updated_profile(
+            user=user,
+            employee=employee,
+            skills=response_skills,
+            skills_changed=False,
+            embedded_skill_count=0,
+            profile_embedding_updated=False,
+        )
+        """Update user/employee profile and embed new or pending skills."""
+        user = await db.get(User, user_id)
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
+    
+        employee_fields = {
+            "headline": headline,
+            "summary": summary,
+            "years_of_experience": years_of_experience,
+            "current_location": current_location,
+        }
+        needs_employee = skills_provided or any(
+            value is not None for value in employee_fields.values()
+        )
+    
+        employee = await UserService._fetch_employee_with_skills(db, user_id)
+        if needs_employee and not employee:
+            raise ValueError(f"Employee profile not found for user_id {user_id}")
+    
+        skills_changed = False
+        embedded_skill_count = 0
+        profile_embedding_updated = False
+        response_skills = [
+            employee_skill.skill
+            for employee_skill in employee.employee_skills
+        ] if employee else []
+    
+        try:
+            user_profile_changed = False
+            if full_name is not None:
+                user.full_name = full_name
+                user_profile_changed = True
+            if phone is not None:
+                user.phone = phone
+                user_profile_changed = True
+            if avatar_url is not None:
+                user.avatar_url = avatar_url
+                user_profile_changed = True
+    
+            employee_profile_changed = False
+            if employee:
+                for field_name, value in employee_fields.items():
+                    if value is not None:
+                        setattr(employee, field_name, value)
+                        employee_profile_changed = True
+    
+            skills_to_embed = []
+            if skills_provided:
+                if skills is None:
+                    raise ValueError("skills must be a list when provided")
+    
+                normalized_skill_names = UserService._normalize_skill_names(skills or [])
+                desired_skills, created_skill_keys = await UserService._get_or_create_skills(
+                    db,
+                    normalized_skill_names,
+                )
+    
+                current_skill_ids = {
+                    employee_skill.skill_id
+                    for employee_skill in employee.employee_skills
+                }
+                desired_skill_ids = {skill.id for skill in desired_skills}
+                skills_changed = current_skill_ids != desired_skill_ids
+    
+                if skills_changed:
+                    skill_ids_to_remove = current_skill_ids - desired_skill_ids
+                    if skill_ids_to_remove:
+                        await db.execute(
+                            delete(EmployeeSkill).where(
+                                EmployeeSkill.employee_id == employee.id,
+                                EmployeeSkill.skill_id.in_(skill_ids_to_remove),
+                            )
+                        )
+    
+                    skill_ids_to_add = desired_skill_ids - current_skill_ids
+                    for skill_id in skill_ids_to_add:
+                        db.add(
+                            EmployeeSkill(
+                                employee_id=employee.id,
+                                skill_id=skill_id,
+                            )
+                        )
+    
+                response_skills = desired_skills
+                skills_to_embed = [
+                    skill.name
+                    for skill in desired_skills
+                    if skill.name.lower() in created_skill_keys
+                    or skill.embedding_status != "done"
+                ]
+    
+            if user_profile_changed or employee_profile_changed or skills_changed:
+                user.updated_at = datetime.utcnow()
+    
+            if skills_to_embed and embedding_service is None:
+                raise RuntimeError("embedding service is not ready")
+                raise RuntimeError("embedding service is not ready")
+    
+            await db.flush()
+    
+            if skills_to_embed:
+                if embedding_service is None:
+                    raise RuntimeError("skill embedding service is not ready")
+    
+                embedded_skill_count = await embedding_service.embed_skills(
+                    db,
+                    skills_to_embed,
+                )
+    
+            if profile_embedding_should_update:
+                profile = await embedding_service.get_user_profile(db, user_id)
+                profile_vector = await embedding_service.process_user_profile_multimodal(
+                    profile
+                )
+                await embedding_service.upsert_user_profile_embedding(
+                    db,
+                    employee.id,
+                    profile_vector,
+                )
+                profile_embedding_updated = True
+    
+            await db.commit()
+    
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ValueError(f"Failed to update user profile: {exc}") from exc
+        except Exception:
+            await db.rollback()
+            raise
+    
+        return UserService._serialize_updated_profile(
+            user=user,
+            employee=employee,
+            skills=response_skills,
+            skills_changed=skills_changed,
+            embedded_skill_count=embedded_skill_count,
+        )
 
     @staticmethod
     async def create_user_education_async(

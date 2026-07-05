@@ -60,13 +60,55 @@ class CreateEmployerUserRequest(BaseModel):
 
 class UserProfileUpdateRequest(BaseModel):
     full_name: str | None = None
+
+@router.get("/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role,
+        "avatar_url": current_user.avatar_url
+    }
+
+
+class CreateEmployeeUserRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str | None = None
     phone: str | None = None
     avatar_url: str | None = None
     headline: str | None = None
     summary: str | None = None
     years_of_experience: int | None = Field(default=None, ge=0)
     current_location: str | None = None
-    skills: list[str] = Field(default_factory=list)
+
+
+class CreateEmployerUserRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+    position: str | None = None
+    company_name: str = Field(..., min_length=1)
+    description: str | None = None
+    website: str | None = None
+    logo_url: str | None = None
+    industry: str | None = None
+    company_size: str | None = None
+    address: str | None = None
+    location: str | None = None
+
+
+class UserProfileUpdateRequest(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+    headline: str | None = None
+    summary: str | None = None
+    years_of_experience: int | None = Field(default=None, ge=0)
+    current_location: str | None = None
 
 
 class CreateUserEducationRequest(BaseModel):
@@ -599,18 +641,11 @@ async def update_user_profile(
 ):
     user_id = current_user.id
     data = _payload_data(payload)
-    skills_provided = "skills" in _fields_set(payload)
-    skills = data.pop("skills", None)
-
-    embedding_service = JobRecommendationService()
 
     try:
         result = await UserService.update_user_profile_async(
             db=db,
             user_id=user_id,
-            embedding_service=embedding_service,
-            skills=skills,
-            skills_provided=skills_provided,
             **data,
         )
         await _safe_create_event(
