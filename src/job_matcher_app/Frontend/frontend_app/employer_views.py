@@ -632,13 +632,11 @@ def _render_job_form(mode: str, job: dict[str, Any] | None = None) -> None:
             value=parsed_deadline is not None,
             key=f"{form_key}_deadline_enabled",
         )
-        deadline = None
-        if deadline_enabled:
-            deadline = st.date_input(
-                "Deadline",
-                value=parsed_deadline or date.today(),
-                key=f"{form_key}_deadline",
-            )
+        deadline = st.date_input(
+            "Deadline",
+            value=parsed_deadline or date.today(),
+            key=f"{form_key}_deadline",
+        )
 
         description = st.text_area(
             "Description",
