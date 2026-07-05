@@ -318,43 +318,20 @@ def _has_user_applied(job_id: int) -> bool:
     if st.session_state.get(f"job_apply_success_{job_id}"):
         return True
 
-    debug_logs = []
-    has_applied = False
-
     try:
         fresh_apps = get_my_applications()
-        debug_logs.append(f"**Target job_id:** `{job_id}` (type: `{type(job_id).__name__}`)")
-        debug_logs.append(f"**Fetched applications type:** `{type(fresh_apps).__name__}`")
-        
-        if isinstance(fresh_apps, list):
-            debug_logs.append(f"**Total applications found:** `{len(fresh_apps)}`")
-            for app in fresh_apps:
-                app_job_id = app.get("job_id")
-                if not app_job_id:
-                    job = app.get("job") or {}
-                    app_job_id = job.get("job_id") or job.get("id")
-                    
-                debug_logs.append(f"- Checking `app_job_id`: `{app_job_id}` (type: `{type(app_job_id).__name__}`) against `{job_id}`")
+        for app in fresh_apps:
+            app_job_id = app.get("job_id")
+            if not app_job_id:
+                job = app.get("job") or {}
+                app_job_id = job.get("job_id") or job.get("id")
                 
-                if str(app_job_id) == str(job_id):
-                    debug_logs.append("✅ **MATCH FOUND!**")
-                    has_applied = True
-                    break
-        else:
-            debug_logs.append(f"**RAW RESPONSE:** `{fresh_apps}`")
-            
-        if not has_applied:
-            debug_logs.append("❌ **NO MATCH FOUND.**")
-            
-    except ApiError as e:
-        debug_logs.append(f"❌ **API ERROR:** `{e}`")
+            if str(app_job_id) == str(job_id):
+                return True
+    except ApiError:
+        pass
 
-    # Hiển thị log ra thanh sidebar bên trái của giao diện web
-    with st.sidebar.expander("🛠️ DEBUG: Kiểm tra ứng tuyển", expanded=True):
-        for log in debug_logs:
-            st.markdown(log)
-
-    return has_applied
+    return False
 
 
 def render_job_detail_page() -> None:
