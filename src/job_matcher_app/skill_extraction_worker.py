@@ -142,14 +142,16 @@ def load_ner_pipeline():
 
     class RobertaCRFForTokenClassification(PreTrainedModel):
         config_class = AutoConfig
+        base_model_prefix = "roberta"
 
         def __init__(self, config):
             super().__init__(config)
             self.num_labels = config.num_labels
-            self.roberta = AutoModel.from_config(config)
+            self.roberta = AutoModel.from_config(config, add_pooling_layer=False)
             self.dropout = nn.Dropout(config.hidden_dropout_prob)
             self.classifier = nn.Linear(config.hidden_size, config.num_labels)
             self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+            self.post_init()
 
         def forward(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
             outputs = self.roberta(input_ids, attention_mask=attention_mask, **kwargs)
