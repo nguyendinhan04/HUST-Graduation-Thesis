@@ -6,7 +6,7 @@ from typing import Any
 
 import streamlit as st
 
-from frontend_app.api_client import ApiError, apply_job, get_job_detail, get_job_skill_gap
+from frontend_app.api_client import ApiError, apply_job, get_job_detail, get_job_skill_gap, get_my_applications
 from frontend_app.formatting import html_or_empty, show_api_error
 from frontend_app.loading import form_loading
 from frontend_app.state import navigate_to
@@ -307,6 +307,31 @@ def _handle_apply(job_id: int, recommendation_context: dict[str, Any] | None = N
             show_api_error("Could not apply for this job", exc)
 
 
+def _has_user_applied(job_id: int) -> bool:
+    user = st.session_state.get("auth_user")
+    if not user or user.get("role") != "employee":
+        return False
+
+    if st.session_state.get(f"job_apply_success_{job_id}"):
+        return True
+
+    if "my_applications" not in st.session_state:
+        try:
+            st.session_state["my_applications"] = get_my_applications()
+        except ApiError:
+            return False
+
+    applications = st.session_state.get("my_applications") or []
+    for app in applications:
+        app_job_id = app.get("job_id")
+        if not app_job_id:
+            job = app.get("job") or {}
+            app_job_id = job.get("job_id") or job.get("id")
+        if app_job_id == job_id:
+            return True
+    return False
+
+
 def render_job_detail_page() -> None:
     job_id = st.session_state.get("selected_job_id")
     return_page = st.session_state.get("selected_job_return_page") or "recommendations"
@@ -330,16 +355,32 @@ def render_job_detail_page() -> None:
     _render_job_summary(job)
 
     is_expired = _is_application_expired(job)
+    has_applied = _has_user_applied(int(job_id))
+    
     apply_col, _ = st.columns([3, 5], gap="small")
+    
+    button_text = "Ứng tuyển ngay"
+    button_disabled = False
+    
+    if has_applied:
+        button_text = "Đã ứng tuyển"
+        button_disabled = True
+    elif is_expired:
+        button_text = "Đã quá hạn ứng tuyển"
+        button_disabled = True
+        
     if apply_col.button(
-        "Đã quá hạn ứng tuyển" if is_expired else "Ứng tuyển ngay",
+        button_text,
         key=f"job_apply_{job_id}",
         type="primary",
         use_container_width=True,
-        disabled=is_expired,
+        disabled=button_disabled,
     ):
         _handle_apply(int(job_id), recommendation_context=recommendation_context)
-    if is_expired:
+        
+    if has_applied:
+        pass
+    elif is_expired:
         st.caption("Job đã quá hạn ứng tuyển.")
 
     if st.session_state.get(f"job_apply_success_{job_id}"):
