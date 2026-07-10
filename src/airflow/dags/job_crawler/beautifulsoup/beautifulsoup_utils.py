@@ -11,21 +11,46 @@ import pandas as pd
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
-BASE = "https://www.topcv.vn"
-HEADERS = {
-    # giữ UA thật; có thể xoay vòng nếu cần
-    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+BASE = "https://www.topcv.vn/"
+user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                   "Chrome/123.0.0.0 Safari/537.36"),
-    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                   "Chrome/123.0.0.0 Safari/537.36",
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/124.0',
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    ]
+
+
+# HEADERS = {
+#     # giữ UA thật; có thể xoay vòng nếu cần
+#     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+#                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+#                    "Chrome/123.0.0.0 Safari/537.36"),
+#     "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8",
+#     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+#     "Referer": "https://www.topcv.vn/",
+#     "Connection": "keep-alive",
+# }
+
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
     "Referer": "https://www.topcv.vn/",
     "Connection": "keep-alive",
 }
 
+
+modify_headers = HEADERS.copy()
+modify_headers["User-Agent"] = random.choice(user_agents)
+
 def build_session() -> requests.Session:
     s = requests.Session()
-    s.headers.update(HEADERS)
+    s.headers.update(modify_headers)
 
     # Retry cho lỗi tạm thời và 429
     retry = Retry(
@@ -64,7 +89,7 @@ def smart_sleep(min_s=1.2, max_s=2.8):
 def get_soup(session: requests.Session, url: str, proxies=None) -> BeautifulSoup:
     # vòng lặp thủ công để xử lý 429 với jitter bổ sung
     for attempt in range(1, 6):
-        r = session.get(url, timeout=30, proxies=proxies)
+        r = session.get(url, timeout=30, proxies=proxies, allow_redirects=True)
         if r.status_code == 429:
             retry_after = r.headers.get("Retry-After")
             if retry_after:

@@ -258,3 +258,9 @@ def crawl_multiple_keywords(current_time_str: str):
         db.close()
         return success_mini_path
 
+
+
+def test_crawl_search_page():
+    s = build_session()
+    soup = get_soup(s, r"https://www.topcv.vn/viec-lam/fullstack-developer-nodejs-reactjs/2119168.html")
+    print(soup.prettify())

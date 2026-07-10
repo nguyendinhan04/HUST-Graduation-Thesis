@@ -136,7 +136,7 @@ def main():
         .getOrCreate()
 
     DEFAULTS = {
-        "PG_HOST": "postgres",  # Docker service name
+        "PG_HOST": "postgres2",  # Docker service name
         "PG_PORT": 5432,
         "PG_DATABASE": "job_db",
         "PG_USER": "airflow",
