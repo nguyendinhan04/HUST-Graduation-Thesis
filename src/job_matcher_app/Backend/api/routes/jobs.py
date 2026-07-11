@@ -122,12 +122,7 @@ async def create_job(
             entity_type="job",
             entity_id=result.get("job_id"),
             user_id=current_user.id,
-            payload={
-                "job_id": result.get("job_id"),
-                "company_id": result.get("company_id"),
-                "status": result.get("status"),
-                "title": result.get("title"),
-            },
+            payload=result,
         )
         return result
     except PermissionError as exc:
@@ -195,10 +190,8 @@ async def update_job(
             entity_id=job_id,
             user_id=current_user.id,
             payload={
-                "job_id": job_id,
+                **result,
                 "fields_changed": sorted(fields_set),
-                "status": result.get("status"),
-                "title": result.get("title"),
             },
         )
         return result
